@@ -21,12 +21,12 @@ LAST = ["Nguyen", "Smith", "Patel", "Garcia", "Kim", "Brown", "Rossi", "Cohen", 
 def seed_demo(db: Session, *, students: int = 40, roster_xlsx: Optional[Path] = None, rng_seed: int = 7) -> dict:
     rng = random.Random(rng_seed)
 
-    admin, _ = svc.find_or_create_user(db, net_id="hpadmin", email="hpadmin@example.edu",
+    admin, _ = svc.find_or_create_user(db, net_id="adm00001", email="hpadmin@example.edu",
                                        first_name="HuskyPoll", last_name="Admin")
     admin.is_admin = True
-    prof, _ = svc.find_or_create_user(db, net_id="prof01", email="prof01@example.edu",
+    prof, _ = svc.find_or_create_user(db, net_id="prf00001", email="prof01@example.edu",
                                       first_name="Pat", last_name="Professor")
-    ta, _ = svc.find_or_create_user(db, net_id="ta01", email="ta01@example.edu",
+    ta, _ = svc.find_or_create_user(db, net_id="tas00001", email="ta01@example.edu",
                                     first_name="Terry", last_name="Assistant")
 
     course = svc.create_course(db, prof, term="Spring 2027", subject="CSE", catalog="2050",
@@ -40,7 +40,7 @@ def seed_demo(db: Session, *, students: int = 40, roster_xlsx: Optional[Path] = 
     records = []
     for i in range(students):
         first, last = FIRST[i % len(FIRST)], LAST[(i * 7 + i // len(FIRST) * 3) % len(LAST)]
-        net = f"{first[0]}{last[0]}{23000 + i}".lower()
+        net = f"{first[0]}{chr(ord('a') + i % 26)}{last[0]}{23000 + i}".lower()  # 3 letters + 5 digits
         records.append({"student_id": f"{3000000 + i}", "name": f"{last},{first}", "net_id": net,
                         "email": f"{first}.{last}{i}@example.edu".lower(),
                         "section": rng.choice(["011Lab", "012Lab"]), "_row": i + 2})

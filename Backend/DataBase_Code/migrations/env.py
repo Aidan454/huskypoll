@@ -11,7 +11,7 @@ from pathlib import Path
 from alembic import context
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from huskypoll_db.database import make_engine  # noqa: E402
+from sqlalchemy import create_engine, event, text  # noqa: E402
 from huskypoll_db.models import Base  # noqa: E402
 
 config = context.config
@@ -41,8 +41,29 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
+def _migration_engine():
+    """Engine for migrations: foreign keys OFF.
+
+    SQLite can't add or change constraints in place, so Alembic "batch"
+    migrations rebuild a table (create new, copy rows, drop old, rename).
+    With foreign keys ON, dropping the old table would cascade-delete every
+    row that references it (e.g. dropping users would wipe enrollments and
+    responses). So migrations run with them OFF, and we verify afterwards.
+    """
+    engine = create_engine(f"sqlite:///{DB_PATH}")
+
+    @event.listens_for(engine, "connect")
+    def _pragmas(dbapi_connection, _record):
+        cur = dbapi_connection.cursor()
+        cur.execute("PRAGMA foreign_keys=OFF")
+        cur.execute("PRAGMA busy_timeout=5000")
+        cur.close()
+
+    return engine
+
+
 def run_migrations_online() -> None:
-    engine = make_engine(DB_PATH)
+    engine = _migration_engine()
     with engine.connect() as connection:
         context.configure(
             connection=connection,
@@ -52,6 +73,9 @@ def run_migrations_online() -> None:
         )
         with context.begin_transaction():
             context.run_migrations()
+            problems = connection.execute(text("PRAGMA foreign_key_check")).fetchall()
+            if problems:
+                raise RuntimeError(f"migration left broken foreign keys, rolled back: {problems[:5]}")
 
 
 if context.is_offline_mode():

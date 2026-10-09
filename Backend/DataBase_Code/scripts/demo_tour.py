@@ -95,13 +95,23 @@ say(f"Journal mode: {db.execute(text('PRAGMA journal_mode')).scalar()}  "
 
 # ---------------------------------------------------------------------------
 step("Instructor logs in with UConn credentials and creates a course")
-prof = svc.record_login(db, net_id="PROF01", email="pat.prof@uconn.edu", first_name="Pat", last_name="Professor")
-say(f"Logged in: {prof.display_name} (NetID stored lowercase: '{prof.net_id}')")
+prof = svc.record_login(db, net_id="PRF00001", email="pat.prof@uconn.edu", first_name="Pat", last_name="Professor")
+say(f"Logged in: {prof.display_name} (NetID 'PRF00001' stored lowercase: '{prof.net_id}')")
+say("Who can log in - the email decides:")
+for email in ("pat.q.prof@uconn.edu", "abc12345@uconn.edu", "pat.prof@gmail.com", "pat@uconn.edu",
+              "pat.quinn.prof@uconn.edu"):
+    try:
+        with db.begin_nested() as sp:
+            u = svc.record_login(db, email=email, net_id=None if "12345" in email else "pqp00001")
+            say(f"  {email:<26} accepted -> NetID {u.net_id}")
+            sp.rollback()
+    except svc.HuskyPollError as exc:
+        say(f"  {email:<26} REFUSED -> {exc}")
 course = svc.create_course(db, prof, term="Spring 2027", subject="cse", catalog="2050", section="001",
                            title="Data Structures", points_participation=1, points_correct=1)
 say(f"Created {course.code} - join code {course.join_code}")
 say(f"Grading: {course.points_participation:g} pt for answering + {course.points_correct:g} pt if correct")
-ta = svc.record_login(db, net_id="ta01", first_name="Terry", last_name="Assistant")
+ta = svc.record_login(db, net_id="tas00001", email="terry.assistant@uconn.edu", first_name="Terry", last_name="Assistant")
 svc.add_instructor(db, course, ta, role="ta")
 say("Added a second instructor (TA):")
 rows(db, "SELECT u.net_id, ci.role FROM course_instructors ci JOIN users u ON u.id = ci.user_id")
@@ -110,18 +120,18 @@ rows(db, "SELECT u.net_id, ci.role FROM course_instructors ci JOIN users u ON u.
 step("Import the roster (StudentAdmin spreadsheet + a pasted list)")
 res = import_studentadmin_xlsx(db, course, ROOT / "samples" / "studentadmin-template.xlsx", by=prof)
 say(f"StudentAdmin file: {res.summary()}")
-pasted = "\n".join([f"st{n:04d}" for n in range(1, 9)] + ["late.student@uconn.edu"])
+pasted = "\n".join([f"stu{n:05d}" for n in range(1, 9)] + ["late.student@uconn.edu"])
 res = import_identifiers(db, course, pasted, by=prof)
 say(f"Pasted list (NetIDs + an email): {res.summary()}")
 rows(db, "SELECT u.net_id, u.student_id, u.email, e.section, e.source FROM enrollments e "
          "JOIN users u ON u.id = e.user_id ORDER BY u.id LIMIT 4")
 say("...")
-student = svc.record_login(db, net_id="LS12345", email="Late.Student@uconn.edu", first_name="Lee")
+student = svc.record_login(db, net_id="LSX12345", email="Late.Student@uconn.edu", first_name="Lee")
 say(f"First login by late.student@uconn.edu -> matched to the roster row (user {student.id}), "
     f"no duplicate account. Enrolled: {svc.is_enrolled(db, course, student)}")
 NAMES = [("Ava", "Nguyen"), ("Liam", "Patel"), ("Maya", "Garcia"), ("Noah", "Kim"), ("Priya", "Silva"),
          ("Ethan", "Cohen"), ("Sofia", "Okafor"), ("Omar", "Rossi")]
-students = [svc.record_login(db, net_id=f"st{n:04d}", first_name=f, last_name=l)
+students = [svc.record_login(db, net_id=f"stu{n:05d}", email=f"{f}.{l}@uconn.edu", first_name=f, last_name=l)
             for n, (f, l) in enumerate(NAMES, start=1)] + [student]
 student.last_name = "Student"
 say("The other pasted students log in too; their names now come from UConn login.")
@@ -169,7 +179,7 @@ rows(db, "SELECT o.text_md AS option, v.votes, v.is_correct FROM v_poll_option_c
 
 # ---------------------------------------------------------------------------
 step("Rules the app enforces (friendly error messages)")
-outsider = svc.record_login(db, net_id="outsider1")
+outsider = svc.record_login(db, email="out99999@uconn.edu")
 say("Someone not on the roster tries to answer:")
 refused(svc.submit_response, db, poll, outsider, option_ids=[opts["O(1)"]])
 say("A student tries to open a poll:")

@@ -4,7 +4,7 @@
 
 CREATE TABLE users (
 	id INTEGER NOT NULL, 
-	net_id VARCHAR(32), 
+	net_id VARCHAR(8), 
 	student_id VARCHAR(16), 
 	email VARCHAR(254), 
 	first_name VARCHAR(100), 
@@ -14,7 +14,8 @@ CREATE TABLE users (
 	last_login_at DATETIME, 
 	CONSTRAINT pk_users PRIMARY KEY (id), 
 	CONSTRAINT ck_users_has_identifier CHECK (net_id IS NOT NULL OR email IS NOT NULL OR student_id IS NOT NULL), 
-	CONSTRAINT ck_users_net_id_lower CHECK (net_id IS NULL OR net_id = lower(net_id)), 
+	CONSTRAINT ck_users_net_id_format CHECK (net_id IS NULL OR net_id GLOB '[a-z][a-z][a-z][0-9][0-9][0-9][0-9][0-9]'), 
+	CONSTRAINT ck_users_logged_in_has_net_id CHECK (last_login_at IS NULL OR net_id IS NOT NULL), 
 	CONSTRAINT ck_users_email_lower CHECK (email IS NULL OR email = lower(email)), 
 	CONSTRAINT uq_users_net_id UNIQUE (net_id), 
 	CONSTRAINT uq_users_student_id UNIQUE (student_id), 
@@ -236,9 +237,9 @@ CREATE INDEX ix_responses_user_id ON responses (user_id);
 
 CREATE INDEX ix_event_log_occurred_at ON event_log (occurred_at);
 
-CREATE INDEX ix_event_log_course_time ON event_log (course_id, occurred_at);
-
 CREATE INDEX ix_event_log_user_time ON event_log (user_id, occurred_at);
+
+CREATE INDEX ix_event_log_course_time ON event_log (course_id, occurred_at);
 
 CREATE TRIGGER trg_polls_lock_question_on_open
 AFTER UPDATE OF status ON polls

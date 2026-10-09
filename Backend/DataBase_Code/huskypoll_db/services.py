@@ -34,6 +34,17 @@ from .models import (
 # Codes students type or scan; no 0/O/1/I/L to avoid misreads on a projector.
 CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"
 STUDENT_ID_RE = re.compile(r"^\d{7,9}$")
+NETID_RE = re.compile(r"^[a-z]{3}[0-9]{5}$")  # UConn NetID, e.g. abc12345 (matches models.NETID_GLOB)
+
+# Emails allowed to log in (checked case-insensitively, stored lowercase):
+#   firstname.lastname@uconn.edu            e.g. jonathan.smith@uconn.edu
+#   firstname.middleinitial.lastname@...    e.g. jonathan.q.smith@uconn.edu
+#   netid@uconn.edu                         e.g. abc12345@uconn.edu
+# Name parts are letters, optionally joined by hyphens (mary-kate, smith-jones).
+_NAME = r"[a-z]+(?:-[a-z]+)*"
+LOGIN_EMAIL_RE = re.compile(
+    rf"^(?:(?P<first>{_NAME})\.(?:(?P<middle>[a-z])\.)?(?P<last>{_NAME})|(?P<netid>[a-z]{{3}}[0-9]{{5}}))@uconn\.edu$"
+)
 
 
 class HuskyPollError(Exception):
@@ -90,6 +101,18 @@ def log_event(
 # Users and login
 # ---------------------------------------------------------------------------
 
+def normalize_net_id(net_id: Optional[str]) -> Optional[str]:
+    """Trim and lowercase a NetID; raise HuskyPollError if it isn't 3 letters + 5 digits."""
+    value = _lower(net_id)
+    if value is not None and not NETID_RE.match(value):
+        raise HuskyPollError(f"'{str(net_id).strip()}' is not a valid NetID (3 letters followed by 5 numbers, e.g. abc12345)")
+    return value
+
+
+def is_valid_net_id(net_id: Optional[str]) -> bool:
+    return bool(net_id) and bool(NETID_RE.match(str(net_id).strip().lower()))
+
+
 def find_user(
     db: Session,
     *,
@@ -120,7 +143,7 @@ def find_or_create_user(
     last_name: Optional[str] = None,
 ) -> tuple[User, bool]:
     """Return (user, created). Fills in any identifiers the existing row is missing."""
-    net_id, email, student_id = _lower(net_id), _lower(email), _clean(student_id)
+    net_id, email, student_id = normalize_net_id(net_id), _lower(email), _clean(student_id)
     if not (net_id or email or student_id):
         raise HuskyPollError("need a NetID, email or student ID")
 
@@ -139,17 +162,48 @@ def find_or_create_user(
     return user, created
 
 
+def check_login_email(email: Optional[str]) -> tuple[str, Optional[str]]:
+    """Validate a login email. Returns (email lowercased, NetID if the email is netid@uconn.edu)."""
+    value = _lower(email)
+    m = LOGIN_EMAIL_RE.match(value or "")
+    if not m:
+        raise HuskyPollError(
+            "Only UConn emails can log in: firstname.lastname@uconn.edu, "
+            "firstname.middleinitial.lastname@uconn.edu or netid@uconn.edu"
+        )
+    return value, m.group("netid")
+
+
 def record_login(
     db: Session,
     *,
-    net_id: str,
-    email: Optional[str] = None,
+    email: str,
+    net_id: Optional[str] = None,
     first_name: Optional[str] = None,
     last_name: Optional[str] = None,
     student_id: Optional[str] = None,
     ip_address: Optional[str] = None,
 ) -> User:
-    """Call after CAS/Entra authenticates someone. Links them to any roster row."""
+    """Call after CAS/Entra authenticates someone. Links them to any roster row.
+
+    Anyone whose email is firstname.lastname@, firstname.m.lastname@ or
+    netid@uconn.edu may log in, and every logged-in user ends up with a NetID:
+    the one UConn login supplies, or the one in a netid@uconn.edu email.
+    """
+    email, email_netid = check_login_email(email)
+    net_id = normalize_net_id(net_id)
+    if net_id and email_netid and net_id != email_netid:
+        raise HuskyPollError(f"email {email} does not belong to NetID {net_id}")
+    net_id = net_id or email_netid
+    if not net_id:
+        raise HuskyPollError(
+            f"could not determine a NetID for {email}; UConn login must supply one "
+            "(or log in with netid@uconn.edu)"
+        )
+    existing = find_user(db, email=email)
+    if existing and existing.net_id and existing.net_id != net_id:
+        raise HuskyPollError(f"email {email} already belongs to a different NetID")
+
     user, created = find_or_create_user(
         db, net_id=net_id, email=email, student_id=student_id, first_name=first_name, last_name=last_name
     )

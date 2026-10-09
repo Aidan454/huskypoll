@@ -28,13 +28,13 @@ engine = make_engine(path)
 init_db(engine)
 Session = make_session_factory(engine)
 with Session.begin() as db:
-    prof, _ = svc.find_or_create_user(db, net_id="prof01")
+    prof, _ = svc.find_or_create_user(db, net_id="prf00001")
     course = svc.create_course(db, prof, term="T", subject="CSE", catalog="1010", title="Load test")
-    import_records(db, course, [{"net_id": f"s{i:05d}"} for i in range(args.students)])
+    import_records(db, course, [{"net_id": f"stu{i:05d}"} for i in range(args.students)])
     q = svc.create_question(db, prof, type="mc_single", body_md="?", options=[(c, c == "B") for c in "ABCD"])
     poll_id = svc.open_poll(db, course, q, prof).id
     option_ids = [o.id for o in q.options]
-    student_ids = [u.id for u in db.query(User).filter(User.net_id.like("s%"))]
+    student_ids = [u.id for u in db.query(User).filter(User.net_id.like("stu%"))]
 
 errors, latencies = [], []
 

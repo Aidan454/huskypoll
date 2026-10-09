@@ -101,6 +101,10 @@ QUESTION_TYPES = ("mc_single", "mc_multi", "free_text", "numeric")
 POLL_STATUSES = ("draft", "open", "closed")
 
 
+# UConn NetID format, used by the CHECK constraint on users.net_id and by services.NETID_RE.
+NETID_GLOB = "[a-z][a-z][a-z][0-9][0-9][0-9][0-9][0-9]"
+
+
 def _in(col: str, values: tuple[str, ...]) -> str:
     return f"{col} IN ({', '.join(repr(v) for v in values)})"
 
@@ -119,7 +123,7 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    net_id: Mapped[Optional[str]] = mapped_column(String(32), unique=True)  # stored lowercase
+    net_id: Mapped[Optional[str]] = mapped_column(String(8), unique=True)  # e.g. abc12345, stored lowercase
     student_id: Mapped[Optional[str]] = mapped_column(String(16), unique=True)  # 7-digit PeopleSoft ID
     email: Mapped[Optional[str]] = mapped_column(String(254), unique=True)  # stored lowercase
     first_name: Mapped[Optional[str]] = mapped_column(String(100))
@@ -139,7 +143,10 @@ class User(Base):
             "net_id IS NOT NULL OR email IS NOT NULL OR student_id IS NOT NULL",
             name="has_identifier",
         ),
-        CheckConstraint("net_id IS NULL OR net_id = lower(net_id)", name="net_id_lower"),
+        # UConn NetID: 3 lowercase letters followed by 5 digits, e.g. abc12345
+        CheckConstraint(f"net_id IS NULL OR net_id GLOB '{NETID_GLOB}'", name="net_id_format"),
+        # Roster rows may lack a NetID until first login; anyone who has logged in has one.
+        CheckConstraint("last_login_at IS NULL OR net_id IS NOT NULL", name="logged_in_has_net_id"),
         CheckConstraint("email IS NULL OR email = lower(email)", name="email_lower"),
     )
 

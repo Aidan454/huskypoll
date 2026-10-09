@@ -151,5 +151,5 @@ def import_identifiers(
         elif STUDENT_ID_RE.match(token):
             records.append({"student_id": token, "_row": n})
         else:
-            records.append({"net_id": token, "_row": n})
+            records.append({"net_id": token, "_row": n})  # an invalid NetID is reported in .skipped
     return import_records(db, course, records, by=by)
