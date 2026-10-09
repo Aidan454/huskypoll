@@ -12,10 +12,8 @@ pip install -r requirements.txt
 
 python -m huskypoll_db seed-demo --roster samples/studentadmin-template.xlsx   # demo database
 python -m huskypoll_db init                                                    # or an empty one
-python -m pytest -q                                                            # 26 tests
+python -m pytest -q                                                            # 55 tests
 ```
-## A demo tour of the database
-from database_code -> python scripts/demo_tour.py
 
 `huskypoll.db` is created in the current folder. Set `HUSKYPOLL_DB=/path/to/file.db`
 or pass `--db` to use another file.
@@ -29,6 +27,7 @@ or pass `--db` to use another file.
 | `python -m huskypoll_db archive-course COURSE_ID --as NETID [--undo]` | Hide a finished course but keep all its data (reversible) |
 | `python -m huskypoll_db delete-course COURSE_ID --as NETID [--delete-logs]` | Permanently delete a course (owner or admin only; asks you to confirm) |
 | `python -m huskypoll_db schema` | Print every CREATE statement (same as `schema.sql`) |
+| `python scripts/demo_tour.py` | Guided 14-step tour of every feature, pausing after each step (`--no-pause`, `--keep tour.db`) |
 | `python scripts/simulate_lecture.py --students 500` | Load test: 500 students answering one poll |
 
 ## Layout
@@ -78,14 +77,35 @@ def respond(code: str, option_ids: list[int], db=Depends(get_db), user=Depends(c
 The service functions call `flush()` but never `commit()`. The request's
 transaction commits once, at the end.
 
+## Who can log in
+
+`services.record_login(email=..., net_id=...)` is called after UConn login. It
+accepts anyone whose email is one of:
+
+| Email shape | Example | NetID comes from |
+| --- | --- | --- |
+| `firstname.lastname@uconn.edu` | `jonathan.smith@uconn.edu` | UConn login |
+| `firstname.middleinitial.lastname@uconn.edu` | `jonathan.q.smith@uconn.edu` | UConn login |
+| `netid@uconn.edu` | `abc12345@uconn.edu` | The email itself (or UConn login; they must match) |
+
+Case doesn't matter, and name parts may contain hyphens (`mary-kate.smith-jones`).
+Anything else is refused with a friendly message: other domains (including
+subdomains like `health.uconn.edu`), a full middle name, digits in a name, and
+so on. Every logged-in user ends up with a NetID; if none can be determined the
+login is refused. Roster rows may have no NetID until the student's first login,
+when the NetID is filled in. An email that already belongs to one NetID can't be
+used to log in with a different one.
+
 ## Rules the database enforces
 
 These rules are enforced by the database itself, so a bug in the API cannot
 break them:
 
 - **Valid values only.** Roles, statuses and question types are checked. A user
-  must have a NetID, email or student ID. NetIDs and emails are stored in
-  lowercase.
+  must have a NetID, email or student ID. A NetID must be 3 letters followed by
+  5 numbers (e.g. `abc12345`); `services` raises a friendly error for anything
+  else, and roster imports list bad NetIDs as skipped rows. Anyone who has logged
+  in must have a NetID. NetIDs and emails are stored in lowercase.
 - **One answer per student per poll.** Resubmitting while the poll is open
   updates the same row.
 - **Answers only while the poll is open.** This is enforced by a trigger.
@@ -132,8 +152,13 @@ Export the HuskyCT CSV before deleting, because the answers are gone afterwards.
    losing data.
 4. Regenerate the readable copy: `python -m huskypoll_db schema > schema.sql`.
 
-Alembic does not detect changes to triggers or views. Add those to the
-migration yourself with `op.execute(...)`.
+Alembic does not detect changes to triggers, views or CHECK constraints. Add
+those to the migration yourself (`op.execute(...)`, `batch_op.create_check_constraint(...)`).
+
+Migrations run with foreign keys switched off (see `migrations/env.py`). SQLite
+changes a table by rebuilding it, and with foreign keys on, dropping the old
+`users` table would delete every enrollment and answer. After each migration,
+`env.py` runs a foreign-key check and rolls back if anything is broken.
 
 ## Performance (from `scripts/simulate_lecture.py`, 500 students)
 
@@ -147,7 +172,16 @@ Docker volume (not a network drive), and back it up with `sqlite3 huskypoll.db
 ".backup backup.db"` or Litestream. Copying the file while the app is running
 can produce a corrupt backup.
 
+## Demo accounts
+
+`seed-demo` creates `adm00001` (admin), `prf00001` (course owner) and
+`tas00001` (TA), so for example: `python -m huskypoll_db delete-course 1 --as prf00001`.
+
 ## Open items
+
+- **Login email shapes.** Confirm with UConn ITS that these three cover everyone,
+  e.g. whether duplicate names get addresses with numbers (`john.smith2@`), which
+  are currently refused. The rule is `LOGIN_EMAIL_RE` in `services.py`.
 
 - **HuskyCT column headers.** The export uses `Last Name, First Name, Username,
   Student ID, HuskyPoll Participation [Total Pts: N Score]`. Check these against

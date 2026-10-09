@@ -31,7 +31,7 @@ def db(tmp_path):
 
 @pytest.fixture()
 def course_setup(db):
-    prof, _ = svc.find_or_create_user(db, net_id="prof01", first_name="Pat", last_name="Prof")
+    prof, _ = svc.find_or_create_user(db, net_id="prf00001", first_name="Pat", last_name="Prof")
     course = svc.create_course(db, prof, term="Spring 2027", subject="cse", catalog="2050",
                                title="Data Structures", points_participation=1, points_correct=2)
     s1, _ = svc.find_or_create_user(db, net_id="abc12345", first_name="Ann", last_name="Able")
@@ -65,12 +65,31 @@ def test_user_needs_an_identifier(db):
 def test_netid_stored_lowercase(db):
     u, _ = svc.find_or_create_user(db, net_id="  ABC12345 ")
     assert u.net_id == "abc12345"
-    _fails(db, "INSERT INTO users (net_id, is_admin, created_at) VALUES ('ABC1', 0, '2027-01-01')")
+    _fails(db, "INSERT INTO users (net_id, is_admin, created_at) VALUES ('ABC12345', 0, '2027-01-01')",
+           match="net_id_format")
+
+
+@pytest.mark.parametrize("bad", ["prof01", "ab12345", "abcd1234", "abc1234", "abc123456", "12345abc", "abc-1234"])
+def test_netid_must_be_three_letters_five_digits(db, bad):
+    with pytest.raises(svc.HuskyPollError, match="not a valid NetID"):
+        svc.find_or_create_user(db, net_id=bad)
+    with pytest.raises(svc.HuskyPollError, match="not a valid NetID"):
+        svc.record_login(db, net_id=bad, email="first.last@uconn.edu")
+    _fails(db, "INSERT INTO users (net_id, is_admin, created_at) VALUES (:n, 0, '2027-01-01')",
+           {"n": bad.lower()}, match="net_id_format")
+
+
+def test_roster_import_reports_bad_netids(db, course_setup):
+    prof, course, *_ = course_setup
+    res = import_identifiers(db, course, "abc11111\nprof01\nxy123\nABD22222")
+    assert res.enrolled == 2
+    assert [row for row, _ in res.skipped] == [2, 3]
+    assert "not a valid NetID" in res.skipped[0][1]
 
 
 def test_roster_row_links_to_first_login(db, course_setup):
     prof, course, *_ = course_setup
-    import_identifiers(db, course, "new.student@uconn.edu\n1234567, jdoe99999")
+    import_identifiers(db, course, "new.student@uconn.edu\n1234567, jdo99999")
     u = svc.record_login(db, net_id="NSX11111", email="New.Student@uconn.edu", first_name="New")
     assert u.email == "new.student@uconn.edu" and u.net_id == "nsx11111"
     assert db.query(User).filter_by(email="new.student@uconn.edu").count() == 1
@@ -314,7 +333,7 @@ def test_delete_course_with_logs(db, course_setup):
 
 def test_only_owner_can_delete_course(db, course_setup):
     prof, course, s1, s2, q = course_setup
-    ta, _ = svc.find_or_create_user(db, net_id="ta00001")
+    ta, _ = svc.find_or_create_user(db, net_id="tas00001")
     svc.add_instructor(db, course, ta, role="ta")
     for user in (ta, s1):
         with pytest.raises(svc.HuskyPollError, match="owner"):
@@ -334,7 +353,7 @@ def test_archive_and_restore(db, course_setup):
 
 def test_deleting_a_user_keeps_their_log_entries(db, course_setup):
     prof, course, s1, s2, q = course_setup
-    svc.record_login(db, net_id="abc12345")
+    svc.record_login(db, net_id="abc12345", email="ann.able@uconn.edu")
     db.delete(s1)
     db.flush()
     assert _count(db, "event_log", "event_type = 'login' AND user_id IS NULL") == 1
@@ -361,3 +380,58 @@ def test_counts_stay_correct_within_one_session(db, course_setup):
     assert close_log.details_json["responses"] == 2
     summary = svc.delete_course(db, course, prof)
     assert (summary["sessions"], summary["polls"], summary["responses"], summary["students"]) == (1, 3, 6, 2)
+
+
+# --- who can log in ------------------------------------------------------------
+
+@pytest.mark.parametrize("email,net_id,expected_netid", [
+    ("jonathan.smith@uconn.edu", "jos10001", "jos10001"),
+    ("Jonathan.Q.Smith@UConn.edu", "jqs10002", "jqs10002"),  # case doesn't matter
+    ("mary-kate.smith-jones@uconn.edu", "mks10003", "mks10003"),  # hyphenated names
+    ("abc12345@uconn.edu", None, "abc12345"),  # NetID taken from the email
+    ("ABC12345@uconn.edu", "abc12345", "abc12345"),  # both given and they agree
+])
+def test_allowed_login_emails(db, email, net_id, expected_netid):
+    u = svc.record_login(db, email=email, net_id=net_id)
+    assert u.net_id == expected_netid and u.email == email.lower() and u.last_login_at
+
+
+@pytest.mark.parametrize("email", [
+    "jonathan.smith@gmail.com", "jonathan@uconn.edu", "jonathan.quincy.smith@uconn.edu",
+    "j.q.r.smith@uconn.edu", "jonathan..smith@uconn.edu", "jonathan.smith2@uconn.edu",
+    "abc1234@uconn.edu", "jonathan.smith@uconn.edu.evil.com", "jonathan.smith@health.uconn.edu", "",
+])
+def test_refused_login_emails(db, email):
+    with pytest.raises(svc.HuskyPollError, match="Only UConn emails"):
+        svc.record_login(db, email=email, net_id="abc12345")
+    assert _count(db, "users") == 0
+
+
+def test_login_needs_a_netid(db):
+    with pytest.raises(svc.HuskyPollError, match="could not determine a NetID"):
+        svc.record_login(db, email="jonathan.smith@uconn.edu")
+
+
+def test_netid_email_must_match_netid(db):
+    with pytest.raises(svc.HuskyPollError, match="does not belong"):
+        svc.record_login(db, email="abc12345@uconn.edu", net_id="xyz67890")
+
+
+def test_email_cannot_switch_netid(db):
+    svc.record_login(db, email="jonathan.smith@uconn.edu", net_id="jos10001")
+    with pytest.raises(svc.HuskyPollError, match="different NetID"):
+        svc.record_login(db, email="jonathan.smith@uconn.edu", net_id="xyz67890")
+
+
+def test_roster_email_gets_netid_at_first_login(db, course_setup):
+    prof, course, *_ = course_setup
+    import_identifiers(db, course, "jonathan.smith@uconn.edu")
+    roster_user = svc.find_user(db, email="jonathan.smith@uconn.edu")
+    assert roster_user.net_id is None
+    u = svc.record_login(db, email="jonathan.smith@uconn.edu", net_id="jos10001")
+    assert u is roster_user and u.net_id == "jos10001" and svc.is_enrolled(db, course, u)
+
+
+def test_db_requires_netid_once_logged_in(db):
+    _fails(db, "INSERT INTO users (email, is_admin, created_at, last_login_at) "
+               "VALUES ('a.b@uconn.edu', 0, '2027-01-01', '2027-01-01')", match="logged_in_has_net_id")
