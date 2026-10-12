@@ -8,6 +8,12 @@ The HuskyPoll backend has two parts:
 - `huskypoll_api` is the web API the frontend talks to (FastAPI): UConn login,
   courses, rosters, question banks, images, live polls with QR codes and
   real-time updates, students' history and exports.
+## Run it (without the frontend)
+"run these commands from database_code/"
+
+python -m pip install -r requirements.txt
+ $env:HUSKYPOLL_DEV_LOGIN="1"
+python -m uvicorn huskypoll_api.main:app --reload
 
 ## Run it (with the frontend)
 
