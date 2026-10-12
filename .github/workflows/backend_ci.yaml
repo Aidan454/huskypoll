@@ -57,6 +57,7 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run Pytest
+        working-directory: backend/database_code
         run: pytest
         
 
