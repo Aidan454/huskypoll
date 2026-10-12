@@ -7,11 +7,9 @@ Create Date: 2026-10-01 20:23:40.196484
 """
 from typing import Sequence, Union
 
-from alembic import op
-import sqlalchemy as sa
-
 import huskypoll_db.models  # noqa: F401  (UTCDateTime type used below)
-
+import sqlalchemy as sa
+from alembic import op
 
 # Triggers and views as they were at this revision. Copied, not imported,
 # so this migration never changes when triggers.py is edited later.

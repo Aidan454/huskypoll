@@ -6,18 +6,36 @@ import io
 from typing import Literal, Optional
 
 import segno
-from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Request,
+    WebSocket,
+    WebSocketDisconnect,
+)
 from fastapi.responses import Response as RawResponse
+from huskypoll_db import services as svc
+from huskypoll_db.models import Course, LectureSession, Poll, Response, User
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from huskypoll_db import services as svc
-from huskypoll_db.models import Course, LectureSession, Poll, Response, User
-
 from .. import schemas as s
 from ..config import Settings
-from ..deps import (after_commit, course_or_404, current_user, get_db, get_settings, poll_or_404, question_or_404,
-                    require_instructor, require_member, require_question_access, role_in, session_or_404)
+from ..deps import (
+    after_commit,
+    course_or_404,
+    current_user,
+    get_db,
+    get_settings,
+    poll_or_404,
+    question_or_404,
+    require_instructor,
+    require_member,
+    require_question_access,
+    role_in,
+    session_or_404,
+)
 from ..live import Listener, hub
 from ..serializers import my_response_out, poll_out, user_out
 

@@ -6,17 +6,16 @@ import logging
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from huskypoll_db import init_db, make_engine, make_session_factory
+from huskypoll_db.services import HuskyPollError, NotAllowed
 from sqlalchemy import inspect, text
 from sqlalchemy.exc import IntegrityError
 from starlette.middleware.sessions import SessionMiddleware
 
-from huskypoll_db import init_db, make_engine, make_session_factory
-from huskypoll_db.services import HuskyPollError, NotAllowed
-
 from .config import Settings
-from .site import HuskyPollSite
 from .routers import auth, courses, polls, questions, users
 from .routers.auth import validate_cas_ticket
+from .site import HuskyPollSite
 
 log = logging.getLogger("huskypoll")
 

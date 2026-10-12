@@ -5,16 +5,30 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
+from huskypoll_db import services as svc
+from huskypoll_db.models import (
+    Course,
+    CourseInstructor,
+    Media,
+    Question,
+    QuestionBank,
+    User,
+)
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from huskypoll_db import services as svc
-from huskypoll_db.models import Course, CourseInstructor, Media, Question, QuestionBank, User
-
 from .. import schemas as s
 from ..config import Settings
-from ..deps import (course_or_404, current_user, get_db, get_settings, question_or_404, require_instructor,
-                    require_question_access, require_staff)
+from ..deps import (
+    course_or_404,
+    current_user,
+    get_db,
+    get_settings,
+    question_or_404,
+    require_instructor,
+    require_question_access,
+    require_staff,
+)
 from ..serializers import bank_out, media_url, question_out
 
 router = APIRouter(tags=["questions"])

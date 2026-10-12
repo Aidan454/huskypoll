@@ -19,12 +19,12 @@ from sqlalchemy.orm import Session
 from .models import (
     ROLE_RANK,
     USER_ROLES,
-    Media,
     Course,
     CourseInstructor,
     Enrollment,
     EventLog,
     LectureSession,
+    Media,
     Poll,
     Question,
     QuestionBank,

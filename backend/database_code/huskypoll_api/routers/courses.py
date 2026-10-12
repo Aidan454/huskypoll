@@ -8,16 +8,34 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from fastapi.responses import Response as RawResponse
+from huskypoll_db import services as svc
+from huskypoll_db.export import participation_totals, per_session_csv, write_huskyct_csv
+from huskypoll_db.models import (
+    Course,
+    CourseInstructor,
+    Enrollment,
+    EventLog,
+    LectureSession,
+    User,
+)
+from huskypoll_db.roster import (
+    import_identifiers,
+    import_records,
+    import_studentadmin_xlsx,
+)
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from huskypoll_db import services as svc
-from huskypoll_db.export import participation_totals, per_session_csv, write_huskyct_csv
-from huskypoll_db.models import Course, CourseInstructor, Enrollment, EventLog, LectureSession, User
-from huskypoll_db.roster import import_identifiers, import_records, import_studentadmin_xlsx
-
 from .. import schemas as s
-from ..deps import course_or_404, current_user, get_db, require_instructor, require_member, role_in, session_or_404
+from ..deps import (
+    course_or_404,
+    current_user,
+    get_db,
+    require_instructor,
+    require_member,
+    role_in,
+    session_or_404,
+)
 from ..serializers import course_out, instructor_out, roster_out, session_out
 
 router = APIRouter(tags=["courses"])

@@ -3,9 +3,6 @@ from __future__ import annotations
 
 from typing import Optional
 
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session
-
 from huskypoll_db.models import (
     Course,
     CourseInstructor,
@@ -18,6 +15,8 @@ from huskypoll_db.models import (
     Response,
     User,
 )
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 
 from . import schemas as s
 from .config import Settings

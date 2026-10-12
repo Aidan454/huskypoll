@@ -10,7 +10,13 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .models import Course, Enrollment, User
-from .services import STUDENT_ID_RE, HuskyPollError, enroll, find_or_create_user, log_event
+from .services import (
+    STUDENT_ID_RE,
+    HuskyPollError,
+    enroll,
+    find_or_create_user,
+    log_event,
+)
 
 # StudentAdmin column headers -> our field names (matched case-insensitively).
 STUDENTADMIN_COLUMNS = {
