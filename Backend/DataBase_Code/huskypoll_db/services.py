@@ -13,9 +13,13 @@ import secrets
 from typing import Iterable, Optional, Sequence
 
 from sqlalchemy import delete, func, select
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.orm import Session
 
 from .models import (
+    ROLE_RANK,
+    USER_ROLES,
+    Media,
     Course,
     CourseInstructor,
     Enrollment,
@@ -48,7 +52,11 @@ LOGIN_EMAIL_RE = re.compile(
 
 
 class HuskyPollError(Exception):
-    """A rule was broken (not enrolled, poll closed, ...). Map to HTTP 4xx in the API."""
+    """A rule was broken (not enrolled, poll closed, ...). The API returns HTTP 400."""
+
+
+class NotAllowed(HuskyPollError):
+    """The user isn't allowed to do this (wrong role). The API returns HTTP 403."""
 
 
 # ---------------------------------------------------------------------------
@@ -150,9 +158,20 @@ def find_or_create_user(
     user = find_user(db, net_id=net_id, email=email, student_id=student_id)
     created = user is None
     if created:
-        user = User(net_id=net_id, email=email, student_id=student_id)
-        db.add(user)
-    else:
+        # Two requests can try to create the same new account at the same moment
+        # (a double-click, two tabs on a first login). "Insert unless it already
+        # exists" lets the second one quietly use the account the first created.
+        # (Not a savepoint: with Python's sqlite3 driver a savepoint can commit early.)
+        result = db.execute(
+            sqlite_insert(User)
+            .values(net_id=net_id, email=email, student_id=student_id, created_at=utcnow())
+            .on_conflict_do_nothing()
+        )
+        created = result.rowcount == 1
+        user = find_user(db, net_id=net_id, email=email, student_id=student_id)
+        if user is None:
+            raise HuskyPollError("could not create the account")
+    if not created:
         user.net_id = user.net_id or net_id
         user.email = user.email or email
         user.student_id = user.student_id or student_id
@@ -216,6 +235,28 @@ def record_login(
 # Courses, instructors, rosters
 # ---------------------------------------------------------------------------
 
+def promote(user: User, at_least: str) -> bool:
+    """Raise a user's account role to at least `at_least` (never lowers it). Returns True if changed."""
+    if ROLE_RANK[user.role or "guest"] < ROLE_RANK[at_least]:
+        user.role = at_least
+        return True
+    return False
+
+
+def set_role(db: Session, user: User, role: str, by: Optional[User] = None) -> User:
+    """Set a user's account role. `by` must be an admin (None = command line / system)."""
+    if role not in USER_ROLES:
+        raise HuskyPollError(f"role must be one of: {', '.join(USER_ROLES)}")
+    if by is not None and not by.is_admin:
+        raise NotAllowed("only an admin can change roles")
+    if user.role == "admin" and role != "admin" and _count(db, User, User.role == "admin") == 1:
+        raise HuskyPollError("HuskyPoll must keep at least one admin")
+    old, user.role = user.role, role
+    db.flush()
+    log_event(db, "role_change", user=by, target_user_id=user.id, old=old, new=role)
+    return user
+
+
 def create_course(
     db: Session,
     creator: User,
@@ -228,6 +269,8 @@ def create_course(
     points_participation: float = 1.0,
     points_correct: float = 0.0,
 ) -> Course:
+    if not creator.has_role_at_least("instructor"):
+        raise NotAllowed("only instructors and admins can create courses")
     course = Course(
         term=term.strip(),
         subject=subject.strip().upper(),
@@ -261,7 +304,7 @@ def is_owner(db: Session, course: Course, user: User) -> bool:
 def archive_course(db: Session, course: Course, by: User) -> Course:
     """End-of-semester option 1: hide the course but keep everything (reversible)."""
     if not is_instructor(db, course, by):
-        raise HuskyPollError("only an instructor of this course can archive it")
+        raise NotAllowed("only an instructor of this course can archive it")
     course.archived_at = utcnow()
     db.flush()
     log_event(db, "course_archive", user=by, course=course)
@@ -270,7 +313,7 @@ def archive_course(db: Session, course: Course, by: User) -> Course:
 
 def unarchive_course(db: Session, course: Course, by: User) -> Course:
     if not is_instructor(db, course, by):
-        raise HuskyPollError("only an instructor of this course can restore it")
+        raise NotAllowed("only an instructor of this course can restore it")
     course.archived_at = None
     db.flush()
     log_event(db, "course_unarchive", user=by, course=course)
@@ -289,7 +332,7 @@ def delete_course(db: Session, course: Course, by: User, *, delete_logs: bool = 
     Only the course owner (or an admin) may do this. Export grades first.
     """
     if not is_owner(db, course, by):
-        raise HuskyPollError("only the course owner can delete a course")
+        raise NotAllowed("only the course owner can delete a course")
 
     # Count with queries, not loaded collections, so the numbers are always current.
     poll_ids = list(db.scalars(
@@ -313,6 +356,7 @@ def delete_course(db: Session, course: Course, by: User, *, delete_logs: bool = 
 
 
 def add_instructor(db: Session, course: Course, user: User, role: str = "instructor") -> CourseInstructor:
+    promote(user, "ta" if role == "ta" else "instructor")
     link = db.get(CourseInstructor, (course.id, user.id))
     if link is None:
         link = CourseInstructor(course_id=course.id, user_id=user.id, role=role)
@@ -331,6 +375,7 @@ def enroll(
     db: Session, course: Course, user: User, *, source: str = "manual", section: Optional[str] = None
 ) -> tuple[Enrollment, str]:
     """Add or re-activate a student. Returns (enrollment, 'added'|'reactivated'|'unchanged')."""
+    promote(user, "student")
     enr = db.get(Enrollment, (course.id, user.id))
     if enr is None:
         enr = Enrollment(course_id=course.id, user_id=user.id, source=source, section=_clean(section))
@@ -368,6 +413,8 @@ def create_question(
     text_answer: Optional[str] = None,
     numeric_answer: Optional[float] = None,
     numeric_tolerance: Optional[float] = None,
+    body_media_id: Optional[int] = None,
+    explanation_media_id: Optional[int] = None,
 ) -> Question:
     """Create a question. `options` is [(text, is_correct), ...] for multiple choice.
 
@@ -386,6 +433,8 @@ def create_question(
         text_answer=text_answer,
         numeric_answer=numeric_answer,
         numeric_tolerance=numeric_tolerance,
+        body_media_id=body_media_id,
+        explanation_media_id=explanation_media_id,
     )
     q.options = [QuestionOption(position=i, text_md=t, is_correct=ok) for i, (t, ok) in enumerate(options)]
     db.add(q)
@@ -465,7 +514,9 @@ def open_poll(
 ) -> Poll:
     """Open a poll on a question (from a bank, or just created in lecture)."""
     if not is_instructor(db, course, opened_by):
-        raise HuskyPollError("only an instructor of this course can open polls")
+        raise NotAllowed("only an instructor of this course can open polls")
+    if course.archived_at is not None:
+        raise HuskyPollError("this course is archived; restore it before opening polls")
     sess = lecture_session or get_or_create_session(db, course)
     if sess.course_id != course.id:
         raise HuskyPollError("lecture session belongs to another course")
@@ -552,7 +603,7 @@ def submit_response(
     if poll.status != "open":
         raise HuskyPollError("this poll is closed")
     if not is_enrolled(db, course, student):
-        raise HuskyPollError("you are not on the roster for this course")
+        raise NotAllowed("you are not on the roster for this course")
 
     q = poll.question
     valid = {o.id for o in q.options}
@@ -566,11 +617,18 @@ def submit_response(
     elif q.type == "free_text" and not _clean(text_answer):
         raise HuskyPollError("enter an answer")
 
-    resp = db.scalar(select(Response).where(Response.poll_id == poll.id, Response.user_id == student.id))
+    mine = select(Response).where(Response.poll_id == poll.id, Response.user_id == student.id)
+    resp = db.scalar(mine)
     is_update = resp is not None
     if resp is None:
-        resp = Response(poll_id=poll.id, user_id=student.id)
-        db.add(resp)
+        # "Insert unless it already exists": a double-tapped Submit sends two requests at
+        # once; the second then updates the row the first created instead of failing.
+        now = utcnow()
+        result = db.execute(sqlite_insert(Response).values(poll_id=poll.id, user_id=student.id,
+                                                           submitted_at=now, updated_at=now)
+                            .on_conflict_do_nothing())
+        is_update = result.rowcount == 0
+        resp = db.scalar(mine)
     resp.text_answer = _clean(text_answer) if q.type == "free_text" else None
     resp.numeric_answer = numeric_answer if q.type == "numeric" else None
     resp.is_correct = grade(q, option_ids, text_answer, numeric_answer)
@@ -595,3 +653,231 @@ def regrade_poll(db: Session, poll: Poll) -> int:
             changed += 1
     db.flush()
     return changed
+
+
+# ---------------------------------------------------------------------------
+# Course management (used by the API)
+# ---------------------------------------------------------------------------
+
+def update_course(db: Session, course: Course, by: User, **changes) -> Course:
+    """Change title / section / points. Only keys that are passed are changed."""
+    if not is_instructor(db, course, by):
+        raise NotAllowed("only an instructor of this course can change it")
+    for key in ("title", "section", "points_participation", "points_correct"):
+        if key in changes and changes[key] is not None:
+            setattr(course, key, changes[key])
+    db.flush()
+    log_event(db, "course_update", user=by, course=course, changes=sorted(changes))
+    return course
+
+
+def remove_instructor(db: Session, course: Course, user: User, by: User) -> None:
+    if not is_owner(db, course, by):
+        raise NotAllowed("only the course owner can remove instructors")
+    link = db.get(CourseInstructor, (course.id, user.id))
+    if link is None:
+        raise HuskyPollError("that person is not an instructor of this course")
+    if link.role == "owner" and _count(db, CourseInstructor, CourseInstructor.course_id == course.id,
+                                       CourseInstructor.role == "owner") == 1:
+        raise HuskyPollError("a course must keep at least one owner")
+    db.delete(link)
+    db.flush()
+    log_event(db, "instructor_remove", user=by, course=course, removed_user_id=user.id)
+
+
+def drop_student(db: Session, course: Course, user: User, by: User) -> Enrollment:
+    """Mark a student dropped. Their past answers are kept."""
+    enr = db.get(Enrollment, (course.id, user.id))
+    if enr is None:
+        raise HuskyPollError("that person is not on the roster")
+    enr.status = "dropped"
+    db.flush()
+    log_event(db, "student_drop", user=by, course=course, dropped_user_id=user.id)
+    return enr
+
+
+def create_session(db: Session, course: Course, *, title: str, on_date: Optional[dt.date] = None) -> LectureSession:
+    """Manually create a lecture session (several per day are allowed)."""
+    sess = LectureSession(session_date=on_date or dt.date.today(), title=title.strip(),
+                          started_at=utcnow(), is_auto=False)
+    course.sessions.append(sess)
+    db.flush()
+    return sess
+
+
+def move_poll(db: Session, poll: Poll, target: LectureSession) -> Poll:
+    """Organize polls manually: move a poll into another session of the same course."""
+    if target.course_id != poll.session.course_id:
+        raise HuskyPollError("can only move a poll to a session of the same course")
+    poll.position = _count(db, Poll, Poll.session_id == target.id)
+    poll.session = target
+    db.flush()
+    return poll
+
+
+# ---------------------------------------------------------------------------
+# Question editing
+# ---------------------------------------------------------------------------
+
+# Fields that stay editable after a question has been polled (answer key + explanation).
+ANSWER_KEY_FIELDS = ("explanation_md", "explanation_media_id", "text_answer", "numeric_answer", "numeric_tolerance")
+CONTENT_FIELDS = ("type", "body_md", "body_media_id", "bank_id")
+
+
+def update_question(
+    db: Session,
+    q: Question,
+    *,
+    options: Optional[Sequence[tuple[str, bool]]] = None,
+    correct_option_ids: Optional[Sequence[int]] = None,
+    **changes,
+) -> tuple[Question, int]:
+    """Edit a question. Returns (question, number of responses re-marked).
+
+    Unlocked: anything can change; `options` replaces all choices.
+    Locked (already polled): only the answer key and explanation can change -
+    for multiple choice, pass `correct_option_ids` to set which options are right.
+    Changing the answer key of a polled question re-marks every response.
+    """
+    unknown = set(changes) - set(ANSWER_KEY_FIELDS) - set(CONTENT_FIELDS)
+    if unknown:
+        raise HuskyPollError(f"unknown field(s): {', '.join(sorted(unknown))}")
+    if q.is_locked:
+        blocked = [k for k in CONTENT_FIELDS if k in changes and k != "bank_id"]
+        if blocked or options is not None:
+            raise HuskyPollError("this question has been polled, so its wording and choices are locked; "
+                                 "copy it to make changes (the answer and explanation can still be edited)")
+
+    for key, value in changes.items():
+        setattr(q, key, value)
+    new_type = q.type
+    if options is not None:
+        if new_type in ("mc_single", "mc_multi") and len(options) < 2:
+            raise HuskyPollError("multiple-choice questions need at least two options")
+        q.options.clear()
+        db.flush()
+        q.options.extend(QuestionOption(position=i, text_md=t, is_correct=ok) for i, (t, ok) in enumerate(options))
+    if correct_option_ids is not None:
+        ids = set(correct_option_ids)
+        if not ids <= {o.id for o in q.options}:
+            raise HuskyPollError("correct_option_ids must be options of this question")
+        for o in q.options:
+            o.is_correct = o.id in ids
+    if new_type == "mc_single" and sum(1 for o in q.options if o.is_correct) > 1:
+        raise HuskyPollError("single-answer question can have at most one correct option")
+    if new_type in ("mc_single", "mc_multi") and len(q.options) < 2:
+        raise HuskyPollError("multiple-choice questions need at least two options")
+    if new_type != "numeric" and (q.numeric_answer is not None or q.numeric_tolerance is not None):
+        q.numeric_answer = q.numeric_tolerance = None
+    db.flush()
+
+    regraded = 0
+    if q.is_locked and (correct_option_ids is not None or any(k in changes for k in ANSWER_KEY_FIELDS)):
+        regraded = regrade_question(db, q)
+    return q, regraded
+
+
+def regrade_question(db: Session, q: Question) -> int:
+    return sum(regrade_poll(db, p) for p in db.scalars(select(Poll).where(Poll.question_id == q.id)))
+
+
+def delete_question(db: Session, q: Question) -> None:
+    if _count(db, Poll, Poll.question_id == q.id):
+        raise HuskyPollError("this question has been polled and is part of students' history; it can't be deleted")
+    db.delete(q)
+    db.flush()
+
+
+# ---------------------------------------------------------------------------
+# Results and history
+# ---------------------------------------------------------------------------
+
+def poll_results(db: Session, poll: Poll) -> dict:
+    """Counts for the live results view."""
+    q = poll.question
+    total = _count(db, Response, Response.poll_id == poll.id)
+    result: dict = {"poll_id": poll.id, "status": poll.status, "responses": total}
+    if q.type in ("mc_single", "mc_multi"):
+        votes = dict(db.execute(
+            select(ResponseChoice.option_id, func.count())
+            .join(Response, Response.id == ResponseChoice.response_id)
+            .where(Response.poll_id == poll.id)
+            .group_by(ResponseChoice.option_id)
+        ).all())
+        result["options"] = [{"option_id": o.id, "position": o.position, "votes": votes.get(o.id, 0)}
+                             for o in q.options]
+    else:
+        col = Response.numeric_answer if q.type == "numeric" else func.lower(Response.text_answer)
+        rows = db.execute(
+            select(col, func.count()).where(Response.poll_id == poll.id).group_by(col)
+            .order_by(func.count().desc()).limit(50)
+        ).all()
+        result["answers"] = [{"answer": a, "count": n} for a, n in rows]
+    correct = _count(db, Response, Response.poll_id == poll.id, Response.is_correct.is_(True))
+    result["correct"] = correct
+    return result
+
+
+def student_history(db: Session, user: User, course: Course) -> list[dict]:
+    """Every poll in the course (newest first) with the student's answer.
+    Open polls are included; their answer key is hidden by the API layer."""
+    polls = db.scalars(
+        select(Poll).join(LectureSession)
+        .where(LectureSession.course_id == course.id, Poll.status != "draft")
+        .order_by(LectureSession.session_date.desc(), Poll.position.desc())
+    ).all()
+    responses = {r.poll_id: r for r in db.scalars(
+        select(Response).where(Response.user_id == user.id, Response.poll_id.in_([p.id for p in polls]))
+    )} if polls else {}
+    return [{"poll": p, "response": responses.get(p.id)} for p in polls]
+
+
+# ---------------------------------------------------------------------------
+# Media (uploaded / pasted images)
+# ---------------------------------------------------------------------------
+
+_IMAGE_SIGNATURES = (
+    (b"\x89PNG\r\n\x1a\n", "image/png", ".png"),
+    (b"\xff\xd8\xff", "image/jpeg", ".jpg"),
+    (b"GIF87a", "image/gif", ".gif"),
+    (b"GIF89a", "image/gif", ".gif"),
+)
+MAX_IMAGE_BYTES = 10 * 1024 * 1024
+
+
+def detect_image_type(data: bytes) -> tuple[str, str]:
+    """Return (mime type, extension) from the file's first bytes - never trust the upload's name."""
+    for sig, mime, ext in _IMAGE_SIGNATURES:
+        if data.startswith(sig):
+            return mime, ext
+    if data[:4] == b"RIFF" and data[8:12] == b"WEBP":
+        return "image/webp", ".webp"
+    raise HuskyPollError("only PNG, JPEG, GIF or WebP images can be uploaded")
+
+
+def save_media(db: Session, data: bytes, uploaded_by: User, media_dir) -> Media:
+    """Store an image on disk (named by its SHA-256, so re-uploads are de-duplicated)."""
+    import hashlib
+    from pathlib import Path
+
+    if not data:
+        raise HuskyPollError("the file is empty")
+    if len(data) > MAX_IMAGE_BYTES:
+        raise HuskyPollError(f"images must be {MAX_IMAGE_BYTES // (1024 * 1024)} MB or smaller")
+    mime, ext = detect_image_type(data)
+    digest = hashlib.sha256(data).hexdigest()
+    existing = db.scalar(select(Media).where(Media.sha256 == digest))
+    if existing:
+        return existing
+    rel = Path(digest[:2]) / f"{digest}{ext}"
+    path = Path(media_dir) / rel
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(f"{path.suffix}.{secrets.token_hex(4)}.tmp")  # unique per request
+    tmp.write_bytes(data)
+    tmp.replace(path)
+    # Insert unless it already exists: the same image uploaded twice at once (a double
+    # paste) ends up as one row instead of an error. The file content is identical.
+    db.execute(sqlite_insert(Media).values(sha256=digest, file_path=str(rel), mime_type=mime,
+                                           size_bytes=len(data), uploaded_by=uploaded_by.id,
+                                           created_at=utcnow()).on_conflict_do_nothing())
+    return db.scalar(select(Media).where(Media.sha256 == digest))

@@ -29,6 +29,7 @@ init_db(engine)
 Session = make_session_factory(engine)
 with Session.begin() as db:
     prof, _ = svc.find_or_create_user(db, net_id="prf00001")
+    prof.role = "instructor"
     course = svc.create_course(db, prof, term="T", subject="CSE", catalog="1010", title="Load test")
     import_records(db, course, [{"net_id": f"stu{i:05d}"} for i in range(args.students)])
     q = svc.create_question(db, prof, type="mc_single", body_md="?", options=[(c, c == "B") for c in "ABCD"])

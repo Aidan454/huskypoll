@@ -16,7 +16,9 @@ from huskypoll_db.models import Base  # noqa: E402
 
 config = context.config
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    # disable_existing_loggers=False: when the app creates a database it runs Alembic
+    # in-process; without this, Alembic would silence the web server's own logs.
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = Base.metadata
 

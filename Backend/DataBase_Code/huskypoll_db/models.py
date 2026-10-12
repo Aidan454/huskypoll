@@ -94,6 +94,10 @@ def _created_at() -> Mapped[dt.datetime]:
 
 # Allowed values for TEXT + CHECK columns. Import these in the API layer
 # instead of retyping the strings.
+# Account type (users.role), highest first. Separate from the role a person has in a
+# particular course (course_instructors.role / being on the roster).
+USER_ROLES = ("admin", "instructor", "ta", "student", "guest")
+ROLE_RANK = {r: len(USER_ROLES) - i for i, r in enumerate(USER_ROLES)}  # admin=5 ... guest=1
 INSTRUCTOR_ROLES = ("owner", "instructor", "ta")
 ENROLLMENT_SOURCES = ("import", "manual", "self")
 ENROLLMENT_STATUSES = ("active", "dropped")
@@ -128,7 +132,9 @@ class User(Base):
     email: Mapped[Optional[str]] = mapped_column(String(254), unique=True)  # stored lowercase
     first_name: Mapped[Optional[str]] = mapped_column(String(100))
     last_name: Mapped[Optional[str]] = mapped_column(String(100))
-    is_admin: Mapped[bool] = mapped_column(_bool("is_admin"), nullable=False, default=False)
+    # admin: everything | instructor: create courses | ta: assist in courses |
+    # student: on a roster | guest: logged in, not on any roster yet
+    role: Mapped[str] = mapped_column(String(16), nullable=False, default="guest", server_default="guest")
     created_at: Mapped[dt.datetime] = _created_at()
     last_login_at: Mapped[Optional[dt.datetime]] = mapped_column(UTCDateTime)
 
@@ -147,8 +153,21 @@ class User(Base):
         CheckConstraint(f"net_id IS NULL OR net_id GLOB '{NETID_GLOB}'", name="net_id_format"),
         # Roster rows may lack a NetID until first login; anyone who has logged in has one.
         CheckConstraint("last_login_at IS NULL OR net_id IS NOT NULL", name="logged_in_has_net_id"),
+        CheckConstraint(_in("role", USER_ROLES), name="role"),
         CheckConstraint("email IS NULL OR email = lower(email)", name="email_lower"),
     )
+
+    @property
+    def is_admin(self) -> bool:
+        return self.role == "admin"
+
+    @property
+    def is_staff(self) -> bool:
+        """Admin, instructor or TA: may write questions and upload images."""
+        return self.role in ("admin", "instructor", "ta")
+
+    def has_role_at_least(self, role: str) -> bool:
+        return ROLE_RANK[self.role] >= ROLE_RANK[role]
 
     @property
     def display_name(self) -> str:

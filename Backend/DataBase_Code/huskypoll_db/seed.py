@@ -23,9 +23,10 @@ def seed_demo(db: Session, *, students: int = 40, roster_xlsx: Optional[Path] = 
 
     admin, _ = svc.find_or_create_user(db, net_id="adm00001", email="hpadmin@example.edu",
                                        first_name="HuskyPoll", last_name="Admin")
-    admin.is_admin = True
+    admin.role = "admin"
     prof, _ = svc.find_or_create_user(db, net_id="prf00001", email="prof01@example.edu",
                                       first_name="Pat", last_name="Professor")
+    prof.role = "instructor"
     ta, _ = svc.find_or_create_user(db, net_id="tas00001", email="ta01@example.edu",
                                     first_name="Terry", last_name="Assistant")
 

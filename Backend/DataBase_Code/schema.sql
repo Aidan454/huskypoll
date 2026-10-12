@@ -9,18 +9,18 @@ CREATE TABLE users (
 	email VARCHAR(254), 
 	first_name VARCHAR(100), 
 	last_name VARCHAR(100), 
-	is_admin BOOLEAN NOT NULL, 
+	role VARCHAR(16) DEFAULT 'guest' NOT NULL, 
 	created_at DATETIME NOT NULL, 
 	last_login_at DATETIME, 
 	CONSTRAINT pk_users PRIMARY KEY (id), 
 	CONSTRAINT ck_users_has_identifier CHECK (net_id IS NOT NULL OR email IS NOT NULL OR student_id IS NOT NULL), 
 	CONSTRAINT ck_users_net_id_format CHECK (net_id IS NULL OR net_id GLOB '[a-z][a-z][a-z][0-9][0-9][0-9][0-9][0-9]'), 
 	CONSTRAINT ck_users_logged_in_has_net_id CHECK (last_login_at IS NULL OR net_id IS NOT NULL), 
+	CONSTRAINT ck_users_role CHECK (role IN ('admin', 'instructor', 'ta', 'student', 'guest')), 
 	CONSTRAINT ck_users_email_lower CHECK (email IS NULL OR email = lower(email)), 
 	CONSTRAINT uq_users_net_id UNIQUE (net_id), 
 	CONSTRAINT uq_users_student_id UNIQUE (student_id), 
-	CONSTRAINT uq_users_email UNIQUE (email), 
-	CONSTRAINT ck_users_is_admin CHECK (is_admin IN (0, 1))
+	CONSTRAINT uq_users_email UNIQUE (email)
 );
 
 CREATE TABLE courses (
@@ -217,27 +217,27 @@ CREATE INDEX ix_course_instructors_user_id ON course_instructors (user_id);
 
 CREATE INDEX ix_enrollments_user_id ON enrollments (user_id);
 
-CREATE INDEX ix_question_banks_owner_id ON question_banks (owner_id);
-
 CREATE INDEX ix_question_banks_course_id ON question_banks (course_id);
+
+CREATE INDEX ix_question_banks_owner_id ON question_banks (owner_id);
 
 CREATE INDEX ix_lecture_sessions_course_id ON lecture_sessions (course_id, session_date);
 
-CREATE INDEX ix_questions_bank_id ON questions (bank_id);
-
 CREATE INDEX ix_questions_author_id ON questions (author_id);
+
+CREATE INDEX ix_questions_bank_id ON questions (bank_id);
 
 CREATE INDEX ix_polls_session_id ON polls (session_id);
 
-CREATE UNIQUE INDEX uq_polls_open_access_code ON polls (access_code) WHERE status = 'open';
-
 CREATE INDEX ix_polls_question_id ON polls (question_id);
+
+CREATE UNIQUE INDEX uq_polls_open_access_code ON polls (access_code) WHERE status = 'open';
 
 CREATE INDEX ix_responses_user_id ON responses (user_id);
 
-CREATE INDEX ix_event_log_occurred_at ON event_log (occurred_at);
-
 CREATE INDEX ix_event_log_user_time ON event_log (user_id, occurred_at);
+
+CREATE INDEX ix_event_log_occurred_at ON event_log (occurred_at);
 
 CREATE INDEX ix_event_log_course_time ON event_log (course_id, occurred_at);
 

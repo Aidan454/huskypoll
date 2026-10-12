@@ -32,6 +32,7 @@ def db(tmp_path):
 @pytest.fixture()
 def course_setup(db):
     prof, _ = svc.find_or_create_user(db, net_id="prf00001", first_name="Pat", last_name="Prof")
+    svc.set_role(db, prof, "instructor")
     course = svc.create_course(db, prof, term="Spring 2027", subject="cse", catalog="2050",
                                title="Data Structures", points_participation=1, points_correct=2)
     s1, _ = svc.find_or_create_user(db, net_id="abc12345", first_name="Ann", last_name="Able")
@@ -59,13 +60,13 @@ def test_pragmas_are_set(db):
 # --- users / roster -------------------------------------------------------------
 
 def test_user_needs_an_identifier(db):
-    _fails(db, "INSERT INTO users (is_admin, created_at) VALUES (0, '2027-01-01')", match="has_identifier")
+    _fails(db, "INSERT INTO users (created_at) VALUES ('2027-01-01')", match="has_identifier")
 
 
 def test_netid_stored_lowercase(db):
     u, _ = svc.find_or_create_user(db, net_id="  ABC12345 ")
     assert u.net_id == "abc12345"
-    _fails(db, "INSERT INTO users (net_id, is_admin, created_at) VALUES ('ABC12345', 0, '2027-01-01')",
+    _fails(db, "INSERT INTO users (net_id, created_at) VALUES ('ABC12345', '2027-01-01')",
            match="net_id_format")
 
 
@@ -75,7 +76,7 @@ def test_netid_must_be_three_letters_five_digits(db, bad):
         svc.find_or_create_user(db, net_id=bad)
     with pytest.raises(svc.HuskyPollError, match="not a valid NetID"):
         svc.record_login(db, net_id=bad, email="first.last@uconn.edu")
-    _fails(db, "INSERT INTO users (net_id, is_admin, created_at) VALUES (:n, 0, '2027-01-01')",
+    _fails(db, "INSERT INTO users (net_id, created_at) VALUES (:n, '2027-01-01')",
            {"n": bad.lower()}, match="net_id_format")
 
 
@@ -433,5 +434,153 @@ def test_roster_email_gets_netid_at_first_login(db, course_setup):
 
 
 def test_db_requires_netid_once_logged_in(db):
-    _fails(db, "INSERT INTO users (email, is_admin, created_at, last_login_at) "
-               "VALUES ('a.b@uconn.edu', 0, '2027-01-01', '2027-01-01')", match="logged_in_has_net_id")
+    _fails(db, "INSERT INTO users (email, created_at, last_login_at) "
+               "VALUES ('a.b@uconn.edu', '2027-01-01', '2027-01-01')", match="logged_in_has_net_id")
+
+
+# --- account roles ----------------------------------------------------------------
+
+def test_new_login_is_guest_until_on_a_roster(db, course_setup):
+    prof, course, *_ = course_setup
+    u = svc.record_login(db, email="new.person@uconn.edu", net_id="npe12345")
+    assert u.role == "guest"
+    svc.enroll(db, course, u)
+    assert u.role == "student"
+
+
+def test_roster_import_creates_students(db, course_setup):
+    prof, course, *_ = course_setup
+    import_identifiers(db, course, "fresh.student@uconn.edu")
+    assert svc.find_user(db, email="fresh.student@uconn.edu").role == "student"
+
+
+def test_adding_course_staff_promotes_but_never_demotes(db, course_setup):
+    prof, course, s1, *_ = course_setup
+    assert s1.role == "student"
+    svc.add_instructor(db, course, s1, role="ta")
+    assert s1.role == "ta"                       # student -> ta
+    svc.enroll(db, course, s1)
+    assert s1.role == "ta"                       # enrolling elsewhere doesn't demote
+    svc.add_instructor(db, course, s1, role="instructor")
+    assert s1.role == "instructor"
+
+
+def test_only_instructors_and_admins_create_courses(db, course_setup):
+    prof, course, s1, *_ = course_setup
+    for role in ("ta", "student", "guest"):
+        s1.role = role
+        with pytest.raises(svc.NotAllowed, match="only instructors and admins"):
+            svc.create_course(db, s1, term="T", subject="X", catalog="1", title="t")
+    s1.role = "admin"
+    assert svc.create_course(db, s1, term="T", subject="X", catalog="1", title="t")
+
+
+def test_set_role_rules(db, course_setup):
+    prof, course, s1, s2, q = course_setup
+    admin, _ = svc.find_or_create_user(db, net_id="adm00001")
+    svc.set_role(db, admin, "admin")
+    with pytest.raises(svc.NotAllowed, match="only an admin"):
+        svc.set_role(db, s2, "instructor", by=prof)
+    svc.set_role(db, s2, "instructor", by=admin)
+    assert s2.role == "instructor"
+    with pytest.raises(svc.HuskyPollError, match="at least one admin"):
+        svc.set_role(db, admin, "instructor", by=admin)
+    with pytest.raises(svc.HuskyPollError, match="role must be one of"):
+        svc.set_role(db, s2, "superuser")
+    _fails(db, "UPDATE users SET role = 'Admin' WHERE id = :u", {"u": s2.id}, match="ck_users_role")
+    assert _count(db, "event_log", "event_type = 'role_change'") >= 2
+
+
+def test_admin_has_every_course_permission(db, course_setup):
+    prof, course, s1, s2, q = course_setup
+    admin, _ = svc.find_or_create_user(db, net_id="adm00001")
+    svc.set_role(db, admin, "admin")
+    assert svc.is_instructor(db, course, admin) and svc.is_owner(db, course, admin)
+
+
+def test_two_simultaneous_first_logins_share_one_account(tmp_path):
+    """Regression: two requests creating the same new user at once must not fail."""
+    import threading
+
+    engine = make_engine(tmp_path / "race.db")
+    init_db(engine)
+    Session = make_session_factory(engine)
+    a_flushed, b_checked = threading.Event(), threading.Event()
+    results, errors = {}, []
+
+    def first():
+        with Session() as db:
+            u, created = svc.find_or_create_user(db, net_id="rac12345")  # inserted, not yet committed
+            a_flushed.set()
+            b_checked.wait(5)          # B has already looked and seen no user
+            db.commit()
+            results["a"] = (u.id, created)
+
+    def second():
+        a_flushed.wait(5)
+        with Session() as db:
+            assert svc.find_user(db, net_id="rac12345") is None   # A hasn't committed yet
+            b_checked.set()
+            try:
+                u, created = svc.find_or_create_user(db, net_id="rac12345")  # waits for A, then collides
+                db.commit()
+                results["b"] = (u.id, created)
+            except Exception as exc:  # noqa: BLE001
+                errors.append(exc)
+
+    threads = [threading.Thread(target=first), threading.Thread(target=second)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(10)
+    assert not errors, errors
+    assert results["a"][0] == results["b"][0] and results["a"][1] is True and results["b"][1] is False
+    with Session() as db:
+        assert db.query(User).filter_by(net_id="rac12345").count() == 1
+
+
+def test_double_tapped_submit_records_one_answer(tmp_path):
+    """Regression: two simultaneous submissions from one student must both succeed, one row."""
+    import threading
+
+    engine = make_engine(tmp_path / "tap.db")
+    init_db(engine)
+    Session = make_session_factory(engine)
+    with Session.begin() as db:
+        prof, _ = svc.find_or_create_user(db, net_id="prf00001")
+        prof.role = "instructor"
+        course = svc.create_course(db, prof, term="T", subject="C", catalog="1", title="t")
+        stu, _ = svc.find_or_create_user(db, net_id="stu00001")
+        svc.enroll(db, course, stu)
+        q = svc.create_question(db, prof, type="mc_single", body_md="?", options=[("a", True), ("b", False)])
+        poll_id, stu_id, opt = svc.open_poll(db, course, q, prof).id, stu.id, q.options[0].id
+
+    a_inserted, b_checked = threading.Event(), threading.Event()
+    errors = []
+
+    def tap(first: bool):
+        try:
+            with Session() as db:
+                poll, user = db.get(Poll, poll_id), db.get(User, stu_id)
+                if first:
+                    svc.submit_response(db, poll, user, option_ids=[opt])
+                    a_inserted.set()
+                    b_checked.wait(5)
+                else:
+                    a_inserted.wait(5)
+                    assert db.query(Response).filter_by(poll_id=poll_id).count() == 0  # A not committed
+                    b_checked.set()
+                    svc.submit_response(db, poll, user, option_ids=[opt])
+                db.commit()
+        except Exception as exc:  # noqa: BLE001
+            errors.append(exc)
+
+    threads = [threading.Thread(target=tap, args=(f,)) for f in (True, False)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join(10)
+    assert not errors, errors
+    with Session() as db:
+        rows = db.query(Response).filter_by(poll_id=poll_id).all()
+        assert len(rows) == 1 and [c.option_id for c in rows[0].choices] == [opt]

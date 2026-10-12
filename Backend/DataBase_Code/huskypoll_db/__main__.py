@@ -6,6 +6,8 @@
   export COURSE_ID OUT.csv [--per-session]
   archive-course COURSE_ID --as NETID        hide a course, keep its data (undo with --undo)
   delete-course COURSE_ID --as NETID [--delete-logs] [--yes]   permanently delete a course
+  set-role NETID ROLE      make someone admin / instructor / ta / student / guest
+  users [--role ROLE]      list accounts and their roles
   schema                   print the CREATE statements (for reading / docs)
 """
 from __future__ import annotations
@@ -60,6 +62,11 @@ def main(argv: list[str] | None = None) -> int:
     d.add_argument("--as", dest="as_netid", required=True, help="NetID of the course owner (or an admin)")
     d.add_argument("--delete-logs", action="store_true", help="also delete the course's event-log entries")
     d.add_argument("--yes", action="store_true", help="skip the confirmation prompt")
+    sr = sub.add_parser("set-role")
+    sr.add_argument("net_id")
+    sr.add_argument("role", choices=["admin", "instructor", "ta", "student", "guest"])
+    ul = sub.add_parser("users")
+    ul.add_argument("--role", choices=["admin", "instructor", "ta", "student", "guest"])
     sub.add_parser("schema")
     args = p.parse_args(argv)
 
@@ -89,6 +96,27 @@ def main(argv: list[str] | None = None) -> int:
                 print(f"Demo course {info['course'].code} (id {info['course'].id}): "
                       f"{info['students']} students, {info['polls']} polls")
         print(f"Created {args.db}")
+        return 0
+
+    if args.cmd in ("set-role", "users"):
+        from . import services as svc
+        from .models import User
+        with Session.begin() as db:
+            if args.cmd == "users":
+                q = db.query(User).order_by(User.role, User.last_name, User.net_id)
+                if args.role:
+                    q = q.filter(User.role == args.role)
+                for u in q:
+                    print(f"{u.role:<11} {u.net_id or '-':<9} {u.email or '-':<36} {u.display_name}")
+                return 0
+            try:
+                user, created = svc.find_or_create_user(db, net_id=args.net_id)
+                svc.set_role(db, user, args.role)
+            except svc.HuskyPollError as exc:
+                print(exc, file=sys.stderr)
+                return 1
+            note = " (account created; it links up at their first login)" if created else ""
+            print(f"{user.net_id} is now {args.role}{note}")
         return 0
 
     with Session.begin() as db:

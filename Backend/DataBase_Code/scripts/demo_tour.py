@@ -107,6 +107,9 @@ for email in ("pat.q.prof@uconn.edu", "abc12345@uconn.edu", "pat.prof@gmail.com"
             sp.rollback()
     except svc.HuskyPollError as exc:
         say(f"  {email:<26} REFUSED -> {exc}")
+say(f"New accounts start as '{prof.role}'. An admin makes professors instructors (once):")
+svc.set_role(db, prof, "instructor")  # in the app: PATCH /users/{id}/role, or `python -m huskypoll_db set-role`
+say(f"  {prof.net_id} is now '{prof.role}' and can create courses")
 course = svc.create_course(db, prof, term="Spring 2027", subject="cse", catalog="2050", section="001",
                            title="Data Structures", points_participation=1, points_correct=1)
 say(f"Created {course.code} - join code {course.join_code}")

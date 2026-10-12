@@ -1,0 +1,41 @@
+# HuskyPoll, frontend + backend in ONE container.
+#
+# Build from the repository root (the folder that contains frontend/ and database_code/):
+#     docker build -f database_code/deploy/Dockerfile.fullstack -t huskypoll .
+# Run (one copy per course/test, each with its own /data volume and address):
+#     docker run -d -p 127.0.0.1:8001:8000 -v huskypoll-cse1010:/data \
+#       -e HUSKYPOLL_SITE_URL=https://huskypoll.cse.uconn.edu/cse1010 \
+#       -e HUSKYPOLL_SECRET_KEY=... -e HUSKYPOLL_SECURE_COOKIES=1 huskypoll
+#
+# The same image works at any address: the frontend is built with relative paths
+# and the server tells it its base path at runtime.
+
+# --- 1. build the React frontend ---------------------------------------------
+FROM node:22-slim AS frontend
+WORKDIR /frontend
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci --no-audit --no-fund
+COPY frontend/ ./
+RUN npm run build
+
+# --- 2. the Python backend, serving the built frontend ------------------------
+FROM python:3.12-slim
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
+    HUSKYPOLL_DB=/data/huskypoll.db \
+    HUSKYPOLL_MEDIA_DIR=/data/media \
+    HUSKYPOLL_FRONTEND_DIST=/app/frontend-dist
+
+WORKDIR /app
+COPY database_code/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+COPY database_code/huskypoll_db ./huskypoll_db
+COPY database_code/huskypoll_api ./huskypoll_api
+COPY database_code/migrations ./migrations
+COPY database_code/alembic.ini ./
+COPY --from=frontend /frontend/dist ./frontend-dist
+
+RUN useradd --create-home huskypoll && mkdir -p /data && chown huskypoll /data
+USER huskypoll
+VOLUME /data
+EXPOSE 8000
+CMD ["sh", "-c", "alembic upgrade head && exec uvicorn huskypoll_api.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips='*'"]

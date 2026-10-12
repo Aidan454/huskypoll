@@ -1,0 +1,11 @@
+# Used automatically for Dockerfile.fullstack (build context = repository root).
+**/node_modules
+**/dist
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+**/*.db
+**/*.db-wal
+**/*.db-shm
+**/media
+.git
