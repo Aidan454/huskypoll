@@ -7,10 +7,12 @@ import Login from './components/LoginCard/LoginCard.jsx'
 import { createBrowserRouter, RouterProvider } from 'react-router'
 import Home from './pages/home.jsx'
 import LoginPage from './pages/LoginPage.jsx'
+import Polls from './pages/Polls.jsx'
 
 const router = createBrowserRouter([
   {path: '/', element: <LoginPage />},
   {path: '/Home', element: <Home />},
+  {path: '/Polls', element: <Polls />},
   
 ])
 
