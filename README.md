@@ -6,3 +6,7 @@
 - Frontend: [React](https://react.dev/)
 - Backend:  [FastAPI](https://fastapi.tiangolo.com/)
 - Database: [SQLite](https://www.sqlite.org/docs.html)
+
+## Docker
+To run docker containers, use `docker compose up -d` from root
+To stop the containers, use `docker compose down`
