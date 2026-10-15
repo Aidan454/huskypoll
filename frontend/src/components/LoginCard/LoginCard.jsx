@@ -1,5 +1,5 @@
-import React from 'react';
-import './Login.css'
+import './LoginCard.css'
+import { Link } from 'react-router'
 
 export default function Login(){
     return (
@@ -9,6 +9,7 @@ export default function Login(){
         <div className='buttons'>
             <a class='btn'>Login with email(@uconn.edu)</a>
             <a class='btn'>Login with NetID (SSO)</a>
+            <Link to="/Home">Bypass Login</Link>
         </div>
     </div>
     </>)
