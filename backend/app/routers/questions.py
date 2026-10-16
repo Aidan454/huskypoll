@@ -6,8 +6,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
-from huskypoll_db import services as svc
-from huskypoll_db.models import (
+from app.database import services as svc
+from app.database.models import (
     Course,
     CourseInstructor,
     Media,

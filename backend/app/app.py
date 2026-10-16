@@ -25,7 +25,7 @@ def _prepare_database(engine, settings: Settings) -> None:
     if not inspect(engine).has_table("users"):
         init_db(engine)
         try:
-            from huskypoll_db.__main__ import _stamp_alembic_head
+            from app.database.__main__ import _stamp_alembic_head
             _stamp_alembic_head(str(settings.db_path))
         except Exception as exc:  # alembic.ini missing (e.g. installed as a package)
             log.warning("created database but could not stamp Alembic version: %s", exc)

@@ -8,9 +8,9 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import Response as RawResponse
-from huskypoll_db import services as svc
-from huskypoll_db.export import participation_totals, per_session_csv, write_huskyct_csv
-from huskypoll_db.models import (
+from app.database import services as svc
+from app.database.export import participation_totals, per_session_csv, write_huskyct_csv
+from app.database.models import (
     Course,
     CourseInstructor,
     Enrollment,
@@ -18,7 +18,7 @@ from huskypoll_db.models import (
     LectureSession,
     User,
 )
-from huskypoll_db.roster import (
+from app.database.roster import (
     import_identifiers,
     import_records,
     import_studentadmin_xlsx,

@@ -15,8 +15,8 @@ from fastapi import (
     WebSocketDisconnect,
 )
 from fastapi.responses import Response as RawResponse
-from huskypoll_db import services as svc
-from huskypoll_db.models import Course, LectureSession, Poll, Response, User
+from app.database import services as svc
+from app.database.models import Course, LectureSession, Poll, Response, User
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -237,7 +237,7 @@ def history(course_id: int, db: Annotated[Session, Depends(get_db)], user: Annot
 
 @router.get("/courses/{course_id}/my-participation", response_model=s.ParticipationOut)
 def my_participation(course_id: int, db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)]):
-    from huskypoll_db.export import participation_totals
+    from app.database.export import participation_totals
     course = course_or_404(db, course_id)
     require_member(db, course, user)
     row = next((r for r in participation_totals(db, course) if r["net_id"] == user.net_id and user.net_id), None)

@@ -4,8 +4,8 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
-from huskypoll_db import services as svc
-from huskypoll_db.models import User
+from app.database import services as svc
+from app.database.models import User
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
