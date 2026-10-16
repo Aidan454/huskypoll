@@ -6,9 +6,6 @@ import io
 from pathlib import Path
 
 import pytest
-from sqlalchemy import text
-from sqlalchemy.exc import IntegrityError
-
 from huskypoll_db import init_db, make_engine, make_session_factory
 from huskypoll_db import services as svc
 from huskypoll_db.export import participation_totals, write_huskyct_csv
@@ -19,6 +16,8 @@ from huskypoll_db.models import (
     User,
 )
 from huskypoll_db.roster import import_identifiers, import_studentadmin_xlsx
+from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 
 SAMPLE_ROSTER = Path(__file__).parent.parent / "samples" / "studentadmin-template.xlsx"
 
