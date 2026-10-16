@@ -1,7 +1,7 @@
 """Turn database rows into response models, applying who-may-see-what rules."""
 from __future__ import annotations
 
-from huskypoll_db.models import (
+from app.database.models import (
     Course,
     CourseInstructor,
     Enrollment,

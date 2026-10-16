@@ -5,8 +5,8 @@ from collections.abc import Callable, Iterator
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request, status
-from huskypoll_db import services as svc
-from huskypoll_db.models import (
+from app.database import services as svc
+from app.database.models import (
     Course,
     CourseInstructor,
     LectureSession,
@@ -55,7 +55,7 @@ def optional_user(request: Request, db: Annotated[Session, Depends(get_db)]) -> 
     return user
 
 
-def current_user(user: User | Annotated[None, Depends(optional_user)]) -> User:
+def current_user(user: User | Annotated[User | None, Depends(optional_user)]) -> User:
     if user is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not logged in")
     return user

@@ -21,8 +21,8 @@ from urllib.parse import urlencode
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
-from huskypoll_db import services as svc
-from huskypoll_db.models import User
+from app.database import services as svc
+from app.database.models import User
 from sqlalchemy.orm import Session
 
 from .. import schemas as s

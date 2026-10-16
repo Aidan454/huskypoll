@@ -7,15 +7,15 @@ from pathlib import Path
 
 import pytest
 from app.database.database import init_db, make_engine, make_session_factory
-from app.database.database import services as svc
-from app.database.database.export import participation_totals, write_huskyct_csv
-from app.database.database.models import (
+from app.database import services as svc
+from app.database.export import participation_totals, write_huskyct_csv
+from app.database.models import (
     EventLog,
     Poll,
     Response,
     User,
 )
-from database.roster import import_identifiers, import_studentadmin_xlsx
+from app.database.roster import import_identifiers, import_studentadmin_xlsx
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
