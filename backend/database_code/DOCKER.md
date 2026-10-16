@@ -9,7 +9,7 @@ help and exits successfully without creating or modifying a database.
 Docker must be installed and running. From the repository root:
 
 ```sh
-docker build -t huskypoll-db:local Backend/DataBase_Code
+docker build -t huskypoll-db:local backend/database_code
 ```
 
 The build downloads the Python 3.13 slim base image and installs the existing
