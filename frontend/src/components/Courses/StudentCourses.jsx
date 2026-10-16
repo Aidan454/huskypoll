@@ -28,55 +28,7 @@ export default function StudentCourses() {
       return currentId === courseId ? null : courseId;
     });
   }
-  // Open the form for either creating or editing a course.
-  function openEditor(course = null) {
-    setEditingCourse(course);
-    closeMenu();
-    formRef.current.elements.code.value = course?.code ?? '';
-    formRef.current.elements.title.value = course?.title ?? '';
-    // Open the native HTML dialog as a modal.
-    dialogRef.current.showModal();
-  }
-  function closeEditor() {
-    dialogRef.current.close();
-  }
 
-  // Handle both new course creation and existing course updates.
-  function saveCourse(event) {
-    event.preventDefault();
-
-    // Read inputs using their "name" attributes.
-    const formData = new FormData(event.currentTarget);
-    const code = formData.get('code').trim();
-    const title = formData.get('title').trim();
-
-    if (editingCourse) {
-      // Replace the selected course while keeping the others.
-      setCourses(currentCourses =>
-        currentCourses.map(course => {
-          if (course.id === editingCourse.id) {
-            return { ...course, code, title };
-          }
-
-          return course;
-        })
-      );} 
-    else {
-      // Append a new course -- does not modify the existing array.
-      const newCourse = {id: Date.now(), code, title};
-      setCourses(currentCourses => [...currentCourses, newCourse]);
-    }
-    closeEditor();
-  }
-
-  function deleteCourse(courseId) {
-    // Keep every course except the one selected for deletion.
-    setCourses(currentCourses =>
-      currentCourses.filter(course => course.id !== courseId)
-    );
-    closeMenu();
-    createButtonRef.current.focus();
-  }
 
   return (
     // Clicking elsewhere on the page closes an open options menu.
@@ -91,9 +43,6 @@ export default function StudentCourses() {
           {/* Page heading and create button */}
           <div className="cm-heading">
             <h1>Courses</h1>
-
-            <button
-              ref={createButtonRef} type="button" className="cm-primary" onClick={() => openEditor()}>Join Course</button>
           </div>
 
           {/* Render one card for each course */}
@@ -104,27 +53,6 @@ export default function StudentCourses() {
                   <p className="cm-code">{course.code}</p>
                   <p className="cm-title">{course.title}</p>
                 </div>
-
-                {/* Three-dot options button */}
-                <button
-                  type="button" className="cm-more" aria-label={`Options for ${course.code}`} aria-expanded={openMenuId === course.id}
-                  onClick={event => toggleMenu(event, course.id)}
-                  onKeyDown={event => {
-                    if (event.key === 'Escape') {
-                      closeMenu();
-                    }
-                  }}
-                >
-                  ⋯
-                </button>
-
-                {/* Only show the menu for the selected course */}
-                {openMenuId === course.id && (
-                  <div className="cm-menu">
-                    <button type="button" onClick={() => openEditor(course)}>Edit course</button>
-                    <button type="button" className="cm-delete" onClick={() => deleteCourse(course.id)}>Delete course</button>
-                  </div>
-                )}
               </li>
             ))}
           </ul>
@@ -135,21 +63,6 @@ export default function StudentCourses() {
           )}
         </main>
       </div>
-
-      {/* Shared modal for creating and editing courses */}
-      <dialog ref={dialogRef} className="cm-dialog" aria-labelledby="cm-dialog-title">
-        <form ref={formRef} onSubmit={saveCourse}>
-          <h2 id="cm-dialog-title">{editingCourse ? 'Edit Course' : 'Join Course'}</h2>
-          <label>Course code<input name="code" placeholder="Course Title" required autoFocus maxLength={60}/></label>
-
-          <label>Course title<input name="title" placeholder="Course Code" required maxLength={200}/></label>
-
-          <div className="cm-actions">
-            <button type="button" className="cm-cancel" onClick={closeEditor}>Cancel</button>
-            <button type="submit" className="cm-primary">{editingCourse ? 'Save Changes' : 'Join Course'}</button>
-          </div>
-        </form>
-      </dialog>
     </div>
   );
 }

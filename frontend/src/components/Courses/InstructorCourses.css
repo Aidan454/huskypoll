@@ -16,6 +16,8 @@ body {
   margin: 0;
   padding: 0;
   text-align: left;
+  font: 18px/145% var(--sans);
+
 }
 
 /* Outer dark frame */
@@ -24,7 +26,6 @@ body {
   padding: 24px 0 6px 32px;
   background: #202020;
   color: #111;
-  font-family: Arial, Helvetica, sans-serif;
   box-sizing: border-box;
 }
 
@@ -115,13 +116,24 @@ body {
 .cm-card {
   position: relative;
   min-height: 85px;
-  padding: 20px 18px 20px 24px;
+  font-size: 14px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
-  border: 1px solid #858585;
+  border: 1px solid #000000;
   background: #d9d9d9;
+}
+
+.cm-link {
+  min-height: 85px;
+  font-size: 14px;
+  width: 30em;
+  display: flex;
+  padding: 2em;
+  align-items: left;
+  border: 1px solid black;
+  background: #d9d9d9;
+  z-index: 10;
 }
 
 .cm-code,
@@ -136,11 +148,15 @@ body {
   width: 32px;
   height: 32px;
   border: 0;
+  position: absolute;
+  right: 1em;
+  top: 50%;
   background: transparent;
   font-size: 21px !important;
   line-height: 16px;
   color: #0c0b0b;
   cursor: pointer;
+  z-index: 20;
 }
 
 /* Dropdown positioned relative to its course card */

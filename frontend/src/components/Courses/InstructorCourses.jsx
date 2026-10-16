@@ -1,32 +1,21 @@
 import { useRef, useState } from 'react';
+import {useNavigate} from 'react-router';
 import './InstructorCourses.css';
 
 export default function InstructorCourses() {
   // fetch these courses from backend/database.
   const [courses, setCourses] = useState([
-    {
-      id: 1,
-      code: 'CSE 4939W-001',
-      title: 'Computer Science and Engineering Design Project',
-    },
-    {
-      id: 2,
-      code: 'CSE 3666-002',
-      title: 'Introduction to Computer Architecture',
-    },
-    {
-      id: 3,
-      code: 'CSE 4701-003',
-      title: 'Principles of Databases',
-    },
-  ]);
-
+    { id: 1, code: 'CSE 4939W 001', title: 'Computer Science and Engineering Design Project' },
+    { id: 2, code: 'CSE 3666 002', title: 'Introduction to Computer Architecture' },
+    { id: 3, code: 'CSE 4701 003', title: 'Principles of Databases' },
+    ]);
   // The ID of the course whose options menu is open.
   const [openMenuId, setOpenMenuId] = useState(null);
   const [editingCourse, setEditingCourse] = useState(null);
   const dialogRef = useRef(null);
   const formRef = useRef(null);
   const createButtonRef = useRef(null);
+  const navigate = useNavigate();
 
   // Close any open course options menu.
   function closeMenu() {
@@ -63,10 +52,6 @@ export default function InstructorCourses() {
     const code = formData.get('code').trim();
     const title = formData.get('title').trim();
 
-    // Reject values that contain only whitespace.
-    if (!code || !title) {
-      return;
-    }
     if (editingCourse) {
       // Replace the selected course while keeping the others.
       setCourses(currentCourses =>
@@ -77,9 +62,9 @@ export default function InstructorCourses() {
 
           return course;
         })
-      );
-    } else {
-      // Append a new course without modifying the existing array.
+      );} 
+    else {
+      // Append a new course -- does not modify the existing array.
       const newCourse = {id: Date.now(), code, title};
       setCourses(currentCourses => [...currentCourses, newCourse]);
     }
@@ -101,9 +86,7 @@ export default function InstructorCourses() {
       <div className="cm-shell">
         {/* Header and profile initials */}
         <header className="cm-topbar">
-          <span className="cm-avatar" aria-label="Profile: PR">
-            PR
-          </span>
+          <span className="cm-avatar" aria-label="Profile: PR">PR</span>
         </header>
 
         <main className="cm-main">
@@ -111,117 +94,55 @@ export default function InstructorCourses() {
           <div className="cm-heading">
             <h1>Courses</h1>
 
-            <button
-              ref={createButtonRef}
-              type="button"
-              className="cm-primary"
-              onClick={() => openEditor()}
-            >
-              Create Course
-            </button>
+            <button ref={createButtonRef} type="button" className="cm-primary" onClick={() => openEditor()}>Create Course</button>
           </div>
 
           {/* Render one card for each course */}
-          <ul className="cm-list">
+          <ul>
             {courses.map(course => (
-              <li key={course.id} className="cm-card">
-                <div>
-                  <p className="cm-code">{course.code}</p>
-                  <p className="cm-title">{course.title}</p>
-                </div>
-
-                {/* Three-dot options button */}
-                <button
-                  type="button"
-                  className="cm-more"
-                  aria-label={`Options for ${course.code}`}
-                  aria-expanded={openMenuId === course.id}
-                  onClick={event => toggleMenu(event, course.id)}
-                  onKeyDown={event => {
-                    if (event.key === 'Escape') {
-                      closeMenu();
-                    }
-                  }}
-                >
-                  ⋯
+              
+              <div className="cm-card">
+                <button key={course.id} className="cm-link" onClick={() => navigate('/Polls')}>   
+                  <div>
+                    <p className="cm-code">{course.code}</p>
+                    <p className="cm-title">{course.title}</p>
+                  </div>
                 </button>
-
+                  {/* Three-dot options button */}
+                <button
+                  type="button" className="cm-more" aria-label={`Options for ${course.code}`} aria-expanded={openMenuId === course.id}
+                  onClick={event => toggleMenu(event, course.id)} onKeyDown={event => {
+                    if (event.key === 'Escape') {closeMenu()};
+                  }}>⋯</button>
                 {/* Only show the menu for the selected course */}
                 {openMenuId === course.id && (
                   <div className="cm-menu">
-                    <button
-                      type="button"
-                      onClick={() => openEditor(course)}
-                    >
-                      Edit course
-                    </button>
-
-                    <button
-                      type="button"
-                      className="cm-delete"
-                      onClick={() => deleteCourse(course.id)}
-                    >
-                      Delete course
-                    </button>
+                    <button type="button" onClick={() => openEditor(course)}>Edit course</button>
+                    <button type="button" className="cm-delete" onClick={() => deleteCourse(course.id)}>Delete course</button>
                   </div>
                 )}
-              </li>
+              </div>
             ))}
           </ul>
 
           {/* Empty state after all courses have been deleted */}
           {courses.length === 0 && (
-            <p className="cm-empty">
-              No courses yet. Create a course to get started.
-            </p>
+            <p className="cm-empty">Empty.</p>
           )}
         </main>
       </div>
 
       {/* Shared modal for creating and editing courses */}
-      <dialog
-        ref={dialogRef}
-        className="cm-dialog"
-        aria-labelledby="cm-dialog-title"
-      >
+      <dialog ref={dialogRef} className="cm-dialog" aria-labelledby="cm-dialog-title">
         <form ref={formRef} onSubmit={saveCourse}>
-          <h2 id="cm-dialog-title">
-            {editingCourse ? 'Edit Course' : 'Create Course'}
-          </h2>
+          <h2 id="cm-dialog-title">{editingCourse ? 'Edit Course' : 'Create Course'}</h2>
+          <label>Course code<input name="code" placeholder="Course Title" required autoFocus maxLength={60}/></label>
 
-          <label>
-            Course code
-            <input
-              name="code"
-              placeholder="CSE 4939W 001"
-              required
-              autoFocus
-              maxLength={60}
-            />
-          </label>
-
-          <label>
-            Course title
-            <input
-              name="title"
-              placeholder="Computer Science and Engineering Design Project"
-              required
-              maxLength={200}
-            />
-          </label>
+          <label>Course title<input name="title" placeholder="Course Code" required maxLength={200}/></label>
 
           <div className="cm-actions">
-            <button
-              type="button"
-              className="cm-cancel"
-              onClick={closeEditor}
-            >
-              Cancel
-            </button>
-
-            <button type="submit" className="cm-primary">
-              {editingCourse ? 'Save Changes' : 'Create Course'}
-            </button>
+            <button type="button" className="cm-cancel" onClick={closeEditor}>Cancel</button>
+            <button type="submit" className="cm-primary">{editingCourse ? 'Save Changes' : 'Create Course'}</button>
           </div>
         </form>
       </dialog>
