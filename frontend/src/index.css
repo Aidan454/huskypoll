@@ -1,4 +1,8 @@
 :root {
+  --color-navy: #000e2f;
+  --color-white: #ffffff;
+  --color-gray: #7c878e;
+  --color-blue-accent: #013ecd;
   --text: #6b6375;
   --text-h: #08060d;
   --bg: #fff;
