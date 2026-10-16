@@ -55,7 +55,7 @@ def optional_user(request: Request, db: Annotated[Session, Depends(get_db)]) -> 
     return user
 
 
-def current_user(user: User | Annotated[User | None, Depends(optional_user)]) -> User:
+def current_user(user: Annotated[User | None, Depends(optional_user)]) -> User:
     if user is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not logged in")
     return user
