@@ -5,7 +5,7 @@ import viteLogo from './assets/vite.svg'
 import './App.css'
 import Login from './components/LoginCard/LoginCard.jsx'
 import { createBrowserRouter, RouterProvider } from 'react-router'
-import Home from './pages/home.jsx'
+import Home from './pages/Home.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import Polls from './pages/Polls.jsx'
 
