@@ -8,9 +8,9 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
-from huskypoll_api.app import create_app
-from huskypoll_api.config import Settings
-from huskypoll_api.routers.auth import parse_cas_response
+from app.app import create_app
+from app.config import Settings
+from app.auth import parse_cas_response
 
 ROOT = Path(__file__).resolve().parent.parent
 

@@ -5,8 +5,6 @@ from collections.abc import Callable, Iterator
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request, status
-from sqlalchemy.orm import Session
-
 from huskypoll_db import services as svc
 from huskypoll_db.models import (
     Course,
@@ -16,6 +14,7 @@ from huskypoll_db.models import (
     Question,
     User,
 )
+from sqlalchemy.orm import Session
 
 from .config import Settings
 

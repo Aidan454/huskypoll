@@ -15,11 +15,10 @@ from fastapi import (
     WebSocketDisconnect,
 )
 from fastapi.responses import Response as RawResponse
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
 from huskypoll_db import services as svc
 from huskypoll_db.models import Course, LectureSession, Poll, Response, User
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from .. import schemas as s
 from ..config import Settings

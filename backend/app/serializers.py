@@ -1,9 +1,6 @@
 """Turn database rows into response models, applying who-may-see-what rules."""
 from __future__ import annotations
 
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session
-
 from huskypoll_db.models import (
     Course,
     CourseInstructor,
@@ -16,6 +13,8 @@ from huskypoll_db.models import (
     Response,
     User,
 )
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 
 from . import schemas as s
 from .config import Settings

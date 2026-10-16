@@ -6,16 +6,16 @@ import io
 from pathlib import Path
 
 import pytest
-from huskypoll_db import init_db, make_engine, make_session_factory
-from huskypoll_db import services as svc
-from huskypoll_db.export import participation_totals, write_huskyct_csv
-from huskypoll_db.models import (
+from app.database.database import init_db, make_engine, make_session_factory
+from app.database.database import services as svc
+from app.database.database.export import participation_totals, write_huskyct_csv
+from app.database.database.models import (
     EventLog,
     Poll,
     Response,
     User,
 )
-from huskypoll_db.roster import import_identifiers, import_studentadmin_xlsx
+from database.roster import import_identifiers, import_studentadmin_xlsx
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 

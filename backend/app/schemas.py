@@ -5,9 +5,8 @@ from __future__ import annotations
 import datetime as dt
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
-
 from huskypoll_db.models import QUESTION_TYPES
+from pydantic import BaseModel, Field, field_validator
 
 QuestionType = Literal["mc_single", "mc_multi", "free_text", "numeric"]
 assert set(QuestionType.__args__) == set(QUESTION_TYPES)

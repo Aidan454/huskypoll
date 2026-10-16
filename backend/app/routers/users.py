@@ -4,11 +4,10 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import or_, select
-from sqlalchemy.orm import Session
-
 from huskypoll_db import services as svc
 from huskypoll_db.models import User
+from sqlalchemy import or_, select
+from sqlalchemy.orm import Session
 
 from .. import schemas as s
 from ..deps import current_user, get_db, require_admin

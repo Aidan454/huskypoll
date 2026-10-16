@@ -6,9 +6,6 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
-from sqlalchemy import or_, select
-from sqlalchemy.orm import Session
-
 from huskypoll_db import services as svc
 from huskypoll_db.models import (
     Course,
@@ -18,6 +15,8 @@ from huskypoll_db.models import (
     QuestionBank,
     User,
 )
+from sqlalchemy import or_, select
+from sqlalchemy.orm import Session
 
 from .. import schemas as s
 from ..config import Settings

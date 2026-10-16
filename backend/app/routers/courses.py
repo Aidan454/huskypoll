@@ -8,9 +8,6 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import Response as RawResponse
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
 from huskypoll_db import services as svc
 from huskypoll_db.export import participation_totals, per_session_csv, write_huskyct_csv
 from huskypoll_db.models import (
@@ -26,6 +23,8 @@ from huskypoll_db.roster import (
     import_records,
     import_studentadmin_xlsx,
 )
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from .. import schemas as s
 from ..deps import (
