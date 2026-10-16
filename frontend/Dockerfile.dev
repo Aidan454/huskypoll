@@ -1,0 +1,19 @@
+FROM node:20 as build
+
+# Set working directory in the container
+WORKDIR /app
+
+# Copy 
+COPY package*.json ./
+
+# Install dependencies
+RUN npm install
+
+# Copy DockerFile's directory to WORKDIR
+COPY . .
+
+# Labels which ports to expose
+EXPOSE 5173
+
+# Start the React app
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
