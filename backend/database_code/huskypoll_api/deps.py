@@ -4,10 +4,16 @@ from __future__ import annotations
 from typing import Callable, Iterator
 
 from fastapi import Depends, HTTPException, Request, status
-from sqlalchemy.orm import Session
-
 from huskypoll_db import services as svc
-from huskypoll_db.models import Course, CourseInstructor, LectureSession, Poll, Question, User
+from huskypoll_db.models import (
+    Course,
+    CourseInstructor,
+    LectureSession,
+    Poll,
+    Question,
+    User,
+)
+from sqlalchemy.orm import Session
 
 from .config import Settings
 

@@ -19,7 +19,13 @@ import re
 from pathlib import Path
 
 from starlette.requests import Request
-from starlette.responses import FileResponse, HTMLResponse, PlainTextResponse, RedirectResponse, Response
+from starlette.responses import (
+    FileResponse,
+    HTMLResponse,
+    PlainTextResponse,
+    RedirectResponse,
+    Response,
+)
 
 from .config import Settings
 
