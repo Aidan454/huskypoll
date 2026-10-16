@@ -1,0 +1,17 @@
+services:
+  backend:
+    build: 
+      context: ./backend/database_code
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./backend/data:/data
+    # uvicorn default port
+    ports:
+      - "8000:8000"
+  frontend:
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    # vite dev port
+    ports:
+      - "5173:5173"
