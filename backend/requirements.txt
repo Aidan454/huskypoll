@@ -1,0 +1,13 @@
+# Database layer
+sqlalchemy>=2.0,<3
+alembic>=1.13
+openpyxl>=3.1
+# Web API
+fastapi>=0.115
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9
+itsdangerous>=2.1
+segno>=1.6
+httpx>=0.27
+# Tests
+pytest>=8
