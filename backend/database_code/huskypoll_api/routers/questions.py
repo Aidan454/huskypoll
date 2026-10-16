@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
@@ -65,7 +66,7 @@ def _check_media(db: Session, *media_ids: int | None) -> None:
 # --- banks ----------------------------------------------------------------------
 
 @router.get("/banks", response_model=list[s.BankOut], summary="Banks I own or can use through my courses")
-def list_banks(db: Session = Depends(get_db), user: User = Depends(current_user)):
+def list_banks(db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)]):
     my_courses = select(CourseInstructor.course_id).where(CourseInstructor.user_id == user.id)
     banks = db.scalars(select(QuestionBank).where(
         or_(QuestionBank.owner_id == user.id, QuestionBank.course_id.in_(my_courses))
@@ -74,7 +75,7 @@ def list_banks(db: Session = Depends(get_db), user: User = Depends(current_user)
 
 
 @router.post("/banks", response_model=s.BankOut, status_code=201)
-def create_bank(body: s.BankCreate, db: Session = Depends(get_db), user: User = Depends(current_user)):
+def create_bank(body: s.BankCreate, db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)]):
     require_staff(user)
     _check_course_link(db, body.course_id, user)
     bank = QuestionBank(owner_id=user.id, **body.model_dump())
@@ -84,15 +85,15 @@ def create_bank(body: s.BankCreate, db: Session = Depends(get_db), user: User = 
 
 
 @router.get("/banks/{bank_id}", response_model=s.BankDetail)
-def get_bank(bank_id: int, db: Session = Depends(get_db), user: User = Depends(current_user),
-             settings: Settings = Depends(get_settings)):
+def get_bank(bank_id: int, db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)],
+             settings: Annotated[Settings, Depends(get_settings)]):
     bank = _bank_or_404(db, bank_id, user)
     qs = db.scalars(select(Question).where(Question.bank_id == bank.id).order_by(Question.id)).all()
     return s.BankDetail(**bank_out(db, bank).model_dump(), questions=[question_out(settings, q) for q in qs])
 
 
 @router.patch("/banks/{bank_id}", response_model=s.BankOut)
-def update_bank(bank_id: int, body: s.BankUpdate, db: Session = Depends(get_db), user: User = Depends(current_user)):
+def update_bank(bank_id: int, body: s.BankUpdate, db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)]):
     bank = _bank_or_404(db, bank_id, user)
     changes = body.model_dump(exclude_unset=True)
     if "course_id" in changes:
@@ -105,7 +106,7 @@ def update_bank(bank_id: int, body: s.BankUpdate, db: Session = Depends(get_db),
 
 @router.delete("/banks/{bank_id}", status_code=204,
                summary="Delete a bank (its questions are kept, just no longer in a bank)")
-def delete_bank(bank_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)):
+def delete_bank(bank_id: int, db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)]):
     bank = _bank_or_404(db, bank_id, user)
     if bank.owner_id != user.id and not user.is_admin:
         raise HTTPException(403, "Only the bank's owner can delete it")
@@ -114,7 +115,7 @@ def delete_bank(bank_id: int, db: Session = Depends(get_db), user: User = Depend
 
 @router.post("/banks/{bank_id}/copy", response_model=s.BankOut, status_code=201,
              summary="Copy a bank, e.g. into next semester's course")
-def copy_bank(bank_id: int, body: s.BankCopy, db: Session = Depends(get_db), user: User = Depends(current_user)):
+def copy_bank(bank_id: int, body: s.BankCopy, db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)]):
     bank = _bank_or_404(db, bank_id, user)
     course = None
     if body.course_id is not None:
@@ -126,8 +127,8 @@ def copy_bank(bank_id: int, body: s.BankCopy, db: Session = Depends(get_db), use
 # --- questions -----------------------------------------------------------------
 
 @router.post("/questions", response_model=s.QuestionOut, status_code=201)
-def create_question(body: s.QuestionCreate, db: Session = Depends(get_db), user: User = Depends(current_user),
-                    settings: Settings = Depends(get_settings)):
+def create_question(body: s.QuestionCreate, db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)],
+                    settings: Annotated[Settings, Depends(get_settings)]):
     require_staff(user)
     bank = _bank_or_404(db, body.bank_id, user) if body.bank_id else None
     _check_media(db, body.body_media_id, body.explanation_media_id)
@@ -137,8 +138,8 @@ def create_question(body: s.QuestionCreate, db: Session = Depends(get_db), user:
 
 
 @router.get("/questions/{question_id}", response_model=s.QuestionOut)
-def get_question(question_id: int, db: Session = Depends(get_db), user: User = Depends(current_user),
-                 settings: Settings = Depends(get_settings)):
+def get_question(question_id: int, db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)],
+                 settings: Annotated[Settings, Depends(get_settings)]):
     q = question_or_404(db, question_id)
     require_question_access(db, q, user)
     return question_out(settings, q)
@@ -146,8 +147,8 @@ def get_question(question_id: int, db: Session = Depends(get_db), user: User = D
 
 @router.patch("/questions/{question_id}", response_model=s.QuestionUpdateOut,
               summary="Edit a question (after it's been polled, only the answer and explanation)")
-def update_question(question_id: int, body: s.QuestionUpdate, db: Session = Depends(get_db),
-                    user: User = Depends(current_user), settings: Settings = Depends(get_settings)):
+def update_question(question_id: int, body: s.QuestionUpdate, db: Annotated[Session, Depends(get_db)],
+                    user: Annotated[User, Depends(current_user)], settings: Annotated[Settings, Depends(get_settings)]):
     q = question_or_404(db, question_id)
     require_question_access(db, q, user)
     changes = body.model_dump(exclude_unset=True)
@@ -165,15 +166,15 @@ def update_question(question_id: int, body: s.QuestionUpdate, db: Session = Depe
 
 @router.post("/questions/{question_id}/copy", response_model=s.QuestionOut, status_code=201,
              summary="Editable copy (use this to change a question that has been polled)")
-def copy_question(question_id: int, db: Session = Depends(get_db), user: User = Depends(current_user),
-                  settings: Settings = Depends(get_settings)):
+def copy_question(question_id: int, db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)],
+                  settings: Annotated[Settings, Depends(get_settings)]):
     q = question_or_404(db, question_id)
     require_question_access(db, q, user)
     return question_out(settings, svc.copy_question(db, q, user))
 
 
 @router.delete("/questions/{question_id}", status_code=204, summary="Delete a question that was never polled")
-def delete_question(question_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)):
+def delete_question(question_id: int, db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)]):
     q = question_or_404(db, question_id)
     require_question_access(db, q, user)
     svc.delete_question(db, q)
@@ -183,8 +184,8 @@ def delete_question(question_id: int, db: Session = Depends(get_db), user: User 
 
 @router.post("/media", response_model=s.MediaOut, status_code=201,
              summary="Upload or paste an image (PNG, JPEG, GIF, WebP; 10 MB max)", tags=["media"])
-def upload_media(file: UploadFile = File(...), db: Session = Depends(get_db), user: User = Depends(current_user),
-                 settings: Settings = Depends(get_settings)):
+def upload_media(file: Annotated[UploadFile, File(...)], db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)],
+                 settings: Annotated[Settings, Depends(get_settings)]):
     require_staff(user)
     data = file.file.read(svc.MAX_IMAGE_BYTES + 1)
     m = svc.save_media(db, data, user, settings.media_dir)
@@ -192,8 +193,8 @@ def upload_media(file: UploadFile = File(...), db: Session = Depends(get_db), us
 
 
 @router.get("/media/{sha256}", response_class=FileResponse, summary="Get an image", tags=["media"])
-def get_media(sha256: str, db: Session = Depends(get_db), user: User = Depends(current_user),
-              settings: Settings = Depends(get_settings)):
+def get_media(sha256: str, db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)],
+              settings: Annotated[Settings, Depends(get_settings)]):
     m = db.scalar(select(Media).where(Media.sha256 == sha256.lower()))
     if m is None:
         raise HTTPException(404, "Image not found")

@@ -4,6 +4,7 @@ from __future__ import annotations
 import io
 import tempfile
 from pathlib import Path
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import Response as RawResponse
@@ -62,7 +63,7 @@ def _find_by_identifier(db: Session, identifier: str) -> User | None:
 # --- courses ------------------------------------------------------------------
 
 @router.get("/courses", response_model=list[s.CourseOut], summary="My courses (teaching and enrolled)")
-def my_courses(include_archived: bool = False, db: Session = Depends(get_db), user: User = Depends(current_user)):
+def my_courses(db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)], include_archived: bool = False):
     teaching = {ci.course_id: ci.role for ci in db.scalars(
         select(CourseInstructor).where(CourseInstructor.user_id == user.id))}
     enrolled = set(db.scalars(select(Enrollment.course_id).where(
@@ -74,20 +75,20 @@ def my_courses(include_archived: bool = False, db: Session = Depends(get_db), us
 
 
 @router.post("/courses", response_model=s.CourseOut, status_code=201, summary="Create a course (you become its owner)")
-def create_course(body: s.CourseCreate, db: Session = Depends(get_db), user: User = Depends(current_user)):
+def create_course(body: s.CourseCreate, db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)]):
     c = svc.create_course(db, user, **body.model_dump())
     return course_out(c, "owner")
 
 
 @router.get("/courses/{course_id}", response_model=s.CourseOut)
-def get_course(course_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)):
+def get_course(course_id: int, db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)]):
     c = course_or_404(db, course_id)
     return course_out(c, require_member(db, c, user))
 
 
 @router.patch("/courses/{course_id}", response_model=s.CourseOut)
-def update_course(course_id: int, body: s.CourseUpdate, db: Session = Depends(get_db),
-                  user: User = Depends(current_user)):
+def update_course(course_id: int, body: s.CourseUpdate, db: Annotated[Session, Depends(get_db)],
+                  user: Annotated[User, Depends(current_user)]):
     c = course_or_404(db, course_id)
     require_member(db, c, user)
     svc.update_course(db, c, user, **body.model_dump(exclude_unset=True))
@@ -95,7 +96,7 @@ def update_course(course_id: int, body: s.CourseUpdate, db: Session = Depends(ge
 
 
 @router.post("/courses/{course_id}/archive", response_model=s.CourseOut, summary="Hide a finished course (keeps everything)")
-def archive_course(course_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)):
+def archive_course(course_id: int, db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)]):
     c = course_or_404(db, course_id)
     require_member(db, c, user)
     svc.archive_course(db, c, user)
@@ -103,7 +104,7 @@ def archive_course(course_id: int, db: Session = Depends(get_db), user: User = D
 
 
 @router.post("/courses/{course_id}/unarchive", response_model=s.CourseOut)
-def unarchive_course(course_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)):
+def unarchive_course(course_id: int, db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)]):
     c = course_or_404(db, course_id)
     require_member(db, c, user)
     svc.unarchive_course(db, c, user)
@@ -112,8 +113,8 @@ def unarchive_course(course_id: int, db: Session = Depends(get_db), user: User =
 
 @router.delete("/courses/{course_id}", response_model=s.DeleteCourseOut,
                summary="Permanently delete a course (owner only; export grades first)")
-def delete_course(course_id: int, delete_logs: bool = False, db: Session = Depends(get_db),
-                  user: User = Depends(current_user)):
+def delete_course(course_id: int, db: Annotated[Session, Depends(get_db)],
+                  user: Annotated[User, Depends(current_user)], delete_logs: bool = False,):
     c = course_or_404(db, course_id)
     require_member(db, c, user)
     return svc.delete_course(db, c, user, delete_logs=delete_logs)
@@ -122,7 +123,7 @@ def delete_course(course_id: int, delete_logs: bool = False, db: Session = Depen
 # --- instructors ---------------------------------------------------------------
 
 @router.get("/courses/{course_id}/instructors", response_model=list[s.InstructorOut])
-def list_instructors(course_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)):
+def list_instructors(course_id: int, db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)]):
     c = course_or_404(db, course_id)
     require_member(db, c, user)
     return [instructor_out(link) for link in c.instructors]
@@ -130,8 +131,8 @@ def list_instructors(course_id: int, db: Session = Depends(get_db), user: User =
 
 @router.post("/courses/{course_id}/instructors", response_model=s.InstructorOut, status_code=201,
              summary="Add an instructor or TA (owner only)")
-def add_instructor(course_id: int, body: s.InstructorAdd, db: Session = Depends(get_db),
-                   user: User = Depends(current_user)):
+def add_instructor(course_id: int, body: s.InstructorAdd, db: Annotated[Session, Depends(get_db)],
+                   user: Annotated[User, Depends(current_user)]):
     c = course_or_404(db, course_id)
     require_instructor(db, c, user)
     if not svc.is_owner(db, c, user):
@@ -147,8 +148,8 @@ def add_instructor(course_id: int, body: s.InstructorAdd, db: Session = Depends(
 
 
 @router.delete("/courses/{course_id}/instructors/{user_id}", status_code=204)
-def remove_instructor(course_id: int, user_id: int, db: Session = Depends(get_db),
-                      user: User = Depends(current_user)):
+def remove_instructor(course_id: int, user_id: int, db: Annotated[Session, Depends(get_db)],
+                      user: Annotated[User, Depends(current_user)]):
     c = course_or_404(db, course_id)
     require_instructor(db, c, user)
     other = db.get(User, user_id)
@@ -160,8 +161,8 @@ def remove_instructor(course_id: int, user_id: int, db: Session = Depends(get_db
 # --- roster ---------------------------------------------------------------------
 
 @router.get("/courses/{course_id}/roster", response_model=list[s.RosterEntryOut])
-def get_roster(course_id: int, include_dropped: bool = False, db: Session = Depends(get_db),
-               user: User = Depends(current_user)):
+def get_roster(course_id: int, db: Annotated[Session, Depends(get_db)],
+               user: Annotated[User, Depends(current_user)], include_dropped: bool = False, ):
     c = course_or_404(db, course_id)
     require_instructor(db, c, user)
     rows = [e for e in c.enrollments if include_dropped or e.status == "active"]
@@ -171,7 +172,7 @@ def get_roster(course_id: int, include_dropped: bool = False, db: Session = Depe
 
 @router.post("/courses/{course_id}/roster", response_model=s.ImportResultOut, status_code=201,
              summary="Add one student by NetID, email or student ID")
-def add_student(course_id: int, body: s.RosterAdd, db: Session = Depends(get_db), user: User = Depends(current_user)):
+def add_student(course_id: int, body: s.RosterAdd, db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)]):
     c = course_or_404(db, course_id)
     require_instructor(db, c, user)
     ident = body.identifier.strip()
@@ -185,7 +186,7 @@ def add_student(course_id: int, body: s.RosterAdd, db: Session = Depends(get_db)
 
 @router.post("/courses/{course_id}/roster/paste", response_model=s.ImportResultOut,
              summary="Add many students from pasted NetIDs / emails / student IDs")
-def paste_roster(course_id: int, body: s.RosterPaste, db: Session = Depends(get_db), user: User = Depends(current_user)):
+def paste_roster(course_id: int, body: s.RosterPaste, db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)]):
     c = course_or_404(db, course_id)
     require_instructor(db, c, user)
     return _import_out(import_identifiers(db, c, body.text, by=user))
@@ -193,8 +194,9 @@ def paste_roster(course_id: int, body: s.RosterPaste, db: Session = Depends(get_
 
 @router.post("/courses/{course_id}/roster/import", response_model=s.ImportResultOut,
              summary="Import a StudentAdmin class roster (.xlsx)")
-def import_roster(course_id: int, file: UploadFile = File(...), drop_missing: bool = False,
-                  db: Session = Depends(get_db), user: User = Depends(current_user)):
+def import_roster(course_id: int, file: Annotated[UploadFile, File(...)],
+                   db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)],
+                   drop_missing: bool = False):
     c = course_or_404(db, course_id)
     require_instructor(db, c, user)
     data = file.file.read(MAX_ROSTER_BYTES + 1)
@@ -209,14 +211,16 @@ def import_roster(course_id: int, file: UploadFile = File(...), drop_missing: bo
             res = import_studentadmin_xlsx(db, c, path, drop_missing=drop_missing, by=user)
         except svc.HuskyPollError:
             raise
-        except Exception:
-            raise HTTPException(400, "Could not read that spreadsheet; is it the StudentAdmin roster .xlsx?")
+        except Exception as exc:
+            raise HTTPException(
+                400, "Could not read that spreadsheet; is it the StudentAdmin roster .xlsx?"
+                ) from exc
     return _import_out(res)
 
 
 @router.delete("/courses/{course_id}/roster/{user_id}", status_code=204,
                summary="Drop a student (their past answers are kept)")
-def drop_student(course_id: int, user_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)):
+def drop_student(course_id: int, user_id: int, db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)]):
     c = course_or_404(db, course_id)
     require_instructor(db, c, user)
     other = db.get(User, user_id)
@@ -228,7 +232,7 @@ def drop_student(course_id: int, user_id: int, db: Session = Depends(get_db), us
 # --- lecture sessions ---------------------------------------------------------
 
 @router.get("/courses/{course_id}/sessions", response_model=list[s.SessionOut])
-def list_sessions(course_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)):
+def list_sessions(course_id: int, db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)]):
     c = course_or_404(db, course_id)
     require_member(db, c, user)
     sessions = db.scalars(select(LectureSession).where(LectureSession.course_id == c.id)
@@ -237,16 +241,16 @@ def list_sessions(course_id: int, db: Session = Depends(get_db), user: User = De
 
 
 @router.post("/courses/{course_id}/sessions", response_model=s.SessionOut, status_code=201)
-def create_session(course_id: int, body: s.SessionCreate, db: Session = Depends(get_db),
-                   user: User = Depends(current_user)):
+def create_session(course_id: int, body: s.SessionCreate, db: Annotated[Session, Depends(get_db)],
+                   user: Annotated[User, Depends(current_user)]):
     c = course_or_404(db, course_id)
     require_instructor(db, c, user)
     return session_out(db, svc.create_session(db, c, title=body.title, on_date=body.session_date))
 
 
 @router.patch("/sessions/{session_id}", response_model=s.SessionOut)
-def update_session(session_id: int, body: s.SessionUpdate, db: Session = Depends(get_db),
-                   user: User = Depends(current_user)):
+def update_session(session_id: int, body: s.SessionUpdate, db: Annotated[Session, Depends(get_db)],
+                   user: Annotated[User, Depends(current_user)]):
     sess = session_or_404(db, session_id)
     require_instructor(db, sess.course, user)
     for key, value in body.model_dump(exclude_unset=True).items():
@@ -258,7 +262,7 @@ def update_session(session_id: int, body: s.SessionUpdate, db: Session = Depends
 
 
 @router.delete("/sessions/{session_id}", status_code=204, summary="Delete an empty lecture session")
-def delete_session(session_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)):
+def delete_session(session_id: int, db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)]):
     sess = session_or_404(db, session_id)
     require_instructor(db, sess.course, user)
     if sess.polls:
@@ -270,7 +274,7 @@ def delete_session(session_id: int, db: Session = Depends(get_db), user: User = 
 
 @router.get("/courses/{course_id}/export/huskyct.csv", response_class=RawResponse,
             summary="Participation grades for HuskyCT")
-def export_huskyct(course_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)):
+def export_huskyct(course_id: int, db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)]):
     c = course_or_404(db, course_id)
     require_instructor(db, c, user)
     buf = io.StringIO()
@@ -282,7 +286,7 @@ def export_huskyct(course_id: int, db: Session = Depends(get_db), user: User = D
 
 @router.get("/courses/{course_id}/export/sessions.csv", response_class=RawResponse,
             summary="Points per student per lecture")
-def export_sessions(course_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)):
+def export_sessions(course_id: int, db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)]):
     c = course_or_404(db, course_id)
     require_instructor(db, c, user)
     name = f"{c.subject}{c.catalog}-{c.term}-by-lecture.csv".replace(" ", "")
@@ -292,15 +296,15 @@ def export_sessions(course_id: int, db: Session = Depends(get_db), user: User = 
 
 @router.get("/courses/{course_id}/participation", response_model=list[dict],
             summary="Every student's totals (instructors)")
-def participation(course_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)):
+def participation(course_id: int, db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)]):
     c = course_or_404(db, course_id)
     require_instructor(db, c, user)
     return participation_totals(db, c)
 
 
 @router.get("/courses/{course_id}/events", response_model=list[s.EventOut], summary="Course activity log")
-def course_events(course_id: int, limit: int = 200, before_id: int | None = None,
-                  db: Session = Depends(get_db), user: User = Depends(current_user)):
+def course_events(course_id: int, db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)],
+                   limit: int = 200, before_id: int | None = None,):
     c = course_or_404(db, course_id)
     require_instructor(db, c, user)
     q = select(EventLog).where(EventLog.course_id == c.id)

@@ -15,6 +15,7 @@ rest of the API, because everything else only uses request.session["user_id"].
 from __future__ import annotations
 
 import xml.etree.ElementTree as ET
+from typing import Annotated
 from urllib.parse import urlencode
 
 import httpx
@@ -100,14 +101,14 @@ def _log_in(request: Request, db: Session, settings: Settings, info: dict, dev_r
 
 
 @router.get("/auth/login", summary="Start UConn login (redirects to CAS)")
-def login(request: Request, next: str | None = None, settings: Settings = Depends(get_settings)):
+def login(request: Request, settings: Annotated[Settings, Depends(get_settings)], next: str | None = None):
     request.session["login_next"] = _safe_next(next)
     return RedirectResponse(f"{settings.cas_url}/login?{urlencode({'service': _service_url(settings)})}")
 
 
 @router.get("/auth/cas/callback", include_in_schema=False)
-def cas_callback(request: Request, ticket: str, db: Session = Depends(get_db),
-                 settings: Settings = Depends(get_settings)):
+def cas_callback(request: Request, ticket: str, db: Annotated[Session, Depends(get_db)],
+                 settings: Annotated[Settings, Depends(get_settings)]):
     next_ = request.session.get("login_next", "/")
     info = request.app.state.cas_validator(settings, ticket)
     _log_in(request, db, settings, info)
@@ -116,8 +117,8 @@ def cas_callback(request: Request, ticket: str, db: Session = Depends(get_db),
 
 @router.post("/auth/dev-login", response_model=s.UserOut,
              summary="Developer login (only when HUSKYPOLL_DEV_LOGIN=1)")
-def dev_login(body: s.DevLogin, request: Request, db: Session = Depends(get_db),
-              settings: Settings = Depends(get_settings)):
+def dev_login(body: s.DevLogin, request: Request, db: Annotated[Session, Depends(get_db)],
+              settings: Annotated[Settings, Depends(get_settings)]):
     if not settings.dev_login:
         raise HTTPException(404, "Not found")
     return user_out(_log_in(request, db, settings, body.model_dump(exclude={"role"}), dev_role=body.role))
@@ -129,5 +130,5 @@ def logout(request: Request):
 
 
 @router.get("/me", response_model=s.UserOut, summary="Who is logged in")
-def me(user: User = Depends(current_user)):
+def me(user: Annotated[User, Depends(current_user)]):
     return user_out(user)

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterator
+from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
@@ -45,7 +46,7 @@ def after_commit(request: Request, fn: Callable[[], None]) -> None:
     request.state.after_commit.append(fn)
 
 
-def optional_user(request: Request, db: Session = Depends(get_db)) -> User | None:
+def optional_user(request: Request, db: Annotated[Session, Depends(get_db)]) -> User | None:
     user_id = request.session.get("user_id")
     if user_id is None:
         return None
@@ -55,7 +56,7 @@ def optional_user(request: Request, db: Session = Depends(get_db)) -> User | Non
     return user
 
 
-def current_user(user: User | None = Depends(optional_user)) -> User:
+def current_user(user: User | Annotated[None, Depends(optional_user)]) -> User:
     if user is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not logged in")
     return user
