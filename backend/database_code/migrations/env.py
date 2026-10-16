@@ -11,8 +11,9 @@ from pathlib import Path
 from alembic import context
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from huskypoll_db.models import Base  # noqa: E402
-from sqlalchemy import create_engine, event, text  # noqa: E402
+from sqlalchemy import create_engine, event, text
+
+from huskypoll_db.models import Base
 
 config = context.config
 if config.config_file_name is not None:

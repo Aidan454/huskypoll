@@ -46,7 +46,7 @@ WHEN OLD.is_locked = 1 AND (
 BEGIN
     SELECT RAISE(ABORT, 'question is locked because it has been polled; copy it to make changes');
 END""",
-    "trg_question_options_locked_insert": f"""
+    "trg_question_options_locked_insert": """
 CREATE TRIGGER trg_question_options_locked_insert
 BEFORE INSERT ON question_options
 WHEN (SELECT is_locked FROM questions WHERE id = NEW.question_id) = 1

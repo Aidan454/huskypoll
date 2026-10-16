@@ -1,7 +1,6 @@
 """API tests: python -m pytest -q tests/test_api.py"""
 from __future__ import annotations
 
-import io
 import struct
 import warnings
 import zlib
@@ -9,6 +8,7 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+
 from huskypoll_api.app import create_app
 from huskypoll_api.config import Settings
 from huskypoll_api.routers.auth import parse_cas_response

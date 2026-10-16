@@ -4,10 +4,12 @@ from __future__ import annotations
 import io
 import tempfile
 from pathlib import Path
-from typing import Optional
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import Response as RawResponse
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from huskypoll_db import services as svc
 from huskypoll_db.export import participation_totals, per_session_csv, write_huskyct_csv
 from huskypoll_db.models import (
@@ -23,8 +25,6 @@ from huskypoll_db.roster import (
     import_records,
     import_studentadmin_xlsx,
 )
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from .. import schemas as s
 from ..deps import (
@@ -50,7 +50,7 @@ def _import_out(res) -> s.ImportResultOut:
         skipped=[{"row": r, "reason": why} for r, why in res.skipped], summary=res.summary())
 
 
-def _find_by_identifier(db: Session, identifier: str) -> Optional[User]:
+def _find_by_identifier(db: Session, identifier: str) -> User | None:
     ident = identifier.strip()
     if "@" in ident:
         return svc.find_user(db, email=ident)
@@ -299,7 +299,7 @@ def participation(course_id: int, db: Session = Depends(get_db), user: User = De
 
 
 @router.get("/courses/{course_id}/events", response_model=list[s.EventOut], summary="Course activity log")
-def course_events(course_id: int, limit: int = 200, before_id: Optional[int] = None,
+def course_events(course_id: int, limit: int = 200, before_id: int | None = None,
                   db: Session = Depends(get_db), user: User = Depends(current_user)):
     c = course_or_404(db, course_id)
     require_instructor(db, c, user)

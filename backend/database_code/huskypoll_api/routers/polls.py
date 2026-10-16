@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import io
-from typing import Literal, Optional
+from typing import Literal
 
 import segno
 from fastapi import (
@@ -15,10 +15,11 @@ from fastapi import (
     WebSocketDisconnect,
 )
 from fastapi.responses import Response as RawResponse
-from huskypoll_db import services as svc
-from huskypoll_db.models import Course, LectureSession, Poll, Response, User
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+
+from huskypoll_db import services as svc
+from huskypoll_db.models import Course, LectureSession, Poll, Response, User
 
 from .. import schemas as s
 from ..config import Settings
@@ -43,7 +44,7 @@ router = APIRouter(tags=["polls"])
 INSTRUCTOR_ROLES = ("owner", "instructor", "ta")
 
 
-def _my_response(db: Session, poll: Poll, user: User) -> Optional[Response]:
+def _my_response(db: Session, poll: Poll, user: User) -> Response | None:
     return db.scalar(select(Response).where(Response.poll_id == poll.id, Response.user_id == user.id))
 
 
@@ -96,7 +97,7 @@ def quick_poll(course_id: int, body: s.QuickPoll, request: Request, db: Session 
 
 @router.get("/courses/{course_id}/polls", response_model=list[s.PollOut],
             summary="Polls in a course (students: includes their own answers)")
-def list_polls(course_id: int, status: Optional[Literal["open", "closed"]] = None, session_id: Optional[int] = None,
+def list_polls(course_id: int, status: Literal["open", "closed"] | None = None, session_id: int | None = None,
                db: Session = Depends(get_db), user: User = Depends(current_user),
                settings: Settings = Depends(get_settings)):
     course = course_or_404(db, course_id)

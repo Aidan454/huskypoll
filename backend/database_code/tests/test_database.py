@@ -6,20 +6,19 @@ import io
 from pathlib import Path
 
 import pytest
+from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
+
 from huskypoll_db import init_db, make_engine, make_session_factory
 from huskypoll_db import services as svc
 from huskypoll_db.export import participation_totals, write_huskyct_csv
 from huskypoll_db.models import (
     EventLog,
     Poll,
-    QuestionOption,
     Response,
-    ResponseChoice,
     User,
 )
 from huskypoll_db.roster import import_identifiers, import_studentadmin_xlsx
-from sqlalchemy import text
-from sqlalchemy.exc import IntegrityError
 
 SAMPLE_ROSTER = Path(__file__).parent.parent / "samples" / "studentadmin-template.xlsx"
 
@@ -51,9 +50,8 @@ def course_setup(db):
 
 
 def _fails(db, sql, params=None, match=None):
-    with pytest.raises(IntegrityError, match=match):
-        with db.begin_nested():
-            db.execute(text(sql), params or {})
+    with pytest.raises(IntegrityError, match=match), db.begin_nested():
+        db.execute(text(sql), params or {})
 
 
 # --- connection setup ---------------------------------------------------------
@@ -293,7 +291,7 @@ def test_participation_export(db, course_setup):
 def test_timestamps_are_utc_aware(db, course_setup):
     prof, course, *_ = course_setup
     db.expire_all()
-    assert db.get(User, prof.id).created_at.tzinfo == dt.timezone.utc
+    assert db.get(User, prof.id).created_at.tzinfo == dt.UTC
 
 
 # --- end of semester ----------------------------------------------------------

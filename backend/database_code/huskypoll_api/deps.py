@@ -1,9 +1,11 @@
 """Shared FastAPI dependencies: database session, current user, permission checks."""
 from __future__ import annotations
 
-from typing import Callable, Iterator
+from collections.abc import Callable, Iterator
 
 from fastapi import Depends, HTTPException, Request, status
+from sqlalchemy.orm import Session
+
 from huskypoll_db import services as svc
 from huskypoll_db.models import (
     Course,
@@ -13,7 +15,6 @@ from huskypoll_db.models import (
     Question,
     User,
 )
-from sqlalchemy.orm import Session
 
 from .config import Settings
 

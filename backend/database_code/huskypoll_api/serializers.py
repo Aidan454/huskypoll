@@ -1,7 +1,8 @@
 """Turn database rows into response models, applying who-may-see-what rules."""
 from __future__ import annotations
 
-from typing import Optional
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
 
 from huskypoll_db.models import (
     Course,
@@ -15,14 +16,12 @@ from huskypoll_db.models import (
     Response,
     User,
 )
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session
 
 from . import schemas as s
 from .config import Settings
 
 
-def media_url(settings: Settings, media: Optional[Media]) -> Optional[str]:
+def media_url(settings: Settings, media: Media | None) -> str | None:
     return settings.api_url(f"/media/{media.sha256}") if media else None
 
 
@@ -32,7 +31,7 @@ def user_out(u: User) -> s.UserOut:
                      role=u.role, is_admin=u.is_admin)
 
 
-def course_out(c: Course, role: Optional[str]) -> s.CourseOut:
+def course_out(c: Course, role: str | None) -> s.CourseOut:
     return s.CourseOut(
         id=c.id, term=c.term, subject=c.subject, catalog=c.catalog, section=c.section, title=c.title,
         code=c.code, points_participation=c.points_participation, points_correct=c.points_correct,
@@ -72,7 +71,7 @@ def my_response_out(r: Response, *, reveal: bool) -> s.MyResponseOut:
 
 
 def poll_out(settings: Settings, poll: Poll, *, is_instructor: bool,
-             my_response: Optional[Response] = None) -> s.PollOut:
+             my_response: Response | None = None) -> s.PollOut:
     # Students see the answer key and their marks only once the poll is closed.
     reveal = is_instructor or poll.status == "closed"
     open_ = poll.status == "open"

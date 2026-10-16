@@ -15,7 +15,7 @@ import csv
 import datetime as dt
 import io
 from pathlib import Path
-from typing import Optional, TextIO
+from typing import TextIO
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -31,7 +31,7 @@ def _fmt(x: float) -> str:
 
 
 def participation_totals(
-    db: Session, course: Course, start: Optional[dt.date] = None, end: Optional[dt.date] = None
+    db: Session, course: Course, start: dt.date | None = None, end: dt.date | None = None
 ) -> list[dict]:
     sql = text("""
         SELECT u.last_name, u.first_name, u.net_id, u.student_id, u.email,
@@ -62,9 +62,9 @@ def write_huskyct_csv(
     out: TextIO | str | Path,
     *,
     column_name: str = "HuskyPoll Participation",
-    start: Optional[dt.date] = None,
-    end: Optional[dt.date] = None,
-    by: Optional[User] = None,
+    start: dt.date | None = None,
+    end: dt.date | None = None,
+    by: User | None = None,
 ) -> int:
     """Write one row per student with total points. Returns number of students."""
     rows = participation_totals(db, course, start, end)

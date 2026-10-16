@@ -1,13 +1,12 @@
 """Account roles (admins only): admin, instructor, ta, student, guest."""
 from __future__ import annotations
 
-from typing import Optional
-
 from fastapi import APIRouter, Depends, HTTPException
-from huskypoll_db import services as svc
-from huskypoll_db.models import User
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
+
+from huskypoll_db import services as svc
+from huskypoll_db.models import User
 
 from .. import schemas as s
 from ..deps import current_user, get_db, require_admin
@@ -17,7 +16,7 @@ router = APIRouter(tags=["users"])
 
 
 @router.get("/users", response_model=list[s.UserOut], summary="Find accounts (admins)")
-def list_users(q: Optional[str] = None, role: Optional[s.UserRole] = None, limit: int = 100,
+def list_users(q: str | None = None, role: s.UserRole | None = None, limit: int = 100,
                db: Session = Depends(get_db), user: User = Depends(current_user)):
     require_admin(user)
     query = select(User)
