@@ -2,7 +2,8 @@ FROM python:3.13-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    HUSKYPOLL_DB=/tmp/huskypoll.db
+    HUSKYPOLL_DB=/data/huskypoll.db \
+    HUSKYPOLL_MEDIA_DIR=/data/media
 
 WORKDIR /app
 
@@ -11,14 +12,18 @@ COPY requirements.txt ./
 RUN python -m pip install --no-cache-dir -r requirements.txt
 
 COPY huskypoll_db/ ./huskypoll_db/
+COPY huskypoll_api/ ./huskypoll_api/
 COPY migrations/ ./migrations/
 COPY alembic.ini pytest.ini ./
 COPY tests/ ./tests/
 COPY scripts/ ./scripts/
 COPY samples/studentadmin-template.xlsx ./samples/studentadmin-template.xlsx
 
-RUN useradd --create-home --uid 10001 huskypoll
+RUN useradd --create-home --uid 10001 huskypoll \
+    && mkdir -p /data/media \
+    && chown -R huskypoll:huskypoll /data
 USER huskypoll
 
-# No FastAPI application exists yet. Show the available database commands.
-CMD ["python", "-m", "huskypoll_db", "--help"]
+EXPOSE 8000
+
+CMD ["python", "-m", "uvicorn", "huskypoll_api.main:app", "--host", "0.0.0.0", "--port", "8000"]
