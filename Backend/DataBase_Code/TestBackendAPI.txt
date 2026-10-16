@@ -40,7 +40,7 @@ $cid = $courses[0].id                                   # pick a course
 # 9. Find the open poll (either works)
 
 # a) The way a student in class does it: type or scan the code
-$poll = Invoke-RestMethod "$api/polls/by-code/ABCDE" -WebSession $stu     # use the real code 37WJ2B
+$poll = Invoke-RestMethod "$api/polls/by-code/ABCDE" -WebSession $stu     # use the real code 
 
 # b) Or list the course's open polls
 $poll = (Invoke-RestMethod "$api/courses/$cid/polls?status=open" -WebSession $stu)[0]
@@ -56,7 +56,7 @@ $url = "$api/polls/$($poll.id)/responses"
 
 # mc_single: one option
 $url = "$api/polls/$($poll.id)/responses"
-Invoke-RestMethod -Method Post $url -WebSession $stu -ContentType "application/json" -Body '{"option_ids": [3]}'
+Invoke-RestMethod -Method Post $url -WebSession $stu -ContentType "application/json" -Body '{"option_ids": [id]}'
 # mc_multi: select all that apply
 Invoke-RestMethod -Method Post $url -WebSession $stu -ContentType "application/json" `
   -Body (@{ option_ids = @($poll.question.options[0].id, $poll.question.options[2].id) } | ConvertTo-Json)
@@ -67,7 +67,7 @@ Invoke-RestMethod -Method Post $url -WebSession $stu -ContentType "application/j
 # free_text
 Invoke-RestMethod -Method Post $url -WebSession $stu -ContentType "application/json" -Body '{"text_answer": "stack"}'
 
-# 11. See the live results (before closing)
+# 11. See the live results (before closing) (instructor)
 Invoke-RestMethod "$api/polls/$($poll.id)/results" -WebSession $s | ConvertTo-Json -Depth 5
 Better formatted table 
 $res  = Invoke-RestMethod "$api/polls/$($poll.id)/results" -WebSession $s
@@ -77,7 +77,7 @@ $full.question.options | ForEach-Object {
     Votes = ($res.options | Where-Object option_id -eq $o.id).votes }
 } | Format-Table
 
-# 12. see each student's answer 
+# 12. see each student's answer (instructor)
 Invoke-RestMethod "$api/polls/$($poll.id)/responses" -WebSession $s |
   ForEach-Object { [pscustomobject]@{ NetID = $_.user.net_id; Options = ($_.option_ids -join ","); Correct = $_.is_correct } } |
   Format-Table
@@ -101,5 +101,6 @@ Invoke-RestMethod "$api/courses/$cid/my-participation" -WebSession $stu
 Invoke-RestMethod -Method Post "$api/polls/$($poll.id)/responses" -WebSession $stu -ContentType "application/json" -Body '{"option_ids": [3]}' 
 
 # 16. (Optional) The grades export
+(Need to make CID update automatically)
 Invoke-RestMethod "$api/courses/$cid/participation" -WebSession $s | Format-Table
 Invoke-WebRequest "$api/courses/$cid/export/huskyct.csv" -WebSession $s -OutFile grades.csv
