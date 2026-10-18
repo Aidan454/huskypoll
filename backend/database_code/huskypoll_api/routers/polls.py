@@ -80,6 +80,42 @@ def open_poll(course_id: int, body: s.PollOpen, request: Request, db: Session = 
     return poll_out(settings, poll, is_instructor=True)
 
 
+@router.post("/courses/{course_id}/polls/set", response_model=list[s.PollOut], status_code=201,
+             summary="Queue several questions to ask one at a time (opens the first)")
+def create_poll_set(course_id: int, body: s.PollSetCreate, request: Request, db: Session = Depends(get_db),
+                    user: User = Depends(current_user), settings: Settings = Depends(get_settings)):
+    course = course_or_404(db, course_id)
+    require_instructor(db, course, user)
+    questions = []
+    for qid in body.question_ids:
+        q = question_or_404(db, qid)
+        require_question_access(db, q, user)
+        questions.append(q)
+    sess = session_or_404(db, body.session_id) if body.session_id else None
+    polls = svc.create_poll_set(db, course, questions, user, lecture_session=sess, show_results=body.show_results)
+    if body.open_first:
+        svc.open_draft_poll(db, polls[0], user)
+        _announce_open(request, settings, polls[0])
+    return [poll_out(settings, p, is_instructor=True) for p in polls]
+
+
+@router.post("/polls/{poll_id}/open", response_model=s.PollOut, summary="Open the next question of a poll set")
+def open_draft(poll_id: int, request: Request, db: Session = Depends(get_db), user: User = Depends(current_user),
+               settings: Settings = Depends(get_settings)):
+    poll = poll_or_404(db, poll_id)
+    require_instructor(db, poll.session.course, user)
+    svc.open_draft_poll(db, poll, user)
+    _announce_open(request, settings, poll)
+    return poll_out(settings, poll, is_instructor=True)
+
+
+@router.delete("/polls/{poll_id}", status_code=204, summary="Remove a question that hasn't been opened yet")
+def delete_draft(poll_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)):
+    poll = poll_or_404(db, poll_id)
+    require_instructor(db, poll.session.course, user)
+    svc.delete_draft_poll(db, poll, user)
+
+
 @router.post("/courses/{course_id}/polls/quick", response_model=s.PollOut, status_code=201,
              summary="Write a question in lecture and open it immediately")
 def quick_poll(course_id: int, body: s.QuickPoll, request: Request, db: Session = Depends(get_db),
@@ -106,8 +142,10 @@ def list_polls(course_id: int, status: Optional[Literal["open", "closed"]] = Non
         q = q.where(Poll.status == status)
     if session_id:
         q = q.where(Poll.session_id == session_id)
-    polls = db.scalars(q.order_by(LectureSession.session_date.desc(), Poll.position.desc())).all()
     instructor = role in INSTRUCTOR_ROLES
+    if not instructor:
+        q = q.where(Poll.status != "draft")  # students never see questions before they're asked
+    polls = db.scalars(q.order_by(LectureSession.session_date.desc(), Poll.position.desc())).all()
     return [poll_out(settings, p, is_instructor=instructor, my_response=None if instructor else _my_response(db, p, user))
             for p in polls]
 
@@ -116,7 +154,7 @@ def list_polls(course_id: int, status: Optional[Literal["open", "closed"]] = Non
             summary="Find an open poll from the code a student typed or scanned")
 def poll_by_code(access_code: str, db: Session = Depends(get_db), user: User = Depends(current_user),
                  settings: Settings = Depends(get_settings)):
-    poll = svc.find_open_poll_by_code(db, access_code)
+    poll = svc.find_open_poll_by_code(db, access_code) or svc.find_poll_set_by_code(db, access_code)
     if poll is None:
         raise HTTPException(404, "No open poll with that code")
     role = role_in(db, poll.session.course, user)
@@ -131,6 +169,8 @@ def get_poll(poll_id: int, db: Session = Depends(get_db), user: User = Depends(c
              settings: Settings = Depends(get_settings)):
     poll = poll_or_404(db, poll_id)
     instructor = _role_for_poll(db, poll, user) in INSTRUCTOR_ROLES
+    if poll.status == "draft" and not instructor:
+        raise HTTPException(404, "Poll not found")
     return poll_out(settings, poll, is_instructor=instructor, my_response=None if instructor else _my_response(db, poll, user))
 
 

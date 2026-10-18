@@ -22,7 +22,7 @@ function SessionSelect({ sessions, value, onChange }) {
   )
 }
 
-/** Pick one or more questions from a bank and open them together (one poll per question). */
+/** Pick one question to open, or several to ask one at a time in the order chosen. */
 function OpenFromBank({ course, sessions, onOpened, onCancel }) {
   const banks = useApi('/banks')
   const [bankId, setBankId] = useState('')
@@ -35,19 +35,35 @@ function OpenFromBank({ course, sessions, onOpened, onCancel }) {
     setQuestionIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]))
   }
 
+  function move(id, by) {
+    setQuestionIds((ids) => {
+      const i = ids.indexOf(id)
+      const j = i + by
+      if (j < 0 || j >= ids.length) return ids
+      const next = [...ids]
+      ;[next[i], next[j]] = [next[j], next[i]]
+      return next
+    })
+  }
+
   const [open, busy, error] = useAction(async () => {
-    const opened = []
-    let session = sessionId ? Number(sessionId) : null
-    for (const id of questionIds) {
+    const session_id = sessionId ? Number(sessionId) : null
+    if (questionIds.length === 1) {
       const poll = await api.post(`/courses/${course.id}/polls`, {
-        question_id: id,
-        session_id: session,
+        question_id: questionIds[0],
+        session_id,
         show_results: showResults,
       })
-      session = poll.session_id // keep the whole set in the same lecture
-      opened.push(poll)
+      onOpened([poll])
+    } else {
+      // one poll, asked a question at a time: the first opens now, the rest wait
+      const polls = await api.post(`/courses/${course.id}/polls/set`, {
+        question_ids: questionIds,
+        session_id,
+        show_results: showResults,
+      })
+      onOpened(polls)
     }
-    onOpened(opened)
   })
 
   return (
@@ -85,7 +101,7 @@ function OpenFromBank({ course, sessions, onOpened, onCancel }) {
               <p className="muted">This bank has no questions.</p>
             ) : (
               <div className="field">
-                <span>Questions — tick one, or several to ask them together (they open in the order ticked)</span>
+                <span>Questions — tick one, or several to ask one after another</span>
                 <div style={{ maxHeight: 280, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 8, padding: '0 10px' }}>
                   <ul className="list">
                     {b.questions.map((q) => (
@@ -105,6 +121,34 @@ function OpenFromBank({ course, sessions, onOpened, onCancel }) {
           }
         </Loaded>
       )}
+      {questionIds.length > 1 && bank.data && (
+        <div className="field">
+          <span>Order — students see one question at a time, starting at the top</span>
+          <ol className="list" style={{ paddingLeft: 0 }}>
+            {questionIds.map((id, i) => {
+              const q = bank.data.questions.find((x) => x.id === id)
+              return (
+                <li key={id} style={{ padding: '6px 0' }}>
+                  <span className="badge badge-blue">{i + 1}</span>
+                  <span className="grow small">{snippet(q?.body_md, 80)}</span>
+                  <button type="button" className="btn btn-sm" aria-label="Move up" disabled={i === 0} onClick={() => move(id, -1)}>
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-sm"
+                    aria-label="Move down"
+                    disabled={i === questionIds.length - 1}
+                    onClick={() => move(id, 1)}
+                  >
+                    ↓
+                  </button>
+                </li>
+              )
+            })}
+          </ol>
+        </div>
+      )}
       <SessionSelect sessions={sessions} value={sessionId} onChange={setSessionId} />
       <label className="check">
         <input type="checkbox" checked={showResults} onChange={(e) => setShowResults(e.target.checked)} />
@@ -116,7 +160,7 @@ function OpenFromBank({ course, sessions, onOpened, onCancel }) {
           Cancel
         </button>
         <button type="button" className="btn btn-primary" disabled={!questionIds.length || busy} onClick={() => open()}>
-          {busy ? 'Opening…' : questionIds.length > 1 ? `Open ${questionIds.length} questions` : 'Open poll'}
+          {busy ? 'Opening…' : questionIds.length > 1 ? `Start poll (${questionIds.length} questions)` : 'Open poll'}
         </button>
       </div>
     </>
@@ -181,13 +225,15 @@ export default function InstructorPolls({ course }) {
 
   function opened(list) {
     setModal(null)
-    navigate(list.length === 1 ? `/polls/${list[0].id}` : `/courses/${course.id}/live`)
+    navigate(list.length === 1 ? `/polls/${list[0].id}` : `/courses/${course.id}/live?session=${list[0].session_id}&from=${list[0].position}`)
   }
 
   if (polls.error || sessions.error) return <ErrorBox error={polls.error || sessions.error} />
   if (!polls.data || !sessions.data) return <Loading />
 
-  const live = polls.data.filter((p) => p.status === 'open')
+  // a lecture with queued questions is a poll in progress: link to its step-through screen
+  const running = [...new Set(polls.data.filter((p) => p.status === 'draft').map((p) => p.session_id))]
+  const live = polls.data.filter((p) => p.status === 'open' && !running.includes(p.session_id))
   const bySession = new Map(sessions.data.map((s) => [s.id, { session: s, polls: [] }]))
   for (const p of polls.data) bySession.get(p.session_id)?.polls.push(p)
   const groups = [...bySession.values()].filter((g) => g.polls.length)
@@ -207,20 +253,29 @@ export default function InstructorPolls({ course }) {
           </div>
         </div>
         {course.archived_at && <p className="small muted">This course is archived. Unarchive it in Settings to run polls.</p>}
+        {running.map((sid) => {
+          const set = polls.data.filter((p) => p.session_id === sid && p.status !== 'closed')
+          const current = set.find((p) => p.status === 'open')
+          return (
+            <div className="row" key={sid} style={{ marginBottom: 10 }}>
+              <StatusBadge status={current ? 'open' : 'draft'} />
+              <span className="grow">
+                Poll in progress: {set.filter((p) => p.status === 'draft').length} questions still to ask
+              </span>
+              <Link to={`/courses/${course.id}/live?session=${sid}`} className="btn btn-sm btn-primary">
+                Continue
+              </Link>
+            </div>
+          )
+        })}
         {live.length === 0 ? (
+          running.length > 0 ? null : (
           <p className="muted small" style={{ margin: 0 }}>
             No poll is open right now.
           </p>
+          )
         ) : (
           <>
-          {live.length > 1 && (
-            <div className="row" style={{ marginBottom: 8 }}>
-              <span className="grow small muted">{live.length} questions are open.</span>
-              <Link to={`/courses/${course.id}/live`} className="btn btn-sm btn-primary">
-                Present all together
-              </Link>
-            </div>
-          )}
           <ul className="list">
             {live.map((p) => (
               <li key={p.id}>

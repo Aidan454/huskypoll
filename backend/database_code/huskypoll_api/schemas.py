@@ -239,6 +239,15 @@ class PollOpen(BaseModel):
     show_results: bool = False
 
 
+class PollSetCreate(BaseModel):
+    """Several questions asked one after another in one lecture. The first opens
+    right away; the rest wait as drafts until POST /polls/{id}/open."""
+    question_ids: list[int] = Field(min_length=1, description="In the order they will be asked")
+    session_id: Optional[int] = Field(None, description="Default: today's session, created if needed")
+    show_results: bool = False
+    open_first: bool = True
+
+
 class QuickPoll(QuestionCreate):
     """Create a question in lecture and open it in one step."""
     session_id: Optional[int] = None

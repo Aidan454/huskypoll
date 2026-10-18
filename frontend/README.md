@@ -28,7 +28,7 @@ Instructor / TA / Admin / Student buttons on the login page.
 | `/courses` | everyone | Courses you teach or are enrolled in; create a course |
 | `/courses/:id` | staff | Open a poll from a bank or a quick poll; live polls; all polls by lecture |
 | `/courses/:id` | students | Answer the live poll, participation totals, history with answers and marks |
-| `/courses/:id/live` | staff | Several questions opened together: one code and QR, live results for each, close all |
+| `/courses/:id/live` | staff | A poll with several questions: students see one at a time; close it, show results, then Next question (same code) |
 | `/courses/:id/lectures` | staff | Add, rename, re-date and delete lectures |
 | `/courses/:id/roster` | staff | Roster, add by pasted list / StudentAdmin .xlsx / one student, drop |
 | `/courses/:id/staff` | staff | Add or remove instructors and TAs |
@@ -37,7 +37,7 @@ Instructor / TA / Admin / Student buttons on the login page.
 | `/courses/:id/settings` | staff | Title, section, points; archive; delete (owner/admin) |
 | `/polls/:id` | staff | Classroom view: code, QR, live result bars, show results, close, answer key and re-mark |
 | `/polls/:id` | students | Answer it, or see the mark once closed |
-| `/join`, `/join/:code` | everyone | Enter a poll code (the QR code opens `/join/CODE`); shows every open question in that lecture |
+| `/join`, `/join/:code` | everyone | Enter a poll code (the QR code opens `/join/CODE`); follows a multi-question poll question by question |
 | `/banks`, `/banks/:id` | instructors, TAs | Question banks; write, edit, copy and delete questions, with pictures |
 | `/admin/users` | admins | Find accounts and change their role |
 

@@ -14,7 +14,7 @@ from typing import Iterable, Optional, Sequence
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from .models import (
     ROLE_RANK,
@@ -536,6 +536,78 @@ def open_poll(
     return poll
 
 
+def create_poll_set(
+    db: Session,
+    course: Course,
+    questions: Sequence[Question],
+    created_by: User,
+    *,
+    lecture_session: Optional[LectureSession] = None,
+    show_results: bool = False,
+) -> list[Poll]:
+    """Queue several questions in one lecture as draft polls, in the given order.
+
+    The instructor then opens them one at a time with open_draft_poll(); each
+    question is still its own poll, so grading and history work as usual.
+    """
+    if not is_instructor(db, course, created_by):
+        raise NotAllowed("only an instructor of this course can create polls")
+    if course.archived_at is not None:
+        raise HuskyPollError("this course is archived; restore it before opening polls")
+    if not questions:
+        raise HuskyPollError("choose at least one question")
+    sess = lecture_session or get_or_create_session(db, course)
+    if sess.course_id != course.id:
+        raise HuskyPollError("lecture session belongs to another course")
+    start = _count(db, Poll, Poll.session_id == sess.id)
+    polls = [Poll(question_id=q.id, status="draft", position=start + i, show_results=show_results)
+             for i, q in enumerate(questions)]
+    sess.polls.extend(polls)
+    db.flush()
+    log_event(db, "poll_set_create", user=created_by, course=course,
+              poll_ids=[p.id for p in polls], question_ids=[q.id for q in questions])
+    return polls
+
+
+def open_draft_poll(db: Session, poll: Poll, opened_by: User) -> Poll:
+    """Open the next question of a poll set. It reuses the access code of the
+    question before it in the same lecture when that code is free, so students
+    keep the code they already typed in."""
+    course = poll.session.course
+    if not is_instructor(db, course, opened_by):
+        raise NotAllowed("only an instructor of this course can open polls")
+    if course.archived_at is not None:
+        raise HuskyPollError("this course is archived; restore it before opening polls")
+    if poll.status != "draft":
+        raise HuskyPollError("poll has already been opened")
+    previous = db.scalar(
+        select(Poll).where(Poll.session_id == poll.session_id, Poll.position < poll.position,
+                           Poll.access_code.is_not(None))
+        .order_by(Poll.position.desc())
+    )
+    code = previous.access_code if previous is not None else None
+    if code is None or db.scalar(select(Poll.id).where(Poll.access_code == code, Poll.status == "open")):
+        code = _unique_open_access_code(db)
+    poll.access_code = code
+    poll.status = "open"
+    poll.opened_by = opened_by.id
+    poll.opened_at = utcnow()
+    db.flush()  # trigger locks the question here
+    db.refresh(poll.question)
+    log_event(db, "poll_open", user=opened_by, course=course, poll=poll, question_id=poll.question_id)
+    return poll
+
+
+def delete_draft_poll(db: Session, poll: Poll, user: User) -> None:
+    """Remove a question from a poll set before it has been opened."""
+    if not is_instructor(db, poll.session.course, user):
+        raise NotAllowed("only an instructor of this course can change polls")
+    if poll.status != "draft":
+        raise HuskyPollError("only polls that have not been opened yet can be deleted")
+    db.delete(poll)
+    db.flush()
+
+
 def _unique_open_access_code(db: Session) -> str:
     while True:
         code = new_code(5)
@@ -556,6 +628,20 @@ def close_poll(db: Session, poll: Poll, closed_by: User) -> Poll:
 
 def find_open_poll_by_code(db: Session, access_code: str) -> Optional[Poll]:
     return db.scalar(select(Poll).where(Poll.access_code == access_code.strip().upper(), Poll.status == "open"))
+
+
+def find_poll_set_by_code(db: Session, access_code: str) -> Optional[Poll]:
+    """Between two questions of a poll set no poll is open, but the code is still
+    valid: return the last closed question that has more questions queued after it."""
+    queued = aliased(Poll)
+    has_more = (select(queued.id)
+                .where(queued.session_id == Poll.session_id, queued.status == "draft",
+                       queued.position > Poll.position)
+                .exists())
+    return db.scalar(
+        select(Poll).where(Poll.access_code == access_code.strip().upper(), Poll.status == "closed", has_more)
+        .order_by(Poll.closed_at.desc()).limit(1)
+    )
 
 
 # ---------------------------------------------------------------------------

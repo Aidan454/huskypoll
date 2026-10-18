@@ -1,9 +1,10 @@
 // Students reach a poll by typing its code or scanning the QR code (which opens /join/CODE).
-// When an instructor opens several questions together, any of their codes shows all of
-// that lecture's open questions on one page.
+// A poll can have several questions: students keep the page open and each question
+// appears in turn as the instructor opens it.
 import { useEffect, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router'
-import { AnswerForm } from '../components/PollParts.jsx'
+import { AnswerForm, AnswerKey, Mark, QuestionBody, ResultsView } from '../components/PollParts.jsx'
+import { answerText } from '../format.js'
 import { ErrorBox, Loading } from '../components/ui.jsx'
 import { useApi } from '../hooks.js'
 import { connectCourse } from '../live.js'
@@ -38,53 +39,84 @@ function CodeForm({ initial = '' }) {
   )
 }
 
-/** Every open question in the same lecture as `poll`, kept up to date live. */
+/** Results the instructor shared for a closed question. */
+function SharedResults({ poll, liveResults }) {
+  const fetched = useApi(poll.show_results && !liveResults ? `/polls/${poll.id}/results` : null)
+  const results = liveResults ?? fetched.data
+  if (!results) return null
+  return (
+    <div style={{ marginTop: 16 }}>
+      <h3>Class results</h3>
+      <ResultsView question={poll.question} results={results} />
+    </div>
+  )
+}
+
+/**
+ * Follows the poll live: shows the open question, then (after the instructor closes it)
+ * the student's mark and any shared results, then the next question when it opens.
+ * The instructor's poll can have several questions; students see one at a time.
+ */
 function LectureQuestions({ poll }) {
-  const open = useApi(`/courses/${poll.course_id}/polls?status=open`)
-  const [saved, setSaved] = useState({}) // poll_id -> true once answered on this page
-  const { reload } = open
+  const asked = useApi(`/courses/${poll.course_id}/polls?session_id=${poll.session_id}`)
+  const [shared, setShared] = useState({}) // poll_id -> results the instructor showed
+  const { reload } = asked
 
   useEffect(
     () =>
       connectCourse(poll.course_id, (msg) => {
         if (msg.type === 'poll_opened' || msg.type === 'poll_closed') reload()
+        if (msg.type === 'results') setShared((r) => ({ ...r, [msg.results.poll_id]: msg.results }))
       }),
     [poll.course_id, reload],
   )
 
-  if (open.error) return <ErrorBox error={open.error} />
-  if (!open.data) return <Loading />
-  const questions = open.data
-    .filter((p) => p.session_id === poll.session_id)
-    .sort((a, b) => a.position - b.position)
+  if (asked.error) return <ErrorBox error={asked.error} />
+  if (!asked.data) return <Loading />
+  // this poll's questions so far (students never see the ones still to come)
+  const questions = asked.data.filter((p) => p.position >= poll.position).sort((a, b) => a.position - b.position)
+  const current = questions.find((p) => p.status === 'open')
+  const last = [...questions].reverse().find((p) => p.status === 'closed')
+  const number = (p) => questions.indexOf(p) + 1
 
-  if (!questions.length) {
+  if (current) {
     return (
-      <div className="card empty">
-        <h2>{Object.keys(saved).length ? 'Thanks, the poll has closed' : 'This poll has closed'}</h2>
-        <p>
-          Your answers and marks are in your <Link to={`/courses/${poll.course_id}`}>course history</Link>.
-        </p>
+      <div className="card" key={current.id}>
+        <div className="card-head">
+          <h2>Question {number(current)}</h2>
+          <span className="badge badge-open">● Open</span>
+        </div>
+        <AnswerForm key={current.id} poll={current} />
       </div>
     )
   }
-  const answered = questions.filter((p) => p.my_response || saved[p.id]).length
+  if (!last) return <Loading />
   return (
     <>
-      {questions.length > 1 && (
-        <div className="alert alert-info">
-          {questions.length} questions · {answered} answered. You can change answers until each question closes.
+      <div className="card">
+        <div className="card-head">
+          <h2>Question {number(last)} has closed</h2>
+          <Mark response={last.my_response} />
         </div>
-      )}
-      {questions.map((p, i) => (
-        <div className="card" key={p.id}>
-          <div className="card-head">
-            <h2>{questions.length > 1 ? `Question ${i + 1}` : `Poll ${p.access_code}`}</h2>
-            <span className="badge badge-open">● Open</span>
-          </div>
-          <AnswerForm poll={p} onSaved={() => setSaved((s) => ({ ...s, [p.id]: true }))} />
-        </div>
-      ))}
+        <QuestionBody question={last.question} />
+        {last.my_response && (
+          <p>
+            Your answer: <strong>{String(answerText(last.question, last.my_response))}</strong>
+          </p>
+        )}
+        {(last.show_results || shared[last.id]) && (
+          <>
+            <SharedResults poll={last} liveResults={shared[last.id]} />
+            <div style={{ marginTop: 12 }}>
+              <AnswerKey question={last.question} />
+            </div>
+          </>
+        )}
+      </div>
+      <div className="alert alert-info">
+        Waiting for your instructor. If there&apos;s another question it will appear here. Your answers are saved, and
+        you can find them later in your <Link to={`/courses/${poll.course_id}`}>course history</Link>.
+      </div>
     </>
   )
 }
@@ -108,7 +140,7 @@ function JoinedPoll({ code }) {
   if (!poll) return <Loading />
   if (poll.question.answer_revealed && poll.status === 'open') {
     // instructors and TAs get the classroom view
-    return <Navigate to={`/courses/${poll.course_id}/live`} replace />
+    return <Navigate to={`/polls/${poll.id}`} replace />
   }
   return <LectureQuestions poll={poll} />
 }

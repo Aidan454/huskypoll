@@ -575,3 +575,53 @@ def test_frontend_files_cannot_escape_dist(tmp_path):
 def test_frontend_dist_without_build_is_a_clear_error(tmp_path):
     with pytest.raises(RuntimeError, match="npm run build"):
         site_app(tmp_path, HOST, dist=tmp_path / "nothing-here")
+
+
+# --- poll sets: several questions asked one at a time ------------------------
+
+def test_poll_set_asks_questions_one_at_a_time(lecture):
+    prof, ann, cid, q1 = lecture["prof"], lecture["ann"], lecture["cid"], lecture["q"]
+    q2 = prof.post("/questions", json={"type": "numeric", "body_md": "3*3?", "numeric_answer": 9}).json()
+    q3 = prof.post("/questions", json={"type": "free_text", "body_md": "Name a sort."}).json()
+
+    r = prof.post(f"/courses/{cid}/polls/set", json={"question_ids": [q2["id"], q1["id"], q3["id"]]})
+    assert r.status_code == 201, r.text
+    first, second, third = r.json()
+    assert [p["status"] for p in (first, second, third)] == ["open", "draft", "draft"]
+    assert first["question"]["id"] == q2["id"]  # the order the instructor chose
+    assert first["position"] < second["position"] < third["position"]
+    code = first["access_code"]
+
+    # students see only what has been asked
+    listed = ann.get(f"/courses/{cid}/polls").json()
+    assert [p["id"] for p in listed] == [first["id"]]
+    assert ann.get(f"/polls/{second['id']}").status_code == 404
+    assert ann.post(f"/polls/{second['id']}/responses", json={"option_ids": []}).status_code >= 400
+
+    assert ann.post(f"/polls/{first['id']}/responses", json={"numeric_answer": 9}).status_code == 200
+    assert prof.post(f"/polls/{first['id']}/close").status_code == 200
+
+    # between questions the code still finds the set
+    between = ann.get(f"/polls/by-code/{code}").json()
+    assert between["id"] == first["id"] and between["status"] == "closed"
+
+    # the next question keeps the same code
+    nxt = prof.post(f"/polls/{second['id']}/open").json()
+    assert nxt["status"] == "open" and nxt["access_code"] == code
+    assert ann.get(f"/polls/by-code/{code}").json()["id"] == second["id"]
+    assert prof.post(f"/polls/{second['id']}/open").status_code == 400  # already open
+
+    # a queued question can be dropped before it is asked, but not after
+    assert prof.delete(f"/polls/{second['id']}").status_code == 400
+    assert ann.delete(f"/polls/{third['id']}").status_code == 403
+    assert prof.delete(f"/polls/{third['id']}").status_code == 204
+    assert prof.post(f"/polls/{second['id']}/close").status_code == 200
+    assert ann.get(f"/polls/by-code/{code}").status_code == 404  # nothing left in the set
+
+
+def test_poll_set_needs_an_instructor_and_questions(lecture):
+    ann, prof, cid, q = lecture["ann"], lecture["prof"], lecture["cid"], lecture["q"]
+    assert ann.post(f"/courses/{cid}/polls/set", json={"question_ids": [q["id"]]}).status_code == 403
+    assert prof.post(f"/courses/{cid}/polls/set", json={"question_ids": []}).status_code == 422
+    r = prof.post(f"/courses/{cid}/polls/set", json={"question_ids": [q["id"]], "open_first": False})
+    assert r.json()[0]["status"] == "draft"

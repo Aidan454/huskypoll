@@ -68,7 +68,8 @@ export function ConfirmModal({ open, title, children, confirmLabel = 'Delete', b
 
 export function StatusBadge({ status }) {
   const cls = status === 'open' ? 'badge badge-open' : status === 'closed' ? 'badge badge-closed' : 'badge'
-  return <span className={cls}>{status === 'open' ? '● Live' : status}</span>
+  const label = status === 'open' ? '● Live' : status === 'draft' ? 'Up next' : status
+  return <span className={cls}>{label}</span>
 }
 
 export function RoleBadge({ role }) {
