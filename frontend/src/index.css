@@ -644,6 +644,13 @@ textarea {
   gap: 20px;
   align-items: start;
 }
+/* keep the code and QR in view while scrolling through several questions */
+@media (min-width: 861px) {
+  .present > :last-child {
+    position: sticky;
+    top: 16px;
+  }
+}
 @media (max-width: 860px) {
   .present {
     grid-template-columns: 1fr;

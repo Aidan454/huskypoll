@@ -22,22 +22,32 @@ function SessionSelect({ sessions, value, onChange }) {
   )
 }
 
-/** Pick a question from a bank and open it as a poll. */
+/** Pick one or more questions from a bank and open them together (one poll per question). */
 function OpenFromBank({ course, sessions, onOpened, onCancel }) {
   const banks = useApi('/banks')
   const [bankId, setBankId] = useState('')
   const bank = useApi(bankId ? `/banks/${bankId}` : null)
-  const [questionId, setQuestionId] = useState(null)
+  const [questionIds, setQuestionIds] = useState([]) // in the order they were ticked
   const [sessionId, setSessionId] = useState('')
   const [showResults, setShowResults] = useState(false)
 
+  function toggle(id) {
+    setQuestionIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]))
+  }
+
   const [open, busy, error] = useAction(async () => {
-    const poll = await api.post(`/courses/${course.id}/polls`, {
-      question_id: questionId,
-      session_id: sessionId ? Number(sessionId) : null,
-      show_results: showResults,
-    })
-    onOpened(poll)
+    const opened = []
+    let session = sessionId ? Number(sessionId) : null
+    for (const id of questionIds) {
+      const poll = await api.post(`/courses/${course.id}/polls`, {
+        question_id: id,
+        session_id: session,
+        show_results: showResults,
+      })
+      session = poll.session_id // keep the whole set in the same lecture
+      opened.push(poll)
+    }
+    onOpened(opened)
   })
 
   return (
@@ -54,7 +64,7 @@ function OpenFromBank({ course, sessions, onOpened, onCancel }) {
                 value={bankId}
                 onChange={(e) => {
                   setBankId(e.target.value)
-                  setQuestionId(null)
+                  setQuestionIds([])
                 }}
               >
                 <option value="">Choose a bank…</option>
@@ -75,13 +85,14 @@ function OpenFromBank({ course, sessions, onOpened, onCancel }) {
               <p className="muted">This bank has no questions.</p>
             ) : (
               <div className="field">
-                <span>Question</span>
+                <span>Questions — tick one, or several to ask them together (they open in the order ticked)</span>
                 <div style={{ maxHeight: 280, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 8, padding: '0 10px' }}>
                   <ul className="list">
                     {b.questions.map((q) => (
                       <li key={q.id}>
                         <label className="check grow">
-                          <input type="radio" name="q" checked={questionId === q.id} onChange={() => setQuestionId(q.id)} />
+                          <input type="checkbox" checked={questionIds.includes(q.id)} onChange={() => toggle(q.id)} />
+                          {questionIds.includes(q.id) && <span className="badge badge-blue">{questionIds.indexOf(q.id) + 1}</span>}
                           <span className="grow">{snippet(q.body_md)}</span>
                           <span className="badge">{QUESTION_TYPE_SHORT[q.type]}</span>
                         </label>
@@ -104,8 +115,8 @@ function OpenFromBank({ course, sessions, onOpened, onCancel }) {
         <button type="button" className="btn" onClick={onCancel}>
           Cancel
         </button>
-        <button type="button" className="btn btn-primary" disabled={!questionId || busy} onClick={() => open()}>
-          {busy ? 'Opening…' : 'Open poll'}
+        <button type="button" className="btn btn-primary" disabled={!questionIds.length || busy} onClick={() => open()}>
+          {busy ? 'Opening…' : questionIds.length > 1 ? `Open ${questionIds.length} questions` : 'Open poll'}
         </button>
       </div>
     </>
@@ -122,7 +133,7 @@ function QuickPoll({ course, sessions, onOpened, onCancel }) {
       session_id: sessionId ? Number(sessionId) : null,
       show_results: showResults,
     })
-    onOpened(poll)
+    onOpened([poll])
   })
   return (
     <QuestionEditor
@@ -168,9 +179,9 @@ export default function InstructorPolls({ course }) {
     reloadPolls()
   })
 
-  function opened(poll) {
+  function opened(list) {
     setModal(null)
-    navigate(`/polls/${poll.id}`)
+    navigate(list.length === 1 ? `/polls/${list[0].id}` : `/courses/${course.id}/live`)
   }
 
   if (polls.error || sessions.error) return <ErrorBox error={polls.error || sessions.error} />
@@ -201,6 +212,15 @@ export default function InstructorPolls({ course }) {
             No poll is open right now.
           </p>
         ) : (
+          <>
+          {live.length > 1 && (
+            <div className="row" style={{ marginBottom: 8 }}>
+              <span className="grow small muted">{live.length} questions are open.</span>
+              <Link to={`/courses/${course.id}/live`} className="btn btn-sm btn-primary">
+                Present all together
+              </Link>
+            </div>
+          )}
           <ul className="list">
             {live.map((p) => (
               <li key={p.id}>
@@ -218,6 +238,7 @@ export default function InstructorPolls({ course }) {
               </li>
             ))}
           </ul>
+          </>
         )}
         <ErrorBox error={closeError} />
       </div>

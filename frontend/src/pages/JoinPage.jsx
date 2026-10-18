@@ -1,8 +1,9 @@
 // Students reach a poll by typing its code or scanning the QR code (which opens /join/CODE).
+// When an instructor opens several questions together, any of their codes shows all of
+// that lecture's open questions on one page.
 import { useEffect, useState } from 'react'
-import { Navigate, useNavigate, useParams } from 'react-router'
-import { api } from '../api.js'
-import { AnswerForm, AnswerKey, Mark, QuestionBody } from '../components/PollParts.jsx'
+import { Link, Navigate, useNavigate, useParams } from 'react-router'
+import { AnswerForm } from '../components/PollParts.jsx'
 import { ErrorBox, Loading } from '../components/ui.jsx'
 import { useApi } from '../hooks.js'
 import { connectCourse } from '../live.js'
@@ -37,19 +38,60 @@ function CodeForm({ initial = '' }) {
   )
 }
 
+/** Every open question in the same lecture as `poll`, kept up to date live. */
+function LectureQuestions({ poll }) {
+  const open = useApi(`/courses/${poll.course_id}/polls?status=open`)
+  const [saved, setSaved] = useState({}) // poll_id -> true once answered on this page
+  const { reload } = open
+
+  useEffect(
+    () =>
+      connectCourse(poll.course_id, (msg) => {
+        if (msg.type === 'poll_opened' || msg.type === 'poll_closed') reload()
+      }),
+    [poll.course_id, reload],
+  )
+
+  if (open.error) return <ErrorBox error={open.error} />
+  if (!open.data) return <Loading />
+  const questions = open.data
+    .filter((p) => p.session_id === poll.session_id)
+    .sort((a, b) => a.position - b.position)
+
+  if (!questions.length) {
+    return (
+      <div className="card empty">
+        <h2>{Object.keys(saved).length ? 'Thanks, the poll has closed' : 'This poll has closed'}</h2>
+        <p>
+          Your answers and marks are in your <Link to={`/courses/${poll.course_id}`}>course history</Link>.
+        </p>
+      </div>
+    )
+  }
+  const answered = questions.filter((p) => p.my_response || saved[p.id]).length
+  return (
+    <>
+      {questions.length > 1 && (
+        <div className="alert alert-info">
+          {questions.length} questions · {answered} answered. You can change answers until each question closes.
+        </div>
+      )}
+      {questions.map((p, i) => (
+        <div className="card" key={p.id}>
+          <div className="card-head">
+            <h2>{questions.length > 1 ? `Question ${i + 1}` : `Poll ${p.access_code}`}</h2>
+            <span className="badge badge-open">● Open</span>
+          </div>
+          <AnswerForm poll={p} onSaved={() => setSaved((s) => ({ ...s, [p.id]: true }))} />
+        </div>
+      ))}
+    </>
+  )
+}
+
 function JoinedPoll({ code }) {
   const found = useApi(`/polls/by-code/${encodeURIComponent(code)}`)
-  const [closed, setClosed] = useState(null) // the poll after it closes
   const poll = found.data
-
-  useEffect(() => {
-    if (!poll) return undefined
-    return connectCourse(poll.course_id, (msg) => {
-      if (msg.type === 'poll_closed' && msg.poll_id === poll.id) {
-        api.get(`/polls/${poll.id}`).then(setClosed, () => {})
-      }
-    })
-  }, [poll])
 
   if (found.error) {
     const message =
@@ -66,29 +108,9 @@ function JoinedPoll({ code }) {
   if (!poll) return <Loading />
   if (poll.question.answer_revealed && poll.status === 'open') {
     // instructors and TAs get the classroom view
-    return <Navigate to={`/polls/${poll.id}`} replace />
+    return <Navigate to={`/courses/${poll.course_id}/live`} replace />
   }
-  if (closed) {
-    return (
-      <div className="card">
-        <div className="card-head">
-          <h2>This poll has closed</h2>
-          <Mark response={closed.my_response} />
-        </div>
-        <QuestionBody question={closed.question} />
-        <AnswerKey question={closed.question} />
-      </div>
-    )
-  }
-  return (
-    <div className="card">
-      <div className="card-head">
-        <h2>Poll {poll.access_code}</h2>
-        <span className="badge badge-open">● Open</span>
-      </div>
-      <AnswerForm poll={poll} />
-    </div>
-  )
+  return <LectureQuestions poll={poll} />
 }
 
 export default function JoinPage() {
