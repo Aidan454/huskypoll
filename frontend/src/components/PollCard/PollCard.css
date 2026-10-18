@@ -2,11 +2,11 @@
     border: 1px solid;
     border-radius: 10px;
     margin-inline: auto;
+    margin-block: 0.5em;
     background-color: var(--color-white);
     display: inline-block;
     position: relative;
     width: 20em;
-
 }
 
 #poll-name {
@@ -27,4 +27,28 @@
     bottom: 1em;
     display: flex;
     gap: 0.25em
+}
+
+#hidden-btn-on, #hidden-btn-off, #open-btn-on, #open-btn-off {
+    background-color: #e9e8ee;
+}
+
+#play-btn-off {
+    background-color: var(--color-blue-accent);
+}
+
+#play-btn-on {
+    background-color: rgb(204, 42, 13);
+}
+
+#play-btn-img {
+    filter: invert(1);
+}
+
+#play-btn-on:hover, #play-btn-off:hover {
+    filter: saturate(0.6);
+}
+
+#hidden-btn-off:hover, #open-btn-off:hover {
+    background-color: #f2f1f7;
 }
