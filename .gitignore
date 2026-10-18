@@ -9,3 +9,6 @@ __pycache__/
 media/
 
 /*.csv
+
+# Docker dev data (database + uploaded images)
+backend/data/

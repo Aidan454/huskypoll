@@ -1,16 +1,21 @@
-FROM python:3.13-slim
+# HuskyPoll backend for local development (used by compose.yml at the repo root).
+# The source folder is mounted over /app by compose, so code edits reload instantly.
+FROM python:3.12-slim
 
-WORKDIR /code
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    HUSKYPOLL_DB=/data/huskypoll.db \
+    HUSKYPOLL_MEDIA_DIR=/data/media
 
-ENV HUSKYPOLL_DB="/data/huskypoll.db" \
-    HUSKYPOLL_MEDIA_DIR="/data/media"
-
-COPY ./requirements.txt /code/requirements.txt
-
-RUN python -m pip install --no-cache-dir -r requirements.txt
-
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
+RUN mkdir -p /data
 
 EXPOSE 8000
 
-CMD ["uvicorn", "huskypoll_api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# 1. bring the database up to date (creates it on first run)
+# 2. start the API on 0.0.0.0 so it's reachable from outside the container,
+#    with --reload so saving a .py file restarts it
+CMD ["sh", "-c", "python -m alembic upgrade head && exec python -m uvicorn huskypoll_api.main:app --host 0.0.0.0 --port 8000 --reload"]

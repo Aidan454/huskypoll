@@ -23,7 +23,7 @@ domain under different paths without sharing logins.
 | HUSKYPOLL_SECRET_KEY        | (random each start)          | Signs login cookies - MUST be set in production |
 | HUSKYPOLL_CAS_URL           | https://login.uconn.edu/cas  | UConn CAS server (confirm with ITS) |
 | HUSKYPOLL_DEV_LOGIN         | 0                            | 1 = enable /auth/dev-login (NEVER in production) |
-| HUSKYPOLL_CORS_ORIGINS      | (none)                       | Extra frontend origins allowed to call the API |
+| HUSKYPOLL_CORS_ORIGINS      | (none)                       | Extra origins allowed to call the API (FRONTEND_URL's is added automatically; dev login also allows any localhost port) |
 | HUSKYPOLL_ADMIN_NETIDS      | (none)                       | Comma-separated NetIDs made admins at login |
 | HUSKYPOLL_INSTRUCTOR_NETIDS | (none)                       | Comma-separated NetIDs made (at least) instructors at login |
 | HUSKYPOLL_SECURE_COOKIES    | 0                            | 1 = cookies only over HTTPS (set in production) |
@@ -82,6 +82,13 @@ class Settings:
         """Absolute URL of a frontend page: frontend_link('/join/ABCDE')."""
         return f"{self.frontend_url}/{path.lstrip('/')}"
 
+    @property
+    def cors_origin_regex(self) -> Optional[str]:
+        """With the developer login on, any http://localhost:<port> or 127.0.0.1:<port> page may
+        call the API (Vite on 5173, 5174, 3000 ...), so local frontends work without extra setup.
+        Off in production, where only FRONTEND_URL / HUSKYPOLL_CORS_ORIGINS are allowed."""
+        return r"^http://(localhost|127\.0\.0\.1)(:\d+)?$" if self.dev_login else None
+
     def __post_init__(self) -> None:
         for name in ("site_url", "public_url", "frontend_url"):
             value = getattr(self, name).rstrip("/")
@@ -104,6 +111,13 @@ class Settings:
             self.public_url = f"{self.site_url}/api"
         if not self.frontend_url:
             self.frontend_url = self.site_url
+        # A frontend on a different address (e.g. the Vite dev server on localhost:5173
+        # calling the API on localhost:8000) must be allowed to call the API with cookies.
+        front = urlsplit(self.frontend_url)
+        front_origin = f"{front.scheme}://{front.netloc}"
+        api = urlsplit(self.public_url)
+        if front_origin != f"{api.scheme}://{api.netloc}" and front_origin not in self.cors_origins:
+            self.cors_origins = [*self.cors_origins, front_origin]
         if self.frontend_dist is not None:
             self.frontend_dist = Path(self.frontend_dist)
             if not self.public_url.startswith(self.site_url + "/"):

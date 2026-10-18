@@ -8,5 +8,22 @@
 - Database: [SQLite](https://www.sqlite.org/docs.html)
 
 ## Docker
-To run docker containers, use `docker compose up -d` from root
+To run docker containers, use `docker compose up -d --build` from root
 To stop the containers, use `docker compose down`
+
+| What | Address |
+| --- | --- |
+| Frontend (Vite) | http://localhost:5173 |
+| Backend API | http://localhost:8000/api |
+| API docs (try every endpoint) | http://localhost:8000/api/docs |
+
+- The frontend talks to the backend through the API at `http://localhost:8000/api`
+  (available to frontend code as `import.meta.env.VITE_API_BASE`). Send cookies with
+  every request: `fetch(url, { credentials: "include" })`.
+- Development login: `POST /api/auth/dev-login` with
+  `{"email": "pat.prof@uconn.edu", "net_id": "prf00001", "role": "instructor"}`.
+- The database and uploaded images are kept in `backend/data/` (not committed).
+  To start over: `docker compose down`, delete `backend/data`, `docker compose up -d`.
+- Backend code changes reload automatically. After pulling new backend code with a new
+  database migration, just restart: `docker compose restart backend` (migrations run on start).
+- Logs: `docker compose logs -f backend` (or `frontend`).
