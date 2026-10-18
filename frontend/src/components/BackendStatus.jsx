@@ -58,6 +58,7 @@ export default function BackendStatus() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- first check on mount
     check();
   }, [check]);
 
