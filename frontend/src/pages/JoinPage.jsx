@@ -59,6 +59,9 @@ function SharedResults({ poll, liveResults }) {
  */
 function LectureQuestions({ poll }) {
   const asked = useApi(`/courses/${poll.course_id}/polls?session_id=${poll.session_id}`)
+  // people who joined with the code but aren't on the roster can't open the course
+  const course = useApi(`/courses/${poll.course_id}`)
+  const onRoster = Boolean(course.data)
   const [shared, setShared] = useState({}) // poll_id -> results the instructor showed
   const { reload } = asked
 
@@ -114,8 +117,14 @@ function LectureQuestions({ poll }) {
         )}
       </div>
       <div className="alert alert-info">
-        Waiting for your instructor. If there&apos;s another question it will appear here. Your answers are saved, and
-        you can find them later in your <Link to={`/courses/${poll.course_id}`}>course history</Link>.
+        Waiting for your instructor. If there&apos;s another question it will appear here. Your answers are saved
+        {onRoster ? (
+          <>
+            , and you can find them later in your <Link to={`/courses/${poll.course_id}`}>course history</Link>.
+          </>
+        ) : (
+          '.'
+        )}
       </div>
     </>
   )

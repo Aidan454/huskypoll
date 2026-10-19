@@ -32,7 +32,12 @@ function ResponsesTable({ poll }) {
                 {list.map((r) => (
                   <tr key={r.user.id}>
                     <td>
-                      {r.user.display_name} <span className="muted small">{r.user.net_id}</span>
+                      {r.user.display_name} <span className="muted small">{r.user.net_id}</span>{' '}
+                      {!r.on_roster && (
+                        <span className="badge badge-amber" title="Joined with the code; not counted in grades">
+                          Not on roster
+                        </span>
+                      )}
                     </td>
                     <td>{String(answerText(poll.question, r))}</td>
                     <td>{r.is_correct === null ? <span className="muted">—</span> : r.is_correct ? '✓' : '✗'}</td>

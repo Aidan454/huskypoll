@@ -683,12 +683,17 @@ def submit_response(
     text_answer: Optional[str] = None,
     numeric_answer: Optional[float] = None,
     ip_address: Optional[str] = None,
+    require_enrollment: bool = True,
 ) -> Response:
-    """Record (or replace) a student's answer. The returned row is the confirmation."""
+    """Record (or replace) a student's answer. The returned row is the confirmation.
+
+    require_enrollment=False lets someone who isn't on the roster answer (they joined
+    with the poll's code). Their answer counts in the results but not in grades,
+    which only cover the roster."""
     course = poll.session.course
     if poll.status != "open":
         raise HuskyPollError("this poll is closed")
-    if not is_enrolled(db, course, student):
+    if require_enrollment and not is_enrolled(db, course, student):
         raise NotAllowed("you are not on the roster for this course")
 
     q = poll.question

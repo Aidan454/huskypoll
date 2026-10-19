@@ -47,8 +47,25 @@ def _my_response(db: Session, poll: Poll, user: User) -> Optional[Response]:
     return db.scalar(select(Response).where(Response.poll_id == poll.id, Response.user_id == user.id))
 
 
-def _role_for_poll(db: Session, poll: Poll, user: User) -> str:
-    return require_member(db, poll.session.course, user)
+# Anyone logged in who has the code may answer that lecture's poll without being on the
+# roster. The lectures they joined are remembered in their (signed) session cookie; they
+# get the poll pages only, never the course, its history or grades.
+JOINED_KEY = "joined_sessions"
+
+
+def _remember_join(request: Request, poll: Poll) -> None:
+    joined = [sid for sid in request.session.get(JOINED_KEY, []) if sid != poll.session_id]
+    request.session[JOINED_KEY] = (joined + [poll.session_id])[-20:]
+
+
+def _poll_role(db: Session, request: Request, poll: Poll, user: User) -> str:
+    """The user's course role, or 'guest' if they joined this poll's lecture with its code."""
+    role = role_in(db, poll.session.course, user)
+    if role is not None:
+        return role
+    if poll.session_id in request.session.get(JOINED_KEY, []):
+        return "guest"
+    raise HTTPException(404, "Poll not found")
 
 
 def _announce_open(request: Request, settings: Settings, poll: Poll) -> None:
@@ -132,11 +149,16 @@ def quick_poll(course_id: int, body: s.QuickPoll, request: Request, db: Session 
 
 @router.get("/courses/{course_id}/polls", response_model=list[s.PollOut],
             summary="Polls in a course (students: includes their own answers)")
-def list_polls(course_id: int, status: Optional[Literal["open", "closed"]] = None, session_id: Optional[int] = None,
-               db: Session = Depends(get_db), user: User = Depends(current_user),
+def list_polls(request: Request, course_id: int, status: Optional[Literal["open", "closed"]] = None,
+               session_id: Optional[int] = None, db: Session = Depends(get_db), user: User = Depends(current_user),
                settings: Settings = Depends(get_settings)):
     course = course_or_404(db, course_id)
-    role = require_member(db, course, user)
+    role = role_in(db, course, user)
+    if role is None:
+        # people who joined with a code see only that lecture's poll
+        if not session_id or session_id not in request.session.get(JOINED_KEY, []):
+            raise HTTPException(404, "Course not found")
+        role = "guest"
     q = select(Poll).join(LectureSession).where(LectureSession.course_id == course.id)
     if status:
         q = q.where(Poll.status == status)
@@ -152,23 +174,23 @@ def list_polls(course_id: int, status: Optional[Literal["open", "closed"]] = Non
 
 @router.get("/polls/by-code/{access_code}", response_model=s.PollOut,
             summary="Find an open poll from the code a student typed or scanned")
-def poll_by_code(access_code: str, db: Session = Depends(get_db), user: User = Depends(current_user),
-                 settings: Settings = Depends(get_settings)):
+def poll_by_code(access_code: str, request: Request, db: Session = Depends(get_db),
+                 user: User = Depends(current_user), settings: Settings = Depends(get_settings)):
     poll = svc.find_open_poll_by_code(db, access_code) or svc.find_poll_set_by_code(db, access_code)
     if poll is None:
         raise HTTPException(404, "No open poll with that code")
     role = role_in(db, poll.session.course, user)
-    if role is None:
-        raise HTTPException(403, "You are not on the roster for this course")
+    if role is None:  # not on the roster: the code lets them into this poll only
+        _remember_join(request, poll)
     instructor = role in INSTRUCTOR_ROLES
     return poll_out(settings, poll, is_instructor=instructor, my_response=None if instructor else _my_response(db, poll, user))
 
 
 @router.get("/polls/{poll_id}", response_model=s.PollOut)
-def get_poll(poll_id: int, db: Session = Depends(get_db), user: User = Depends(current_user),
+def get_poll(poll_id: int, request: Request, db: Session = Depends(get_db), user: User = Depends(current_user),
              settings: Settings = Depends(get_settings)):
     poll = poll_or_404(db, poll_id)
-    instructor = _role_for_poll(db, poll, user) in INSTRUCTOR_ROLES
+    instructor = _poll_role(db, request, poll, user) in INSTRUCTOR_ROLES
     if poll.status == "draft" and not instructor:
         raise HTTPException(404, "Poll not found")
     return poll_out(settings, poll, is_instructor=instructor, my_response=None if instructor else _my_response(db, poll, user))
@@ -209,9 +231,9 @@ def regrade(poll_id: int, db: Session = Depends(get_db), user: User = Depends(cu
 
 @router.get("/polls/{poll_id}/results", response_model=s.PollResults,
             summary="Vote counts (students only when the instructor shows results)")
-def results(poll_id: int, db: Session = Depends(get_db), user: User = Depends(current_user)):
+def results(poll_id: int, request: Request, db: Session = Depends(get_db), user: User = Depends(current_user)):
     poll = poll_or_404(db, poll_id)
-    role = _role_for_poll(db, poll, user)
+    role = _poll_role(db, request, poll, user)
     if role not in INSTRUCTOR_ROLES and not poll.show_results:
         raise HTTPException(403, "The instructor hasn't shared the results")
     return svc.poll_results(db, poll)
@@ -222,7 +244,9 @@ def list_responses(poll_id: int, db: Session = Depends(get_db), user: User = Dep
     poll = poll_or_404(db, poll_id)
     require_instructor(db, poll.session.course, user)
     rows = db.scalars(select(Response).where(Response.poll_id == poll.id).order_by(Response.submitted_at)).all()
-    return [{"user": user_out(r.user).model_dump(), **my_response_out(r, reveal=True).model_dump(mode="json")}
+    course = poll.session.course
+    return [{"user": user_out(r.user).model_dump(), "on_roster": svc.is_enrolled(db, course, r.user),
+             **my_response_out(r, reveal=True).model_dump(mode="json")}
             for r in rows]
 
 
@@ -249,11 +273,11 @@ def poll_qr(poll_id: int, fmt: Literal["svg", "png"], scale: int = 10, db: Sessi
 def submit(poll_id: int, body: s.ResponseIn, request: Request, db: Session = Depends(get_db),
            user: User = Depends(current_user)):
     poll = poll_or_404(db, poll_id)
-    if role_in(db, poll.session.course, user) is None:
-        raise HTTPException(403, "You are not on the roster for this course")
+    role = _poll_role(db, request, poll, user)
     resp = svc.submit_response(db, poll, user, option_ids=body.option_ids, text_answer=body.text_answer,
                                numeric_answer=body.numeric_answer,
-                               ip_address=request.client.host if request.client else None)
+                               ip_address=request.client.host if request.client else None,
+                               require_enrollment=role != "guest")
     _announce_results(request, db, poll)
     db.refresh(resp)
     return my_response_out(resp, reveal=False)
@@ -295,11 +319,19 @@ async def course_updates(websocket: WebSocket, course_id: int):
         await websocket.close(code=4401)
         return
 
+    joined = websocket.session.get(JOINED_KEY, [])
+
     def lookup():
         with websocket.app.state.session_factory() as db:
             user = db.get(User, user_id)
             course = db.get(Course, course_id) if user else None
-            return role_in(db, course, user) if course else None
+            if course is None:
+                return None
+            role = role_in(db, course, user)
+            if role is None and joined and db.scalar(select(LectureSession.id).where(
+                    LectureSession.course_id == course_id, LectureSession.id.in_(joined))):
+                role = "guest"  # joined a poll in this course with its code
+            return role
 
     role = await asyncio.to_thread(lookup)
     if role is None:

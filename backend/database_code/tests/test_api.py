@@ -240,8 +240,7 @@ def test_permissions(app, lecture):
     assert ann.get(f"/courses/{cid}/export/huskyct.csv").status_code == 403
     poll = prof.post(f"/courses/{cid}/polls", json={"question_id": q["id"]}).json()
     r = outsider.post(f"/polls/{poll['id']}/responses", json={"option_ids": [q["options"][0]["id"]]})
-    assert r.status_code == 403
-    assert outsider.get(f"/polls/by-code/{poll['access_code']}").status_code == 403
+    assert r.status_code == 404  # not without the code (see test_anyone_with_the_code_can_answer)
     # TA can run polls but can't add instructors or delete the course
     assert ta.post(f"/polls/{poll['id']}/close").status_code == 200
     assert ta.post(f"/courses/{cid}/instructors", json={"identifier": "abc12345"}).status_code == 403
@@ -625,3 +624,44 @@ def test_poll_set_needs_an_instructor_and_questions(lecture):
     assert prof.post(f"/courses/{cid}/polls/set", json={"question_ids": []}).status_code == 422
     r = prof.post(f"/courses/{cid}/polls/set", json={"question_ids": [q["id"]], "open_first": False})
     assert r.json()[0]["status"] == "draft"
+
+
+# --- joining with the code without being on the roster ----------------------------
+
+def test_anyone_with_the_code_can_answer(app, lecture):
+    prof, ann, cid, q = lecture["prof"], lecture["ann"], lecture["cid"], lecture["q"]
+    visitor = login(app, "vis12345@uconn.edu")
+    poll = prof.post(f"/courses/{cid}/polls", json={"question_id": q["id"]}).json()
+    right = next(o["id"] for o in q["options"] if o["is_correct"])
+
+    # without the code: nothing
+    assert visitor.get(f"/polls/{poll['id']}").status_code == 404
+    assert visitor.get(f"/courses/{cid}/polls", params={"session_id": poll["session_id"]}).status_code == 404
+
+    # with the code: this lecture's poll, and nothing else in the course
+    found = visitor.get(f"/polls/by-code/{poll['access_code']}")
+    assert found.status_code == 200 and found.json()["question"]["options"][0].get("is_correct") is None
+    assert visitor.post(f"/polls/{poll['id']}/responses", json={"option_ids": [right]}).status_code == 200
+    assert len(visitor.get(f"/courses/{cid}/polls", params={"session_id": poll["session_id"]}).json()) == 1
+    assert visitor.get(f"/courses/{cid}/polls").status_code == 404
+    assert visitor.get(f"/courses/{cid}").status_code == 404
+    assert visitor.get(f"/courses/{cid}/history").status_code == 404
+    assert visitor.get("/courses").json() == []
+    with visitor.websocket_connect(f"/ws/courses/{cid}") as ws:
+        assert ws.receive_json()["role"] == "guest"
+
+    # results and the answer key once closed
+    assert visitor.get(f"/polls/{poll['id']}/results").status_code == 403  # not shared yet
+    prof.patch(f"/polls/{poll['id']}", json={"show_results": True})
+    assert visitor.get(f"/polls/{poll['id']}/results").json()["responses"] == 1
+    prof.post(f"/polls/{poll['id']}/close")
+    closed = visitor.get(f"/polls/{poll['id']}").json()
+    assert closed["my_response"]["is_correct"] is True
+
+    # the instructor sees who wasn't on the roster; grades cover the roster only
+    rows = prof.get(f"/polls/{poll['id']}/responses").json()
+    assert [r["on_roster"] for r in rows] == [False]
+    totals = prof.get(f"/courses/{cid}/participation").json()
+    assert "vis12345" not in [t["net_id"] for t in totals] and len(totals) == 2
+    ann_row = next(t for t in totals if t["net_id"] == "aab11111")
+    assert ann_row["answered"] == 0
