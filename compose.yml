@@ -9,7 +9,7 @@
 services:
   backend:
     build:
-      context: ./backend/database_code
+      context: ./backend
       dockerfile: Dockerfile.dev
     environment:
       HUSKYPOLL_DEV_LOGIN: "1"                         # dev-only login (POST /api/auth/dev-login)
@@ -21,7 +21,7 @@ services:
       WATCHFILES_FORCE_POLLING: "true"                 # code reload works with Windows/Mac file mounts
     volumes:
       - ./backend/data:/data                           # database + uploaded images (kept between runs)
-      - ./backend/database_code:/app                   # live code: edits reload the server
+      - ./backend:/code                                # live code: edits reload the server
     ports:
       - "8000:8000"
     healthcheck:

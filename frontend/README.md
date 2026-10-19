@@ -1,14 +1,14 @@
 # HuskyPoll frontend
 
 React + Vite pages for HuskyPoll. Everything talks to the backend API in
-`Backend/database_code` (see its README for the full API).
+`backend` (see its README for the full API).
 
 ## Run it
 
 ```powershell
-# Terminal 1, in Backend/database_code/
+# Terminal 1, in backend/
 $env:HUSKYPOLL_DEV_LOGIN="1"; $env:HUSKYPOLL_SITE_URL="http://localhost:5173"
-python -m uvicorn huskypoll_api.main:app --reload
+python -m uvicorn app.main:app --reload
 
 # Terminal 2, in frontend/
 npm install
@@ -17,7 +17,7 @@ npm run dev
 
 Open http://localhost:5173. Vite forwards `/api` (live updates included) to the
 backend on port 8000. With Docker, `docker compose up` sets `VITE_API_BASE` instead.
-For demo data run `python -m huskypoll_db seed-demo` in the backend folder, then use the
+For demo data run `python -m app.database seed-demo` in the backend folder, then use the
 Instructor / TA / Admin / Student buttons on the login page.
 
 ## Pages
