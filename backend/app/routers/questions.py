@@ -6,6 +6,9 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
+from sqlalchemy import or_, select
+from sqlalchemy.orm import Session
+
 from app.database import services as svc
 from app.database.models import (
     Course,
@@ -15,8 +18,6 @@ from app.database.models import (
     QuestionBank,
     User,
 )
-from sqlalchemy import or_, select
-from sqlalchemy.orm import Session
 
 from .. import schemas as s
 from ..config import Settings

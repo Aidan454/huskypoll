@@ -1,6 +1,9 @@
 """Turn database rows into response models, applying who-may-see-what rules."""
 from __future__ import annotations
 
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
+
 from app.database.models import (
     Course,
     CourseInstructor,
@@ -13,8 +16,6 @@ from app.database.models import (
     Response,
     User,
 )
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session
 
 from . import schemas as s
 from .config import Settings

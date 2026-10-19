@@ -4,10 +4,11 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
-from app.database import services as svc
-from app.database.models import User
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
+
+from app.database import services as svc
+from app.database.models import User
 
 from .. import schemas as s
 from ..deps import current_user, get_db, require_admin

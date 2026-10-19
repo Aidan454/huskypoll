@@ -5,6 +5,8 @@ from collections.abc import Callable, Iterator
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request, status
+from sqlalchemy.orm import Session
+
 from app.database import services as svc
 from app.database.models import (
     Course,
@@ -14,7 +16,6 @@ from app.database.models import (
     Question,
     User,
 )
-from sqlalchemy.orm import Session
 
 from .config import Settings
 

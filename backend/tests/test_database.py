@@ -6,8 +6,8 @@ import io
 from pathlib import Path
 
 import pytest
-from app.database.database import init_db, make_engine, make_session_factory
 from app.database import services as svc
+from app.database.database import init_db, make_engine, make_session_factory
 from app.database.export import participation_totals, write_huskyct_csv
 from app.database.models import (
     EventLog,
@@ -115,7 +115,7 @@ def test_studentadmin_import(db, course_setup):
 
 def test_drop_missing_keeps_history(db, course_setup):
     _prof, course, _s1, s2, _q = course_setup
-    from huskypoll_db.roster import import_records
+    from app.database.roster import import_records
     res = import_records(db, course, [{"net_id": "abc12345"}], drop_missing=True)
     assert res.dropped == 1
     assert not svc.is_enrolled(db, course, s2)

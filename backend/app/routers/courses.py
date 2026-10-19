@@ -8,6 +8,9 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import Response as RawResponse
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from app.database import services as svc
 from app.database.export import participation_totals, per_session_csv, write_huskyct_csv
 from app.database.models import (
@@ -23,8 +26,6 @@ from app.database.roster import (
     import_records,
     import_studentadmin_xlsx,
 )
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from .. import schemas as s
 from ..deps import (
