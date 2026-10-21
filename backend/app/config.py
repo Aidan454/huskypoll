@@ -82,7 +82,7 @@ class Settings:
         return f"{self.frontend_url}/{path.lstrip('/')}"
 
     @property
-    def cors_origin_regex(self) -> Optional[str]:
+    def cors_origin_regex(self) -> str | None:
         """With the developer login on, any http://localhost:<port> or 127.0.0.1:<port> page may
         call the API (Vite on 5173, 5174, 3000 ...), so local frontends work without extra setup.
         Off in production, where only FRONTEND_URL / HUSKYPOLL_CORS_ORIGINS are allowed."""

@@ -14,9 +14,9 @@ from app.database.database import init_db, make_engine, make_session_factory
 from app.database.services import HuskyPollError, NotAllowed
 
 from .config import Settings
-from .site import HuskyPollSite
 from .routers import auth, courses, polls, questions, users
 from .routers.auth import validate_cas_ticket
+from .site import HuskyPollSite
 
 log = logging.getLogger("huskypoll")
 
