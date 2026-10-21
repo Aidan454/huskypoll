@@ -12,3 +12,6 @@ certificates/
 .ruff_cache
 
 /*.csv
+
+# Docker dev data (database + uploaded images)
+backend/data/

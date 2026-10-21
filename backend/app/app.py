@@ -14,9 +14,9 @@ from app.database.database import init_db, make_engine, make_session_factory
 from app.database.services import HuskyPollError, NotAllowed
 
 from .config import Settings
+from .site import HuskyPollSite
 from .routers import auth, courses, polls, questions, users
 from .routers.auth import validate_cas_ticket
-from .site import HuskyPollSite
 
 log = logging.getLogger("huskypoll")
 
@@ -76,8 +76,9 @@ def create_app(settings: Settings | None = None) -> HuskyPollSite:
     app.add_middleware(SessionMiddleware, secret_key=settings.secret_key, session_cookie="huskypoll_session",
                        max_age=14 * 24 * 3600, path=settings.base_path or "/", same_site="lax",
                        https_only=settings.secure_cookies)
-    if settings.cors_origins:
-        app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins, allow_credentials=True,
+    if settings.cors_origins or settings.cors_origin_regex:
+        app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins,
+                           allow_origin_regex=settings.cors_origin_regex, allow_credentials=True,
                            allow_methods=["*"], allow_headers=["*"])
 
     @app.exception_handler(NotAllowed)
