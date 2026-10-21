@@ -99,8 +99,7 @@ export default function InstructorCourses() {
 
           {/* Render one card for each course */}
           <ul>
-            {courses.map(course => (
-              
+            {courses.map(course => (       
               <div className="cm-card">
                 <button key={course.id} className="cm-link" onClick={() => navigate('/Polls')}>   
                   <div>
@@ -109,7 +108,7 @@ export default function InstructorCourses() {
                   </div>
                 </button>
                   {/* Three-dot options button */}
-                <button
+                <button //overlay element
                   type="button" className="cm-more" aria-label={`Options for ${course.code}`} aria-expanded={openMenuId === course.id}
                   onClick={event => toggleMenu(event, course.id)} onKeyDown={event => {
                     if (event.key === 'Escape') {closeMenu()};

@@ -3,7 +3,7 @@
 html,
 body {
   margin: 0;
-  min-width: 320px;
+  min-width: 30em;
 }
 
 body {
@@ -20,6 +20,7 @@ body {
 
 }
 
+/* All have cm to distinguish these are components for course managment
 /* Outer dark frame */
 .cm-page {
   min-height: 100vh;
@@ -107,32 +108,24 @@ body {
 /* Course list and individual cards */
 .cm-list {
   display: grid;
-  gap: 13px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
 }
 
 .cm-card {
   position: relative;
-  min-height: 85px;
-  font-size: 14px;
   display: flex;
   align-items: center;
-  gap: 12px;
-  border: 1px solid #000000;
+  margin-bottom: 1em;
+  border: 0.05em solid #000000;
   background: #d9d9d9;
 }
 
 .cm-link {
-  min-height: 85px;
-  font-size: 14px;
-  width: 30em;
+  width: 100%;
   display: flex;
   padding: 2em;
-  align-items: left;
   border: 1px solid black;
   background: #d9d9d9;
+  color:#000000;
   z-index: 10;
 }
 
@@ -145,12 +138,8 @@ body {
 
 /* Three-dot button */
 .cm-more {
-  width: 32px;
-  height: 32px;
-  border: 0;
   position: absolute;
   right: 1em;
-  top: 50%;
   background: transparent;
   font-size: 21px !important;
   line-height: 16px;
@@ -164,7 +153,7 @@ body {
   position: absolute;
   top: 64px;
   right: 12px;
-  z-index: 2;
+  z-index: 30;
   width: 130px;
   padding: 4px;
   border: 1px solid #aaa;
@@ -247,22 +236,3 @@ body {
   text-align: center;
 }
 
-/* Adjust spacing for smaller screens */
-@media (max-width: 520px) {
-  .cm-page {
-    padding: 16px 12px;
-  }
-
-  .cm-main {
-    width: calc(100% - 32px);
-    padding-top: 32px;
-  }
-
-  .cm-heading h1 {
-    margin-left: 0;
-  }
-
-  .cm-card {
-    padding-left: 14px;
-  }
-}
