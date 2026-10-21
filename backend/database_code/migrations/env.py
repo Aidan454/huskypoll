@@ -23,7 +23,7 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 # Read at run time (not import time) so callers can point Alembic at any file.
-DB_PATH = os.environ.get("HUSKYPOLL_DB", "huskypoll.db")
+DB_PATH = os.environ.get("DB", "huskypoll.db")
 
 
 def _include_object(obj, name, type_, reflected, compare_to):

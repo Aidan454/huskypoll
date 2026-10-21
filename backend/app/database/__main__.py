@@ -33,7 +33,7 @@ def _stamp_alembic_head(db_path: str) -> None:
     from alembic import command
     from alembic.config import Config
 
-    os.environ["HUSKYPOLL_DB"] = str(Path(db_path).resolve())
+    os.environ["DB"] = str(Path(db_path).resolve())
     command.stamp(Config(str(ini)), "head")
 
 

@@ -5,7 +5,7 @@
 // It calls:
 //   GET  /api/health          -> the server is up and can reach the database
 //   GET  /api/me              -> who is logged in (401 = nobody yet, still a valid answer)
-//   POST /api/auth/dev-login  -> optional button; only works with HUSKYPOLL_DEV_LOGIN=1
+//   POST /api/auth/dev-login  -> optional button; only works with DEV_LOGIN=1
 //
 // The API address comes from VITE_API_BASE (set in compose.yml), falling back to
 // http://localhost:8000/api for `npm run dev` without Docker.
@@ -70,7 +70,7 @@ export default function BackendStatus() {
         }),
       });
       if (r.status === 404) {
-        setMe({ state: "error", detail: "Developer login is off (set HUSKYPOLL_DEV_LOGIN=1 on the backend)" });
+        setMe({ state: "error", detail: "Developer login is off (set DEV_LOGIN=1 on the backend)" });
         return;
       }
       if (!r.ok) {

@@ -12,7 +12,7 @@ The HuskyPoll backend has two parts:
 "run these commands from database_code/"
 
 python -m pip install -r requirements.txt
- $env:HUSKYPOLL_DEV_LOGIN="1"
+ $env:DEV_LOGIN="1"
 python -m uvicorn huskypoll_api.main:app --reload
 
 ## Run it (with the frontend)
@@ -23,7 +23,7 @@ The repository has two folders side by side, `frontend/` (React + Vite) and
 ```powershell
 # Terminal 1, in database_code/   (Mac/Linux: export VAR=value instead of $env:)
 pip install -r requirements.txt
-$env:HUSKYPOLL_DEV_LOGIN="1"; $env:HUSKYPOLL_SITE_URL="http://localhost:5173"
+$env:DEV_LOGIN="1"; $env:SITE_URL="http://localhost:5173"
 python -m uvicorn huskypoll_api.main:app --reload
 
 # Terminal 2, in frontend/
@@ -34,7 +34,7 @@ npm run dev
 Open **http://localhost:5173**. Vite forwards everything under `/api`,
 including live updates, to the backend on port 8000. The browser therefore
 sees one address, and login cookies work without any cross-site setup.
-`HUSKYPOLL_SITE_URL` tells the backend which address people use, so the join
+`SITE_URL` tells the backend which address people use, so the join
 links, QR codes and login redirects it creates point at the frontend.
 
 The API's interactive docs are at **http://localhost:5173/api/docs** (or
@@ -43,7 +43,7 @@ tried in the browser. Log in first with `POST /auth/dev-login`, for example
 `{"email": "pat.prof@uconn.edu", "net_id": "prf00001", "role": "instructor"}`.
 The database is created on first start.
 
-`HUSKYPOLL_DEV_LOGIN=1` lets anyone log in as anyone, with any role. It's for
+`DEV_LOGIN=1` lets anyone log in as anyone, with any role. It's for
 development and testing until UConn ITS registers the app for CAS/Entra login,
 and must never be turned on for a real course.
 
@@ -56,7 +56,7 @@ python -m huskypoll_db init                                                    #
 python -m pytest -q                                                            # 100 tests (database + API)
 ```
 
-`huskypoll.db` is created in the current folder. Set `HUSKYPOLL_DB=/path/to/file.db`
+`huskypoll.db` is created in the current folder. Set `DB=/path/to/file.db`
 or pass `--db` to use another file.
 
 | Command | What it does |
@@ -109,29 +109,29 @@ All settings are environment variables:
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `HUSKYPOLL_SITE_URL` | `http://localhost:8000` | Full address of the site, **including any path prefix**. Pages at `SITE_URL/`, API at `SITE_URL/api` |
-| `HUSKYPOLL_FRONTEND_DIST` | none | The built frontend (`frontend/dist`). When set, the backend serves the pages too |
-| `HUSKYPOLL_PUBLIC_URL` | `SITE_URL/api` | Full address of the API, only if it isn't `SITE_URL/api` |
-| `HUSKYPOLL_FRONTEND_URL` | `SITE_URL` | Full address of the pages, only if they're served somewhere else |
-| `HUSKYPOLL_SECRET_KEY` | random at each start | Signs login cookies. Set it in production, or logins reset on restart |
-| `HUSKYPOLL_DB` | `huskypoll.db` | Database file |
-| `HUSKYPOLL_MEDIA_DIR` | `media` | Folder for uploaded images |
-| `HUSKYPOLL_CAS_URL` | `https://login.uconn.edu/cas` | UConn CAS server (confirm with ITS) |
-| `HUSKYPOLL_DEV_LOGIN` | `0` | `1` enables `/auth/dev-login`. Never on a real course |
-| `HUSKYPOLL_CORS_ORIGINS` | none | Frontend dev server origins if they differ, e.g. `http://localhost:5173` |
-| `HUSKYPOLL_ADMIN_NETIDS` | none | NetIDs made admins when they log in |
-| `HUSKYPOLL_INSTRUCTOR_NETIDS` | none | NetIDs made (at least) instructors when they log in |
-| `HUSKYPOLL_SECURE_COOKIES` | `0` | `1` sends cookies over HTTPS only (set in production) |
+| `SITE_URL` | `http://localhost:8000` | Full address of the site, **including any path prefix**. Pages at `SITE_URL/`, API at `SITE_URL/api` |
+| `FRONTEND_DIST` | none | The built frontend (`frontend/dist`). When set, the backend serves the pages too |
+| `PUBLIC_URL` | `SITE_URL/api` | Full address of the API, only if it isn't `SITE_URL/api` |
+| `FRONTEND_URL` | `SITE_URL` | Full address of the pages, only if they're served somewhere else |
+| `SECRET_KEY` | random at each start | Signs login cookies. Set it in production, or logins reset on restart |
+| `DB` | `huskypoll.db` | Database file |
+| `MEDIA_DIR` | `media` | Folder for uploaded images |
+| `CAS_URL` | `https://login.uconn.edu/cas` | UConn CAS server (confirm with ITS) |
+| `DEV_LOGIN` | `0` | `1` enables `/auth/dev-login`. Never on a real course |
+| `CORS_ORIGINS` | none | Frontend dev server origins if they differ, e.g. `http://localhost:5173` |
+| `ADMIN_NETIDS` | none | NetIDs made admins when they log in |
+| `INSTRUCTOR_NETIDS` | none | NetIDs made (at least) instructors when they log in |
+| `SECURE_COOKIES` | `0` | `1` sends cookies over HTTPS only (set in production) |
 
 ## Running under a path, not just a domain
 
 The app never assumes it's at the root of a domain. Put the site's full
-address, path included, in `HUSKYPOLL_SITE_URL`:
+address, path included, in `SITE_URL`:
 
 ```
-HUSKYPOLL_SITE_URL=https://huskypoll.cse.uconn.edu                  # domain root
-HUSKYPOLL_SITE_URL=https://huskypoll.cse.uconn.edu/cse1010          # one course
-HUSKYPOLL_SITE_URL=https://huskypoll.cse.uconn.edu/test-version1    # a test copy
+SITE_URL=https://huskypoll.cse.uconn.edu                  # domain root
+SITE_URL=https://huskypoll.cse.uconn.edu/cse1010          # one course
+SITE_URL=https://huskypoll.cse.uconn.edu/test-version1    # a test copy
 ```
 
 That gives you:
@@ -199,11 +199,11 @@ root**, the folder that holds `frontend/` and `database_code/`:
 ```bash
 docker build -f database_code/deploy/Dockerfile.fullstack -t huskypoll .
 docker run -d -p 127.0.0.1:8001:8000 -v huskypoll-cse1010:/data \
-  -e HUSKYPOLL_SITE_URL=https://huskypoll.cse.uconn.edu/cse1010 \
-  -e HUSKYPOLL_SECRET_KEY=... -e HUSKYPOLL_SECURE_COOKIES=1 huskypoll
+  -e SITE_URL=https://huskypoll.cse.uconn.edu/cse1010 \
+  -e SECRET_KEY=... -e SECURE_COOKIES=1 huskypoll
 ```
 
-The same image runs any copy: only `HUSKYPOLL_SITE_URL` and the volume differ.
+The same image runs any copy: only `SITE_URL` and the volume differ.
 `deploy/docker-compose.yml` runs `/cse1010` and `/test-version1` side by side,
 and `deploy/nginx-huskypoll.conf` is the matching nginx setup. For the API
 alone, there's a `Dockerfile` in this folder.
@@ -238,8 +238,8 @@ Every account has one **role**, its account type, in `users.role`:
 
 | Role | What it allows | How someone gets it |
 | --- | --- | --- |
-| `admin` | Everything, in every course; changing roles | `set-role` command, `HUSKYPOLL_ADMIN_NETIDS`, or another admin |
-| `instructor` | Create courses (and run the ones they're in) | An admin, `HUSKYPOLL_INSTRUCTOR_NETIDS`, or being added as a course's instructor |
+| `admin` | Everything, in every course; changing roles | `set-role` command, `ADMIN_NETIDS`, or another admin |
+| `instructor` | Create courses (and run the ones they're in) | An admin, `INSTRUCTOR_NETIDS`, or being added as a course's instructor |
 | `ta` | Write questions and upload images; run polls in courses they're added to | Being added as a course's TA, or an admin |
 | `student` | Answer polls and see history in their courses | Being on a roster |
 | `guest` | Log in; nothing else until added to a course | The default for a new login |
@@ -254,7 +254,7 @@ A graduate student can be a TA in one course and a student in another, so what
 someone may do inside a course is still decided by their role in that course.
 
 **First setup on a new server:** `python -m huskypoll_db set-role abc12345 admin`
-(or set `HUSKYPOLL_ADMIN_NETIDS`). The admin then makes professors instructors
+(or set `ADMIN_NETIDS`). The admin then makes professors instructors
 on the website (`PATCH /users/{id}/role`), or with `set-role NETID instructor`.
 
 ## Rules the database enforces

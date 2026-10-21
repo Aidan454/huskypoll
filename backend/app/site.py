@@ -77,7 +77,7 @@ class FrontendFiles:
         self.site_base = settings.site_base_path
         index = self.dist / "index.html"
         if not index.is_file():
-            raise RuntimeError(f"HUSKYPOLL_FRONTEND_DIST={settings.frontend_dist} has no index.html; "
+            raise RuntimeError(f"FRONTEND_DIST={settings.frontend_dist} has no index.html; "
                                "run `npm run build` in the frontend folder first")
         config = {"basePath": self.site_base, "apiBase": settings.base_path, "siteUrl": settings.site_url,
                   "devLogin": settings.dev_login}

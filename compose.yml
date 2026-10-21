@@ -1,7 +1,10 @@
-# Local development: `docker compose up -d --build` from the repo root.
+# Local development: copy the environment file once, then `docker compose up -d --build`.
+#   cp .env.example .env
+#
 #   Frontend (Vite):  http://localhost:5173
 #   Backend API:      http://localhost:8000/api      (docs: http://localhost:8000/api/docs)
 #
+# All configuration lives in the root .env file (see .env.example for every option).
 # The browser loads the frontend from :5173, and the frontend's code calls the API
 # at http://localhost:8000/api (with credentials: "include" so the login cookie is
 # sent). Those calls come from the browser, so they use localhost, not the
@@ -11,14 +14,8 @@ services:
     build: 
       context: ./backend
       dockerfile: Dockerfile.dev
-    environment:
-      HUSKYPOLL_DEV_LOGIN: "1"                         # dev-only login (POST /api/auth/dev-login)
-      HUSKYPOLL_FRONTEND_URL: http://localhost:5173    # allow the frontend to call the API (CORS) + join/QR links
-      HUSKYPOLL_SITE_URL: http://localhost:8000        # API lives at SITE_URL/api
-      HUSKYPOLL_DB: /data/huskypoll.db
-      HUSKYPOLL_MEDIA_DIR: /data/media
-      HUSKYPOLL_SECRET_KEY: dev-only-not-a-secret      # fixed so logins survive reloads (dev only!)
-      WATCHFILES_FORCE_POLLING: "true"                 # code reload works with Windows/Mac file mounts
+    env_file:
+      - .env
     volumes:
       - ./backend/data:/data                           # database + uploaded images (kept between runs)
       - ./backend/database_code:/app                   # live code: edits reload the server
@@ -34,8 +31,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.dev
-    environment:
-      VITE_API_BASE: http://localhost:8000/api         # where the frontend's code should send API calls
+    env_file:
+      - .env
     ports:
       - "5173:5173"
     depends_on:

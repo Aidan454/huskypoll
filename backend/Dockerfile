@@ -1,9 +1,7 @@
 FROM python:3.13-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    HUSKYPOLL_DB=/data/huskypoll.db \
-    HUSKYPOLL_MEDIA_DIR=/data/media
+    PYTHONUNBUFFERED=1
 
 WORKDIR /app
 

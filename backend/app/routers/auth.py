@@ -116,7 +116,7 @@ def cas_callback(request: Request, ticket: str, db: Annotated[Session, Depends(g
 
 
 @router.post("/auth/dev-login", response_model=s.UserOut,
-             summary="Developer login (only when HUSKYPOLL_DEV_LOGIN=1)")
+             summary="Developer login (only when DEV_LOGIN=1)")
 def dev_login(body: s.DevLogin, request: Request, db: Annotated[Session, Depends(get_db)],
               settings: Annotated[Settings, Depends(get_settings)]):
     if not settings.dev_login:

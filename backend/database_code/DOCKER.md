@@ -50,7 +50,7 @@ You can also test the existing seed command in a separate disposable container:
 docker run --rm huskypoll-db:local python -m huskypoll_db seed-demo --roster samples/studentadmin-template.xlsx
 ```
 
-`HUSKYPOLL_DB` defaults to `/tmp/huskypoll.db`, which the non-root container user
+`DB` defaults to `/tmp/huskypoll.db`, which the non-root container user
 can write. This sample database disappears when the container is removed. These
 commands do not configure persistent storage or connect to an external service.
 
@@ -66,7 +66,7 @@ backend teammate. Then:
 3. Replace the help command with the application's confirmed startup command.
    The server must listen on `0.0.0.0` inside the container for a published port
    to reach it. Do not assume a module name before the application exists.
-4. Configure a writable persistent directory for SQLite, set `HUSKYPOLL_DB` to
+4. Configure a writable persistent directory for SQLite, set `DB` to
    that directory's database path, and agree on initialization/migration steps.
    The container runs as UID 10001; the storage directory must allow that user to
    write. Avoid mounting an existing shared database during local testing.

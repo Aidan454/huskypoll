@@ -14,7 +14,7 @@ from pathlib import Path
 from sqlalchemy import Engine, create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
-DEFAULT_DB_PATH = Path(os.environ.get("HUSKYPOLL_DB", "huskypoll.db"))
+DEFAULT_DB_PATH = Path(os.environ.get("DB", "huskypoll.db"))
 
 
 def _set_sqlite_pragmas(dbapi_connection, _connection_record) -> None:

@@ -1,6 +1,6 @@
 """Settings, read from environment variables (a .env file is not required).
 
-The app never assumes it runs at the root of a domain. Set HUSKYPOLL_SITE_URL
+The app never assumes it runs at the root of a domain. Set SITE_URL
 to the full address people type, path included, for example:
 
     https://huskypoll.cse.uconn.edu
@@ -13,20 +13,20 @@ login cookie's path) is built from these settings. The reverse proxy may pass
 the path prefix through or strip it - both work. Several copies can share a
 domain under different paths without sharing logins.
 
-| Variable                    | Default                      | Meaning |
-| HUSKYPOLL_SITE_URL          | http://localhost:8000        | Full address of the site, including any path prefix |
-| HUSKYPOLL_PUBLIC_URL        | SITE_URL/api                 | Full address of the API (only if it isn't SITE_URL/api) |
-| HUSKYPOLL_FRONTEND_URL      | SITE_URL                     | Full address of the web pages (only if they're elsewhere) |
-| HUSKYPOLL_FRONTEND_DIST     | (none)                       | Built frontend folder (frontend/dist) to serve at SITE_URL/ |
-| HUSKYPOLL_DB                | huskypoll.db                 | SQLite database file |
-| HUSKYPOLL_MEDIA_DIR         | media                        | Folder for uploaded images |
-| HUSKYPOLL_SECRET_KEY        | (random each start)          | Signs login cookies - MUST be set in production |
-| HUSKYPOLL_CAS_URL           | https://login.uconn.edu/cas  | UConn CAS server (confirm with ITS) |
-| HUSKYPOLL_DEV_LOGIN         | 0                            | 1 = enable /auth/dev-login (NEVER in production) |
-| HUSKYPOLL_CORS_ORIGINS      | (none)                       | Extra origins allowed to call the API (FRONTEND_URL's is added automatically; dev login also allows any localhost port) |
-| HUSKYPOLL_ADMIN_NETIDS      | (none)                       | Comma-separated NetIDs made admins at login |
-| HUSKYPOLL_INSTRUCTOR_NETIDS | (none)                       | Comma-separated NetIDs made (at least) instructors at login |
-| HUSKYPOLL_SECURE_COOKIES    | 0                            | 1 = cookies only over HTTPS (set in production) |
+| Variable          | Default                      | Meaning |
+| SITE_URL          | http://localhost:8000        | Full address of the site, including any path prefix |
+| PUBLIC_URL        | SITE_URL/api                 | Full address of the API (only if it isn't SITE_URL/api) |
+| FRONTEND_URL      | SITE_URL                     | Full address of the web pages (only if they're elsewhere) |
+| FRONTEND_DIST     | (none)                       | Built frontend folder (frontend/dist) to serve at SITE_URL/ |
+| DB                | huskypoll.db                 | SQLite database file |
+| MEDIA_DIR         | media                        | Folder for uploaded images |
+| SECRET_KEY        | (random each start)          | Signs login cookies - MUST be set in production |
+| CAS_URL           | https://login.uconn.edu/cas  | UConn CAS server (confirm with ITS) |
+| DEV_LOGIN         | 0                            | 1 = enable /auth/dev-login (NEVER in production) |
+| CORS_ORIGINS      | (none)                       | Extra origins allowed to call the API (FRONTEND_URL's is added automatically; dev login also allows any localhost port) |
+| ADMIN_NETIDS      | (none)                       | Comma-separated NetIDs made admins at login |
+| INSTRUCTOR_NETIDS | (none)                       | Comma-separated NetIDs made (at least) instructors at login |
+| SECURE_COOKIES    | 0                            | 1 = cookies only over HTTPS (set in production) |
 """
 from __future__ import annotations
 
@@ -48,20 +48,20 @@ def _list(name: str) -> list[str]:
 
 @dataclass
 class Settings:
-    db_path: Path = field(default_factory=lambda: Path(os.environ.get("HUSKYPOLL_DB", "huskypoll.db")))
-    media_dir: Path = field(default_factory=lambda: Path(os.environ.get("HUSKYPOLL_MEDIA_DIR", "media")))
-    secret_key: str = field(default_factory=lambda: os.environ.get("HUSKYPOLL_SECRET_KEY", ""))
-    site_url: str = field(default_factory=lambda: os.environ.get("HUSKYPOLL_SITE_URL", ""))
-    public_url: str = field(default_factory=lambda: os.environ.get("HUSKYPOLL_PUBLIC_URL", ""))
-    frontend_url: str = field(default_factory=lambda: os.environ.get("HUSKYPOLL_FRONTEND_URL", ""))
+    db_path: Path = field(default_factory=lambda: Path(os.environ.get("DB", "huskypoll.db")))
+    media_dir: Path = field(default_factory=lambda: Path(os.environ.get("MEDIA_DIR", "media")))
+    secret_key: str = field(default_factory=lambda: os.environ.get("SECRET_KEY", ""))
+    site_url: str = field(default_factory=lambda: os.environ.get("SITE_URL", ""))
+    public_url: str = field(default_factory=lambda: os.environ.get("PUBLIC_URL", ""))
+    frontend_url: str = field(default_factory=lambda: os.environ.get("FRONTEND_URL", ""))
     frontend_dist: Path | None = field(
-        default_factory=lambda: Path(os.environ["HUSKYPOLL_FRONTEND_DIST"]) if os.environ.get("HUSKYPOLL_FRONTEND_DIST") else None)
-    cas_url: str = field(default_factory=lambda: os.environ.get("HUSKYPOLL_CAS_URL", "https://login.uconn.edu/cas").rstrip("/"))
-    dev_login: bool = field(default_factory=lambda: _flag("HUSKYPOLL_DEV_LOGIN"))
-    cors_origins: list[str] = field(default_factory=lambda: _list("HUSKYPOLL_CORS_ORIGINS"))
-    admin_net_ids: list[str] = field(default_factory=lambda: [x.lower() for x in _list("HUSKYPOLL_ADMIN_NETIDS")])
-    instructor_net_ids: list[str] = field(default_factory=lambda: [x.lower() for x in _list("HUSKYPOLL_INSTRUCTOR_NETIDS")])
-    secure_cookies: bool = field(default_factory=lambda: _flag("HUSKYPOLL_SECURE_COOKIES"))
+        default_factory=lambda: Path(os.environ["FRONTEND_DIST"]) if os.environ.get("FRONTEND_DIST") else None)
+    cas_url: str = field(default_factory=lambda: os.environ.get("CAS_URL", "https://login.uconn.edu/cas").rstrip("/"))
+    dev_login: bool = field(default_factory=lambda: _flag("DEV_LOGIN"))
+    cors_origins: list[str] = field(default_factory=lambda: _list("CORS_ORIGINS"))
+    admin_net_ids: list[str] = field(default_factory=lambda: [x.lower() for x in _list("ADMIN_NETIDS")])
+    instructor_net_ids: list[str] = field(default_factory=lambda: [x.lower() for x in _list("INSTRUCTOR_NETIDS")])
+    secure_cookies: bool = field(default_factory=lambda: _flag("SECURE_COOKIES"))
 
     @property
     def base_path(self) -> str:
@@ -85,7 +85,7 @@ class Settings:
     def cors_origin_regex(self) -> str | None:
         """With the developer login on, any http://localhost:<port> or 127.0.0.1:<port> page may
         call the API (Vite on 5173, 5174, 3000 ...), so local frontends work without extra setup.
-        Off in production, where only FRONTEND_URL / HUSKYPOLL_CORS_ORIGINS are allowed."""
+        Off in production, where only FRONTEND_URL / CORS_ORIGINS are allowed."""
         return r"^http://(localhost|127\.0\.0\.1)(:\d+)?$" if self.dev_login else None
 
     def __post_init__(self) -> None:
@@ -97,7 +97,7 @@ class Settings:
                     raise ValueError(f"{name} must look like https://host or https://host/some/path, got {value!r}")
             setattr(self, name, value)
         if not self.secret_key:
-            warnings.warn("HUSKYPOLL_SECRET_KEY is not set: using a random key, so logins reset on every "
+            warnings.warn("SECRET_KEY is not set: using a random key, so logins reset on every "
                           "restart. Set it in production.", stacklevel=2)
             self.secret_key = secrets.token_urlsafe(32)
         # Fill in whichever addresses weren't given.
@@ -123,5 +123,5 @@ class Settings:
                 raise ValueError("to serve the frontend, the API must live under the site address "
                                  f"(site {self.site_url}, API {self.public_url})")
         if self.dev_login:
-            warnings.warn("HUSKYPOLL_DEV_LOGIN is on: anyone can log in as anyone. Never use this in production.",
+            warnings.warn("DEV_LOGIN is on: anyone can log in as anyone. Never use this in production.",
                           stacklevel=2)

@@ -51,7 +51,7 @@ def _prepare_database(engine, settings: Settings) -> None:
 
 
 def create_app(settings: Settings | None = None) -> HuskyPollSite:
-    """The API at SITE_URL/api, plus the built frontend at SITE_URL/ when HUSKYPOLL_FRONTEND_DIST is set."""
+    """The API at SITE_URL/api, plus the built frontend at SITE_URL/ when FRONTEND_DIST is set."""
     settings = settings or Settings()
 
     app = FastAPI(
