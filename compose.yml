@@ -8,8 +8,8 @@
 # service name "backend".
 services:
   backend:
-    build:
-      context: ./backend/database_code
+    build: 
+      context: ./backend
       dockerfile: Dockerfile.dev
     environment:
       HUSKYPOLL_DEV_LOGIN: "1"                         # dev-only login (POST /api/auth/dev-login)

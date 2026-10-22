@@ -35,7 +35,6 @@ import secrets
 import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 from urllib.parse import urlsplit
 
 
@@ -55,7 +54,7 @@ class Settings:
     site_url: str = field(default_factory=lambda: os.environ.get("HUSKYPOLL_SITE_URL", ""))
     public_url: str = field(default_factory=lambda: os.environ.get("HUSKYPOLL_PUBLIC_URL", ""))
     frontend_url: str = field(default_factory=lambda: os.environ.get("HUSKYPOLL_FRONTEND_URL", ""))
-    frontend_dist: Optional[Path] = field(
+    frontend_dist: Path | None = field(
         default_factory=lambda: Path(os.environ["HUSKYPOLL_FRONTEND_DIST"]) if os.environ.get("HUSKYPOLL_FRONTEND_DIST") else None)
     cas_url: str = field(default_factory=lambda: os.environ.get("HUSKYPOLL_CAS_URL", "https://login.uconn.edu/cas").rstrip("/"))
     dev_login: bool = field(default_factory=lambda: _flag("HUSKYPOLL_DEV_LOGIN"))
@@ -83,7 +82,7 @@ class Settings:
         return f"{self.frontend_url}/{path.lstrip('/')}"
 
     @property
-    def cors_origin_regex(self) -> Optional[str]:
+    def cors_origin_regex(self) -> str | None:
         """With the developer login on, any http://localhost:<port> or 127.0.0.1:<port> page may
         call the API (Vite on 5173, 5174, 3000 ...), so local frontends work without extra setup.
         Off in production, where only FRONTEND_URL / HUSKYPOLL_CORS_ORIGINS are allowed."""
@@ -104,7 +103,7 @@ class Settings:
         # Fill in whichever addresses weren't given.
         if not self.site_url:
             if self.public_url:
-                self.site_url = self.public_url[:-4] if self.public_url.endswith("/api") else self.public_url
+                self.site_url = self.public_url.removesuffix("/api")
             else:
                 self.site_url = "http://localhost:8000"
         if not self.public_url:

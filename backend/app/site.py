@@ -85,7 +85,7 @@ class FrontendFiles:
         inject = (f'<base href="{html.escape(self.site_base)}/">'
                   f"<script>window.__HUSKYPOLL__ = {script};</script>")
         page = index.read_text(encoding="utf-8")
-        page, n = re.subn(r"(<head[^>]*>)", lambda m: m.group(1) + inject, page, count=1, flags=re.I)
+        page, n = re.subn(r"(<head[^>]*>)", lambda m: m.group(1) + inject, page, count=1, flags=re.IGNORECASE)
         if n == 0:
             page = inject + page
         self.index_html = page

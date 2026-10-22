@@ -1,13 +1,14 @@
 """Account roles (admins only): admin, instructor, ta, student, guest."""
 from __future__ import annotations
 
-from typing import Optional
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
-from huskypoll_db import services as svc
-from huskypoll_db.models import User
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
+
+from app.database import services as svc
+from app.database.models import User
 
 from .. import schemas as s
 from ..deps import current_user, get_db, require_admin
@@ -17,8 +18,8 @@ router = APIRouter(tags=["users"])
 
 
 @router.get("/users", response_model=list[s.UserOut], summary="Find accounts (admins)")
-def list_users(q: Optional[str] = None, role: Optional[s.UserRole] = None, limit: int = 100,
-               db: Session = Depends(get_db), user: User = Depends(current_user)):
+def list_users(db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)],
+               q: str | None = None, role: s.UserRole | None = None, limit: int = 100,):
     require_admin(user)
     query = select(User)
     if role:
@@ -33,7 +34,7 @@ def list_users(q: Optional[str] = None, role: Optional[s.UserRole] = None, limit
 
 @router.patch("/users/{user_id}/role", response_model=s.UserOut,
               summary="Change someone's account role (admins); e.g. make a professor an instructor")
-def change_role(user_id: int, body: s.RoleUpdate, db: Session = Depends(get_db), user: User = Depends(current_user)):
+def change_role(user_id: int, body: s.RoleUpdate, db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)]):
     target = db.get(User, user_id)
     if target is None:
         raise HTTPException(404, "User not found")

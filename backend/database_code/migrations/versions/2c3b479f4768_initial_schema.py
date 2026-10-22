@@ -5,9 +5,9 @@ Revises:
 Create Date: 2026-10-01 20:23:40.196484
 
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
 
-import huskypoll_db.models  # noqa: F401  (UTCDateTime type used below)
+import huskypoll_db.models
 import sqlalchemy as sa
 from alembic import op
 
@@ -162,9 +162,9 @@ DROP_STATEMENTS = [
 
 # revision identifiers, used by Alembic.
 revision: str = '2c3b479f4768'
-down_revision: Union[str, Sequence[str], None] = None
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | Sequence[str] | None = None
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:

@@ -17,7 +17,7 @@ Conventions
 from __future__ import annotations
 
 import datetime as dt
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import (
     JSON,
@@ -66,21 +66,21 @@ class UTCDateTime(TypeDecorator):
     impl = DateTime
     cache_ok = True
 
-    def process_bind_param(self, value: Optional[dt.datetime], dialect):
+    def process_bind_param(self, value: dt.datetime | None, dialect):
         if value is None:
             return None
         if value.tzinfo is None:
             raise ValueError("naive datetime passed to the database; use utcnow() or an aware datetime")
-        return value.astimezone(dt.timezone.utc).replace(tzinfo=None)
+        return value.astimezone(dt.UTC).replace(tzinfo=None)
 
-    def process_result_value(self, value: Optional[dt.datetime], dialect):
+    def process_result_value(self, value: dt.datetime | None, dialect):
         if value is None:
             return None
-        return value.replace(tzinfo=dt.timezone.utc)
+        return value.replace(tzinfo=dt.UTC)
 
 
 def utcnow() -> dt.datetime:
-    return dt.datetime.now(dt.timezone.utc)
+    return dt.datetime.now(dt.UTC)
 
 
 def _bool(name: str) -> Boolean:
@@ -127,16 +127,16 @@ class User(Base):
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    net_id: Mapped[Optional[str]] = mapped_column(String(8), unique=True)  # e.g. abc12345, stored lowercase
-    student_id: Mapped[Optional[str]] = mapped_column(String(16), unique=True)  # 7-digit PeopleSoft ID
-    email: Mapped[Optional[str]] = mapped_column(String(254), unique=True)  # stored lowercase
-    first_name: Mapped[Optional[str]] = mapped_column(String(100))
-    last_name: Mapped[Optional[str]] = mapped_column(String(100))
+    net_id: Mapped[str | None] = mapped_column(String(8), unique=True)  # e.g. abc12345, stored lowercase
+    student_id: Mapped[str | None] = mapped_column(String(16), unique=True)  # 7-digit PeopleSoft ID
+    email: Mapped[str | None] = mapped_column(String(254), unique=True)  # stored lowercase
+    first_name: Mapped[str | None] = mapped_column(String(100))
+    last_name: Mapped[str | None] = mapped_column(String(100))
     # admin: everything | instructor: create courses | ta: assist in courses |
     # student: on a roster | guest: logged in, not on any roster yet
     role: Mapped[str] = mapped_column(String(16), nullable=False, default="guest", server_default="guest")
     created_at: Mapped[dt.datetime] = _created_at()
-    last_login_at: Mapped[Optional[dt.datetime]] = mapped_column(UTCDateTime)
+    last_login_at: Mapped[dt.datetime | None] = mapped_column(UTCDateTime)
 
     # passive_deletes: let the database's ON DELETE CASCADE remove these when a user is deleted
     enrollments: Mapped[list[Enrollment]] = relationship(
@@ -189,16 +189,16 @@ class Course(Base):
     term: Mapped[str] = mapped_column(String(32), nullable=False)  # e.g. "Spring 2027"
     subject: Mapped[str] = mapped_column(String(16), nullable=False)  # e.g. "CSE"
     catalog: Mapped[str] = mapped_column(String(16), nullable=False)  # e.g. "4939W"
-    section: Mapped[Optional[str]] = mapped_column(String(16))
+    section: Mapped[str | None] = mapped_column(String(16))
     title: Mapped[str] = mapped_column(String(200), nullable=False)
-    join_code: Mapped[Optional[str]] = mapped_column(String(16), unique=True)
+    join_code: Mapped[str | None] = mapped_column(String(16), unique=True)
     # Grading: each poll is worth points_participation for answering plus
     # points_correct for a correct answer.
     points_participation: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
     points_correct: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
-    created_by: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     created_at: Mapped[dt.datetime] = _created_at()
-    archived_at: Mapped[Optional[dt.datetime]] = mapped_column(UTCDateTime)
+    archived_at: Mapped[dt.datetime | None] = mapped_column(UTCDateTime)
 
     instructors: Mapped[list[CourseInstructor]] = relationship(back_populates="course", cascade="all, delete-orphan")
     enrollments: Mapped[list[Enrollment]] = relationship(back_populates="course", cascade="all, delete-orphan")
@@ -243,7 +243,7 @@ class Enrollment(Base):
 
     course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"), primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
-    section: Mapped[Optional[str]] = mapped_column(String(16))  # e.g. "011Lab" from StudentAdmin
+    section: Mapped[str | None] = mapped_column(String(16))  # e.g. "011Lab" from StudentAdmin
     source: Mapped[str] = mapped_column(String(16), nullable=False, default="manual")
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="active")
     added_at: Mapped[dt.datetime] = _created_at()
@@ -271,8 +271,8 @@ class Media(Base):
     sha256: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)  # de-duplicates re-uploads
     file_path: Mapped[str] = mapped_column(String(500), nullable=False)
     mime_type: Mapped[str] = mapped_column(String(100), nullable=False)
-    size_bytes: Mapped[Optional[int]] = mapped_column(Integer)
-    uploaded_by: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    size_bytes: Mapped[int | None] = mapped_column(Integer)
+    uploaded_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     created_at: Mapped[dt.datetime] = _created_at()
 
     __table_args__ = (CheckConstraint("mime_type LIKE 'image/%'", name="image_only"),)
@@ -285,9 +285,9 @@ class QuestionBank(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     owner_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
-    course_id: Mapped[Optional[int]] = mapped_column(ForeignKey("courses.id", ondelete="SET NULL"))
+    course_id: Mapped[int | None] = mapped_column(ForeignKey("courses.id", ondelete="SET NULL"))
     name: Mapped[str] = mapped_column(String(200), nullable=False)
-    description: Mapped[Optional[str]] = mapped_column(Text)
+    description: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[dt.datetime] = _created_at()
 
     questions: Mapped[list[Question]] = relationship(back_populates="bank")
@@ -308,27 +308,27 @@ class Question(Base):
     __tablename__ = "questions"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    bank_id: Mapped[Optional[int]] = mapped_column(ForeignKey("question_banks.id", ondelete="SET NULL"))
+    bank_id: Mapped[int | None] = mapped_column(ForeignKey("question_banks.id", ondelete="SET NULL"))
     author_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
     type: Mapped[str] = mapped_column(String(16), nullable=False)
     body_md: Mapped[str] = mapped_column(Text, nullable=False, default="")  # simple Markdown
-    body_media_id: Mapped[Optional[int]] = mapped_column(ForeignKey("media.id", ondelete="SET NULL"))
-    explanation_md: Mapped[Optional[str]] = mapped_column(Text)
-    explanation_media_id: Mapped[Optional[int]] = mapped_column(ForeignKey("media.id", ondelete="SET NULL"))
-    text_answer: Mapped[Optional[str]] = mapped_column(Text)  # expected answer for free_text (optional)
-    numeric_answer: Mapped[Optional[float]] = mapped_column(Float)
-    numeric_tolerance: Mapped[Optional[float]] = mapped_column(Float)
-    copied_from_id: Mapped[Optional[int]] = mapped_column(ForeignKey("questions.id", ondelete="SET NULL"))
+    body_media_id: Mapped[int | None] = mapped_column(ForeignKey("media.id", ondelete="SET NULL"))
+    explanation_md: Mapped[str | None] = mapped_column(Text)
+    explanation_media_id: Mapped[int | None] = mapped_column(ForeignKey("media.id", ondelete="SET NULL"))
+    text_answer: Mapped[str | None] = mapped_column(Text)  # expected answer for free_text (optional)
+    numeric_answer: Mapped[float | None] = mapped_column(Float)
+    numeric_tolerance: Mapped[float | None] = mapped_column(Float)
+    copied_from_id: Mapped[int | None] = mapped_column(ForeignKey("questions.id", ondelete="SET NULL"))
     is_locked: Mapped[bool] = mapped_column(_bool("is_locked"), nullable=False, default=False)
     created_at: Mapped[dt.datetime] = _created_at()
     updated_at: Mapped[dt.datetime] = mapped_column(UTCDateTime, nullable=False, default=utcnow, onupdate=utcnow)
 
-    bank: Mapped[Optional[QuestionBank]] = relationship(back_populates="questions")
+    bank: Mapped[QuestionBank | None] = relationship(back_populates="questions")
     options: Mapped[list[QuestionOption]] = relationship(
         back_populates="question", cascade="all, delete-orphan", order_by="QuestionOption.position"
     )
-    body_media: Mapped[Optional[Media]] = relationship(foreign_keys=[body_media_id])
-    explanation_media: Mapped[Optional[Media]] = relationship(foreign_keys=[explanation_media_id])
+    body_media: Mapped[Media | None] = relationship(foreign_keys=[body_media_id])
+    explanation_media: Mapped[Media | None] = relationship(foreign_keys=[explanation_media_id])
 
     __table_args__ = (
         CheckConstraint(_in("type", QUESTION_TYPES), name="type"),
@@ -352,7 +352,7 @@ class QuestionOption(Base):
     question_id: Mapped[int] = mapped_column(ForeignKey("questions.id", ondelete="CASCADE"), nullable=False)
     position: Mapped[int] = mapped_column(Integer, nullable=False)  # 0 = A, 1 = B, ...
     text_md: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    media_id: Mapped[Optional[int]] = mapped_column(ForeignKey("media.id", ondelete="SET NULL"))
+    media_id: Mapped[int | None] = mapped_column(ForeignKey("media.id", ondelete="SET NULL"))
     is_correct: Mapped[bool] = mapped_column(_bool("is_correct"), nullable=False, default=False)
 
     question: Mapped[Question] = relationship(back_populates="options")
@@ -379,10 +379,10 @@ class LectureSession(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"), nullable=False)
-    title: Mapped[Optional[str]] = mapped_column(String(200))
+    title: Mapped[str | None] = mapped_column(String(200))
     session_date: Mapped[dt.date] = mapped_column(Date, nullable=False)
-    started_at: Mapped[Optional[dt.datetime]] = mapped_column(UTCDateTime)
-    ended_at: Mapped[Optional[dt.datetime]] = mapped_column(UTCDateTime)
+    started_at: Mapped[dt.datetime | None] = mapped_column(UTCDateTime)
+    ended_at: Mapped[dt.datetime | None] = mapped_column(UTCDateTime)
     is_auto: Mapped[bool] = mapped_column(_bool("is_auto"), nullable=False, default=False)
 
     course: Mapped[Course] = relationship(back_populates="sessions")
@@ -402,13 +402,13 @@ class Poll(Base):
     session_id: Mapped[int] = mapped_column(ForeignKey("lecture_sessions.id", ondelete="CASCADE"), nullable=False)
     # RESTRICT: a question that has been polled can never be deleted out from under its responses.
     question_id: Mapped[int] = mapped_column(ForeignKey("questions.id", ondelete="RESTRICT"), nullable=False)
-    access_code: Mapped[Optional[str]] = mapped_column(String(16))  # short code shown with the QR image
+    access_code: Mapped[str | None] = mapped_column(String(16))  # short code shown with the QR image
     status: Mapped[str] = mapped_column(String(16), nullable=False, default="draft")
     position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     show_results: Mapped[bool] = mapped_column(_bool("show_results"), nullable=False, default=False)
-    opened_by: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
-    opened_at: Mapped[Optional[dt.datetime]] = mapped_column(UTCDateTime)
-    closed_at: Mapped[Optional[dt.datetime]] = mapped_column(UTCDateTime)
+    opened_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    opened_at: Mapped[dt.datetime | None] = mapped_column(UTCDateTime)
+    closed_at: Mapped[dt.datetime | None] = mapped_column(UTCDateTime)
     created_at: Mapped[dt.datetime] = _created_at()
 
     session: Mapped[LectureSession] = relationship(back_populates="polls")
@@ -441,9 +441,9 @@ class Response(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     poll_id: Mapped[int] = mapped_column(ForeignKey("polls.id", ondelete="CASCADE"), nullable=False)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    text_answer: Mapped[Optional[str]] = mapped_column(Text)
-    numeric_answer: Mapped[Optional[float]] = mapped_column(Float)
-    is_correct: Mapped[Optional[bool]] = mapped_column(_bool("is_correct"))  # NULL = no right answer
+    text_answer: Mapped[str | None] = mapped_column(Text)
+    numeric_answer: Mapped[float | None] = mapped_column(Float)
+    is_correct: Mapped[bool | None] = mapped_column(_bool("is_correct"))  # NULL = no right answer
     submitted_at: Mapped[dt.datetime] = _created_at()
     updated_at: Mapped[dt.datetime] = mapped_column(UTCDateTime, nullable=False, default=utcnow, onupdate=utcnow)
 
@@ -481,11 +481,11 @@ class EventLog(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     occurred_at: Mapped[dt.datetime] = mapped_column(UTCDateTime, nullable=False, default=utcnow)
     event_type: Mapped[str] = mapped_column(String(32), nullable=False)  # e.g. "login", "poll_open"
-    user_id: Mapped[Optional[int]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
-    course_id: Mapped[Optional[int]] = mapped_column(ForeignKey("courses.id", ondelete="SET NULL"))
-    poll_id: Mapped[Optional[int]] = mapped_column(ForeignKey("polls.id", ondelete="SET NULL"))
-    ip_address: Mapped[Optional[str]] = mapped_column(String(45))
-    details_json: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    course_id: Mapped[int | None] = mapped_column(ForeignKey("courses.id", ondelete="SET NULL"))
+    poll_id: Mapped[int | None] = mapped_column(ForeignKey("polls.id", ondelete="SET NULL"))
+    ip_address: Mapped[str | None] = mapped_column(String(45))
+    details_json: Mapped[dict[str, Any] | None] = mapped_column(JSON)
 
     __table_args__ = (
         Index(None, "occurred_at"),

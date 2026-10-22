@@ -10,13 +10,13 @@ from sqlalchemy import inspect, text
 from sqlalchemy.exc import IntegrityError
 from starlette.middleware.sessions import SessionMiddleware
 
-from huskypoll_db import init_db, make_engine, make_session_factory
-from huskypoll_db.services import HuskyPollError, NotAllowed
+from app.database.database import init_db, make_engine, make_session_factory
+from app.database.services import HuskyPollError, NotAllowed
 
 from .config import Settings
-from .site import HuskyPollSite
 from .routers import auth, courses, polls, questions, users
 from .routers.auth import validate_cas_ticket
+from .site import HuskyPollSite
 
 log = logging.getLogger("huskypoll")
 
@@ -26,10 +26,11 @@ def _prepare_database(engine, settings: Settings) -> None:
     if not inspect(engine).has_table("users"):
         init_db(engine)
         try:
-            from huskypoll_db.__main__ import _stamp_alembic_head
+            from app.database.__main__ import _stamp_alembic_head
             _stamp_alembic_head(str(settings.db_path))
         except Exception as exc:  # alembic.ini missing (e.g. installed as a package)
             log.warning("created database but could not stamp Alembic version: %s", exc)
+            raise
         log.info("created new database %s", settings.db_path)
         return
     try:
@@ -46,6 +47,7 @@ def _prepare_database(engine, settings: Settings) -> None:
                         current, head)
     except Exception as exc:
         log.warning("could not check database migration version: %s", exc)
+        raise
 
 
 def create_app(settings: Settings | None = None) -> HuskyPollSite:

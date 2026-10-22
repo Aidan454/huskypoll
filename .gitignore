@@ -7,6 +7,9 @@ __pycache__/
 *.db-wal
 *.db-shm
 media/
+cas-example/
+certificates/
+.ruff_cache
 
 /*.csv
 

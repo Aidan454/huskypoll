@@ -5,16 +5,16 @@ Revises: fc300242a1a6
 Create Date: 2026-10-12 09:35:24.398824
 
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = 'bc67e89ee1e2'
-down_revision: Union[str, Sequence[str], None] = 'fc300242a1a6'
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | Sequence[str] | None = 'fc300242a1a6'
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 ROLES = "'admin', 'instructor', 'ta', 'student', 'guest'"  # copied, not imported
