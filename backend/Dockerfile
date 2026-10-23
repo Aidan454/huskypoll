@@ -11,12 +11,10 @@ WORKDIR /app
 COPY requirements.txt ./
 RUN python -m pip install --no-cache-dir -r requirements.txt
 
-COPY huskypoll_db/ ./huskypoll_db/
-COPY huskypoll_api/ ./huskypoll_api/
+COPY app/ ./app/
 COPY migrations/ ./migrations/
 COPY alembic.ini pytest.ini ./
 COPY tests/ ./tests/
-COPY scripts/ ./scripts/
 COPY samples/studentadmin-template.xlsx ./samples/studentadmin-template.xlsx
 
 RUN useradd --create-home --uid 10001 huskypoll \
@@ -26,4 +24,4 @@ USER huskypoll
 
 EXPOSE 8000
 
-CMD ["python", "-m", "uvicorn", "huskypoll_api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

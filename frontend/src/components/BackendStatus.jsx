@@ -58,8 +58,37 @@ export default function BackendStatus() {
   }, []);
 
   useEffect(() => {
-    check();
-  }, [check]);
+    let cancelled = false;
+    const run = async () => {
+      if (cancelled) return;
+      setHealth({ state: "checking" });
+      setMe({ state: "checking" });
+      try {
+        const h = await call("/health");
+        if (cancelled) return;
+        setHealth(h.ok && h.body?.ok ? { state: "ok", ms: h.ms } : { state: "error", detail: `HTTP ${h.status}` });
+      } catch (err) {
+        if (cancelled) return;
+        setHealth({ state: "error", detail: `Can't reach ${API_BASE} (${err.message}). Is the backend running?` });
+        setMe({ state: "error", detail: "skipped" });
+        return;
+      }
+      try {
+        const m = await call("/me");
+        if (cancelled) return;
+        if (m.ok) setMe({ state: "ok", user: m.body });
+        else if (m.status === 401) setMe({ state: "anonymous" });
+        else setMe({ state: "error", detail: `HTTP ${m.status}: ${m.body?.detail ?? ""}` });
+      } catch (err) {
+        if (cancelled) return;
+        setMe({ state: "error", detail: err.message });
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function devLogin() {
     try {

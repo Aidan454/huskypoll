@@ -11,6 +11,10 @@
 To run docker containers, use `docker compose up -d --build` from root
 To stop the containers, use `docker compose down`
 
+## Linting
+Backend   `ruff check --output-format=github` from /backend
+Frontend  `npm run lint` from /frontend
+
 | What | Address |
 | --- | --- |
 | Frontend (Vite) | http://localhost:5173 |
