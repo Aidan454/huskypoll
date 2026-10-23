@@ -1,38 +1,16 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import './StudentCourses.css';
 
 export default function StudentCourses() {
   // fetch these courses from backend/database.
-  const [courses, setCourses] = useState([
+  const [courses] = useState([
     { id: 1, code: 'CSE 4939W 001', title: 'Computer Science and Engineering Design Project' },
     { id: 2, code: 'CSE 3666 002', title: 'Introduction to Computer Architecture' },
     { id: 3, code: 'CSE 4701 003', title: 'Principles of Databases' },
-    ]);
-  // The ID of the course whose options menu is open.
-  const [openMenuId, setOpenMenuId] = useState(null);
-  const [editingCourse, setEditingCourse] = useState(null);
-  const dialogRef = useRef(null);
-  const formRef = useRef(null);
-  const createButtonRef = useRef(null);
-
-  // Close any open course options menu.
-  function closeMenu() {
-    setOpenMenuId(null);
-  }
-
-  // Toggle the options menu for the selected course.
-  function toggleMenu(event, courseId) {
-    // Prevent the page's onClick handler from immediately closing the menu.
-    event.stopPropagation();
-    setOpenMenuId(currentId => {
-      return currentId === courseId ? null : courseId;
-    });
-  }
-
+  ]);
 
   return (
-    // Clicking elsewhere on the page closes an open options menu.
-    <div className="cm-page" onClick={closeMenu}>
+    <div className="cm-page">
       <div className="cm-shell">
         {/* Header and profile initials */}
         <header className="cm-topbar">
@@ -40,7 +18,7 @@ export default function StudentCourses() {
         </header>
 
         <main className="cm-main">
-          {/* Page heading and create button */}
+          {/* Page heading */}
           <div className="cm-heading">
             <h1>Courses</h1>
           </div>
