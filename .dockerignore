@@ -1,0 +1,15 @@
+# For builds from the repository root (Dockerfile.server).
+.git
+**/node_modules
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+.ruff_cache
+frontend/dist
+backend/data
+**/*.db
+**/*.db-wal
+**/*.db-shm
+**/media
+.env
+.env.*

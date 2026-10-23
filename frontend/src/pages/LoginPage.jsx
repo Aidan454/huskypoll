@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Navigate, useNavigate, useSearchParams } from 'react-router'
 import { api } from '../api.js'
+import { DEV_LOGIN } from '../config.js'
 import { ErrorBox, Field } from '../components/ui.jsx'
 import { useAction, useAuth } from '../hooks.js'
 
@@ -45,44 +46,48 @@ export default function LoginPage() {
           Log in with UConn NetID
         </a>
 
-        <div className="divider">Developer login</div>
-        <p className="small muted">
-          Works only when the backend runs with <code>HUSKYPOLL_DEV_LOGIN=1</code>. The buttons use the demo
-          accounts from <code>seed-demo</code>.
-        </p>
-        <ErrorBox error={error?.status === 404 ? new Error('Developer login is turned off on this server.') : error} />
-        <div className="preset-grid">
-          {DEMO_ACCOUNTS.map((a) => (
-            <button key={a.net_id} type="button" className="btn" disabled={busy} onClick={() => devLogin(a.net_id)}>
-              {a.label}
-            </button>
-          ))}
-        </div>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault()
-            devLogin(netId, role)
-          }}
-        >
-          <div className="form-row">
-            <Field label="NetID">
-              <input value={netId} onChange={(e) => setNetId(e.target.value)} placeholder="abc12345" required />
-            </Field>
-            <Field label="Role">
-              <select value={role} onChange={(e) => setRole(e.target.value)}>
-                <option value="">Keep current</option>
-                <option value="admin">Admin</option>
-                <option value="instructor">Instructor</option>
-                <option value="ta">TA</option>
-                <option value="student">Student</option>
-                <option value="guest">Guest</option>
-              </select>
-            </Field>
-          </div>
-          <button type="submit" className="btn btn-block" disabled={busy}>
-            {busy ? 'Logging in…' : 'Log in as this NetID'}
-          </button>
-        </form>
+        {DEV_LOGIN && (
+          <>
+            <div className="divider">Developer login</div>
+            <p className="small muted">
+              Works only when the backend runs with <code>HUSKYPOLL_DEV_LOGIN=1</code>. The buttons use the demo
+              accounts from <code>seed-demo</code>.
+            </p>
+            <ErrorBox error={error?.status === 404 ? new Error('Developer login is turned off on this server.') : error} />
+            <div className="preset-grid">
+              {DEMO_ACCOUNTS.map((a) => (
+                <button key={a.net_id} type="button" className="btn" disabled={busy} onClick={() => devLogin(a.net_id)}>
+                  {a.label}
+                </button>
+              ))}
+            </div>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                devLogin(netId, role)
+              }}
+            >
+              <div className="form-row">
+                <Field label="NetID">
+                  <input value={netId} onChange={(e) => setNetId(e.target.value)} placeholder="abc12345" required />
+                </Field>
+                <Field label="Role">
+                  <select value={role} onChange={(e) => setRole(e.target.value)}>
+                    <option value="">Keep current</option>
+                    <option value="admin">Admin</option>
+                    <option value="instructor">Instructor</option>
+                    <option value="ta">TA</option>
+                    <option value="student">Student</option>
+                    <option value="guest">Guest</option>
+                  </select>
+                </Field>
+              </div>
+              <button type="submit" className="btn btn-block" disabled={busy}>
+                {busy ? 'Logging in…' : 'Log in as this NetID'}
+              </button>
+            </form>
+          </>
+        )}
       </div>
     </main>
   )

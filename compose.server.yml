@@ -1,0 +1,37 @@
+# Server (huskypoll.cse.uconn.edu): one container serves the pages and the API.
+# compose.yml is for local development; this file is for the server.
+#
+#   cp .env.server.example .env      # then fill in HUSKYPOLL_SECRET_KEY
+#   docker compose -f compose.server.yml up -d --build
+#   docker compose -f compose.server.yml exec huskypoll python -m app.database set-role <netid> admin
+#
+#   Site:      HUSKYPOLL_SITE_URL           (e.g. http://huskypoll.cse.uconn.edu)
+#   API docs:  HUSKYPOLL_SITE_URL/api/docs
+#
+# Login is UConn CAS only; the developer login is off. The database and uploaded
+# images live in the "huskypoll-data" Docker volume - that is what to back up.
+services:
+  huskypoll:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    environment:
+      HUSKYPOLL_SITE_URL: ${HUSKYPOLL_SITE_URL:-http://huskypoll.cse.uconn.edu}
+      HUSKYPOLL_SECRET_KEY: ${HUSKYPOLL_SECRET_KEY:?set HUSKYPOLL_SECRET_KEY in .env (see .env.server.example)}
+      HUSKYPOLL_SECURE_COOKIES: ${HUSKYPOLL_SECURE_COOKIES:-0}
+      HUSKYPOLL_ADMIN_NETIDS: ${HUSKYPOLL_ADMIN_NETIDS:-}
+      HUSKYPOLL_INSTRUCTOR_NETIDS: ${HUSKYPOLL_INSTRUCTOR_NETIDS:-}
+      HUSKYPOLL_DEV_LOGIN: "0"                           # never on a server: anyone could log in as anyone
+    volumes:
+      - huskypoll-data:/data                             # database + uploaded images
+    ports:
+      - "${HUSKYPOLL_PORT:-80}:8000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+
+volumes:
+  huskypoll-data:

@@ -99,7 +99,6 @@ schema.sql      generated, read-only view of the schema
 tests/          pytest suite (test_database.py, test_api.py)
 samples/        StudentAdmin roster template
 docs/           huskypoll-schema.drawio (open at app.diagrams.net)
-deploy/         full-stack Dockerfile, docker-compose and nginx examples
 Dockerfile      one-container deployment
 ```
 
@@ -197,16 +196,15 @@ One container serves the pages and the API. Build it from the **repository
 root**, the folder that holds `frontend/` and `backend/`:
 
 ```bash
-docker build -f backend/deploy/Dockerfile.fullstack -t huskypoll .
+docker build -f Dockerfile.server -t huskypoll .
 docker run -d -p 127.0.0.1:8001:8000 -v huskypoll-cse1010:/data \
   -e HUSKYPOLL_SITE_URL=https://huskypoll.cse.uconn.edu/cse1010 \
   -e HUSKYPOLL_SECRET_KEY=... -e HUSKYPOLL_SECURE_COOKIES=1 huskypoll
 ```
 
 The same image runs any copy: only `HUSKYPOLL_SITE_URL` and the volume differ.
-`deploy/docker-compose.yml` runs `/cse1010` and `/test-version1` side by side,
-and `deploy/nginx-huskypoll.conf` is the matching nginx setup. For the API
-alone, there's a `Dockerfile` in this folder.
+`compose.server.yml` at the repository root builds and runs this image on the
+server (see the root README). For the API alone, there's a `Dockerfile` in this folder.
 
 The container applies migrations (`alembic upgrade head`) and starts **one**
 server process. Don't add `--workers`: SQLite has one writer, and live updates

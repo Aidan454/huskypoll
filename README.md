@@ -27,3 +27,19 @@ To stop the containers, use `docker compose down`
 - Backend code changes reload automatically. After pulling new backend code with a new
   database migration, just restart: `docker compose restart backend` (migrations run on start).
 - Logs: `docker compose logs -f backend` (or `frontend`).
+
+## Server (huskypoll.cse.uconn.edu)
+`compose.yml` is for local development only (developer login on, fixed secret).
+On the server, use `compose.server.yml`: one container serves the pages and the API,
+login is UConn CAS only, and the database lives in the `huskypoll-data` Docker volume.
+
+```bash
+git clone https://github.com/Aidan454/huskypoll.git && cd huskypoll   # then check out the branch to test
+cp .env.server.example .env      # fill in HUSKYPOLL_SECRET_KEY (and the site address)
+docker compose -f compose.server.yml up -d --build
+docker compose -f compose.server.yml exec huskypoll python -m app.database set-role <your-netid> admin
+```
+
+Then open http://huskypoll.cse.uconn.edu and log in with your NetID. Make instructors on the
+Users page or with `set-role <netid> instructor`. After pulling new code, run the `up -d --build`
+line again (migrations run on start). Logs: `docker compose -f compose.server.yml logs -f`.
