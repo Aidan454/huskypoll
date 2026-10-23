@@ -11,9 +11,8 @@ from pathlib import Path
 from alembic import context
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from sqlalchemy import create_engine, event, text
-
 from app.database.models import Base
+from sqlalchemy import create_engine, event, text
 
 config = context.config
 if config.config_file_name is not None:

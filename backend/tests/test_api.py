@@ -7,11 +7,10 @@ import zlib
 from pathlib import Path
 
 import pytest
-from fastapi.testclient import TestClient
-
 from app.app import create_app
 from app.config import Settings
 from app.routers.auth import parse_cas_response
+from fastapi.testclient import TestClient
 
 ROOT = Path(__file__).resolve().parent.parent
 

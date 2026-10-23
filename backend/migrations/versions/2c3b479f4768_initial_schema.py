@@ -7,10 +7,9 @@ Create Date: 2026-10-01 20:23:40.196484
 """
 from collections.abc import Sequence
 
+import app.database.models
 import sqlalchemy as sa
 from alembic import op
-
-import app.database.models
 
 # Triggers and views as they were at this revision. Copied, not imported,
 # so this migration never changes when triggers.py is edited later.

@@ -6,9 +6,6 @@ import io
 from pathlib import Path
 
 import pytest
-from sqlalchemy import text
-from sqlalchemy.exc import IntegrityError
-
 from app.database import services as svc
 from app.database.database import init_db, make_engine, make_session_factory
 from app.database.export import participation_totals, write_huskyct_csv
@@ -19,6 +16,8 @@ from app.database.models import (
     User,
 )
 from app.database.roster import import_identifiers, import_studentadmin_xlsx
+from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 
 SAMPLE_ROSTER = Path(__file__).parent.parent / "samples" / "studentadmin-template.xlsx"
 
