@@ -5,9 +5,8 @@ Revises: 2c3b479f4768
 Create Date: 2026-10-07 16:30:56.392678
 
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
 
-import sqlalchemy as sa
 from alembic import op
 
 # The SQL is copied here (not imported) so this migration never changes
@@ -36,9 +35,9 @@ END"""
 
 # revision identifiers, used by Alembic.
 revision: str = '7d7350be1874'
-down_revision: Union[str, Sequence[str], None] = '2c3b479f4768'
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | Sequence[str] | None = '2c3b479f4768'
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:

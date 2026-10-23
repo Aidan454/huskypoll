@@ -21,11 +21,11 @@ from sqlalchemy.exc import IntegrityError
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from huskypoll_db import init_db, make_engine, make_session_factory  # noqa: E402
-from huskypoll_db import services as svc  # noqa: E402
-from huskypoll_db.export import per_session_csv, write_huskyct_csv  # noqa: E402
-from huskypoll_db.models import EventLog, QuestionBank  # noqa: E402
-from huskypoll_db.roster import import_identifiers, import_studentadmin_xlsx  # noqa: E402
+from huskypoll_db import init_db, make_engine, make_session_factory
+from huskypoll_db import services as svc
+from huskypoll_db.export import per_session_csv, write_huskyct_csv
+from huskypoll_db.models import QuestionBank
+from huskypoll_db.roster import import_identifiers, import_studentadmin_xlsx
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--no-pause", action="store_true")
@@ -54,7 +54,7 @@ def blocked(db, sql: str, params: dict | None = None) -> None:
             db.execute(text(sql), params or {})
         say(f"!! NOT blocked: {sql}")
     except IntegrityError as exc:
-        say(f"BLOCKED -> {str(exc.orig)}")
+        say(f"BLOCKED -> {exc.orig!s}")
 
 
 def refused(fn, *a, **kw) -> None:
@@ -202,7 +202,7 @@ blocked(db, "UPDATE polls SET status = 'opne' WHERE id = :p", {"p": poll.id})
 say("Editing the audit log:")
 blocked(db, "UPDATE event_log SET event_type = 'nothing happened'")
 svc.close_poll(db, poll, prof)
-say(f"Poll closed. A late answer straight into the database:")
+say("Poll closed. A late answer straight into the database:")
 blocked(db, "INSERT INTO responses (poll_id, user_id, submitted_at, updated_at) "
             "VALUES (:p, :u, '2027-01-01', '2027-01-01')", {"p": poll.id, "u": outsider.id})
 

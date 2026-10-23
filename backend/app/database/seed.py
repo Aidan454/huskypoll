@@ -4,7 +4,6 @@ from __future__ import annotations
 import datetime as dt
 import random
 from pathlib import Path
-from typing import Optional
 
 from sqlalchemy.orm import Session
 
@@ -18,7 +17,7 @@ LAST = ["Nguyen", "Smith", "Patel", "Garcia", "Kim", "Brown", "Rossi", "Cohen", 
         "Murphy", "Chen", "Lopez", "Walsh", "Haddad", "Turner", "Novak", "Reyes", "Singh", "Baker"]
 
 
-def seed_demo(db: Session, *, students: int = 40, roster_xlsx: Optional[Path] = None, rng_seed: int = 7) -> dict:
+def seed_demo(db: Session, *, students: int = 40, roster_xlsx: Path | None = None, rng_seed: int = 7) -> dict:
     rng = random.Random(rng_seed)
 
     admin, _ = svc.find_or_create_user(db, net_id="adm00001", email="hpadmin@example.edu",

@@ -12,10 +12,10 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-from huskypoll_db import init_db, make_engine, make_session_factory  # noqa: E402
-from huskypoll_db import services as svc  # noqa: E402
-from huskypoll_db.models import Poll, User  # noqa: E402
-from huskypoll_db.roster import import_records  # noqa: E402
+from huskypoll_db import init_db, make_engine, make_session_factory
+from huskypoll_db import services as svc
+from huskypoll_db.models import Poll, User
+from huskypoll_db.roster import import_records
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--students", type=int, default=500)

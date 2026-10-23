@@ -5,16 +5,16 @@ Revises: 7d7350be1874
 Create Date: 2026-10-08 21:18:54.124032
 
 """
-from typing import Sequence, Union
+from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = '86019a53103a'
-down_revision: Union[str, Sequence[str], None] = '7d7350be1874'
-branch_labels: Union[str, Sequence[str], None] = None
-depends_on: Union[str, Sequence[str], None] = None
+down_revision: str | Sequence[str] | None = '7d7350be1874'
+branch_labels: str | Sequence[str] | None = None
+depends_on: str | Sequence[str] | None = None
 
 
 NETID_GLOB = "[a-z][a-z][a-z][0-9][0-9][0-9][0-9][0-9]"  # copied, not imported

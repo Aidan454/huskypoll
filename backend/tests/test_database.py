@@ -6,18 +6,16 @@ import io
 from pathlib import Path
 
 import pytest
-from huskypoll_db import init_db, make_engine, make_session_factory
-from huskypoll_db import services as svc
-from huskypoll_db.export import participation_totals, write_huskyct_csv
-from huskypoll_db.models import (
+from app.database import services as svc
+from app.database.database import init_db, make_engine, make_session_factory
+from app.database.export import participation_totals, write_huskyct_csv
+from app.database.models import (
     EventLog,
     Poll,
-    QuestionOption,
     Response,
-    ResponseChoice,
     User,
 )
-from huskypoll_db.roster import import_identifiers, import_studentadmin_xlsx
+from app.database.roster import import_identifiers, import_studentadmin_xlsx
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
@@ -51,9 +49,8 @@ def course_setup(db):
 
 
 def _fails(db, sql, params=None, match=None):
-    with pytest.raises(IntegrityError, match=match):
-        with db.begin_nested():
-            db.execute(text(sql), params or {})
+    with pytest.raises(IntegrityError, match=match), db.begin_nested():
+        db.execute(text(sql), params or {})
 
 
 # --- connection setup ---------------------------------------------------------
@@ -87,7 +84,7 @@ def test_netid_must_be_three_letters_five_digits(db, bad):
 
 
 def test_roster_import_reports_bad_netids(db, course_setup):
-    prof, course, *_ = course_setup
+    _prof, course, *_ = course_setup
     res = import_identifiers(db, course, "abc11111\nprof01\nxy123\nABD22222")
     assert res.enrolled == 2
     assert [row for row, _ in res.skipped] == [2, 3]
@@ -95,7 +92,7 @@ def test_roster_import_reports_bad_netids(db, course_setup):
 
 
 def test_roster_row_links_to_first_login(db, course_setup):
-    prof, course, *_ = course_setup
+    _prof, course, *_ = course_setup
     import_identifiers(db, course, "new.student@uconn.edu\n1234567, jdo99999")
     u = svc.record_login(db, net_id="NSX11111", email="New.Student@uconn.edu", first_name="New")
     assert u.email == "new.student@uconn.edu" and u.net_id == "nsx11111"
@@ -117,8 +114,8 @@ def test_studentadmin_import(db, course_setup):
 
 
 def test_drop_missing_keeps_history(db, course_setup):
-    prof, course, s1, s2, q = course_setup
-    from huskypoll_db.roster import import_records
+    _prof, course, _s1, s2, _q = course_setup
+    from app.database.roster import import_records
     res = import_records(db, course, [{"net_id": "abc12345"}], drop_missing=True)
     assert res.dropped == 1
     assert not svc.is_enrolled(db, course, s2)
@@ -127,14 +124,14 @@ def test_drop_missing_keeps_history(db, course_setup):
 # --- check constraints --------------------------------------------------------
 
 def test_check_constraints_reject_bad_values(db, course_setup):
-    prof, course, s1, s2, q = course_setup
+    _prof, _course, _s1, _s2, q = course_setup
     _fails(db, "UPDATE course_instructors SET role = 'boss'", match="role")
     _fails(db, "UPDATE enrollments SET status = 'gone'", match="status")
     _fails(db, "UPDATE questions SET type = 'essay' WHERE id = :id", {"id": q.id}, match="type")
 
 
 def test_poll_status_needs_timestamps(db, course_setup):
-    prof, course, s1, s2, q = course_setup
+    _prof, course, _s1, _s2, q = course_setup
     sess = svc.get_or_create_session(db, course, on_date=dt.date(2027, 2, 1))
     _fails(db, "INSERT INTO polls (session_id, question_id, status, position, show_results, created_at) "
                "VALUES (:s, :q, 'open', 0, 0, '2027-01-01')", {"s": sess.id, "q": q.id}, match="opened_has_time")
@@ -166,7 +163,7 @@ def test_full_poll_flow_and_grading(db, course_setup):
 
 
 def test_not_enrolled_cannot_answer(db, course_setup):
-    prof, course, s1, s2, q = course_setup
+    prof, course, _s1, _s2, q = course_setup
     outsider, _ = svc.find_or_create_user(db, net_id="out00001")
     poll = svc.open_poll(db, course, q, prof)
     with pytest.raises(svc.HuskyPollError, match="roster"):
@@ -174,14 +171,14 @@ def test_not_enrolled_cannot_answer(db, course_setup):
 
 
 def test_only_instructors_open_polls(db, course_setup):
-    prof, course, s1, s2, q = course_setup
+    _prof, course, s1, _s2, q = course_setup
     with pytest.raises(svc.HuskyPollError, match="instructor"):
         svc.open_poll(db, course, q, s1)
 
 
 def test_locked_question_cannot_be_reworded_but_answer_can_change(db, course_setup):
-    prof, course, s1, s2, q = course_setup
-    poll = svc.open_poll(db, course, q, prof)
+    prof, course, _s1, _s2, q = course_setup
+    _poll = svc.open_poll(db, course, q, prof)
     _fails(db, "UPDATE questions SET body_md = 'changed' WHERE id = :id", {"id": q.id}, match="locked")
     _fails(db, "UPDATE question_options SET text_md = 'x' WHERE question_id = :id", {"id": q.id}, match="locked")
     _fails(db, "INSERT INTO question_options (question_id, position, text_md, is_correct) VALUES (:id, 9, 'x', 0)",
@@ -209,7 +206,7 @@ def test_add_answer_after_poll_and_regrade(db, course_setup):
 
 
 def test_db_rejects_response_to_closed_poll_even_without_service(db, course_setup):
-    prof, course, s1, s2, q = course_setup
+    prof, course, _s1, s2, q = course_setup
     poll = svc.open_poll(db, course, q, prof)
     svc.close_poll(db, poll, prof)
     _fails(db, "INSERT INTO responses (poll_id, user_id, submitted_at, updated_at) "
@@ -217,7 +214,7 @@ def test_db_rejects_response_to_closed_poll_even_without_service(db, course_setu
 
 
 def test_option_must_belong_to_poll_question(db, course_setup):
-    prof, course, s1, s2, q = course_setup
+    prof, course, s1, _s2, q = course_setup
     other = svc.create_question(db, prof, type="mc_single", body_md="other", options=[("x", True), ("y", False)])
     poll = svc.open_poll(db, course, q, prof)
     resp = svc.submit_response(db, poll, s1, option_ids=[q.options[0].id])
@@ -230,7 +227,7 @@ def test_option_must_belong_to_poll_question(db, course_setup):
 
 
 def test_one_response_per_student_per_poll(db, course_setup):
-    prof, course, s1, s2, q = course_setup
+    prof, course, s1, _s2, q = course_setup
     poll = svc.open_poll(db, course, q, prof)
     svc.submit_response(db, poll, s1, option_ids=[q.options[0].id])
     _fails(db, "INSERT INTO responses (poll_id, user_id, submitted_at, updated_at) "
@@ -238,7 +235,7 @@ def test_one_response_per_student_per_poll(db, course_setup):
 
 
 def test_access_code_unique_only_among_open_polls(db, course_setup):
-    prof, course, s1, s2, q = course_setup
+    prof, course, _s1, _s2, q = course_setup
     p1 = svc.open_poll(db, course, q, prof)
     p2 = svc.open_poll(db, course, q, prof)
     _fails(db, "UPDATE polls SET access_code = :c WHERE id = :id", {"c": p1.access_code, "id": p2.id})
@@ -291,9 +288,9 @@ def test_participation_export(db, course_setup):
 
 
 def test_timestamps_are_utc_aware(db, course_setup):
-    prof, course, *_ = course_setup
+    prof, _course, *_ = course_setup
     db.expire_all()
-    assert db.get(User, prof.id).created_at.tzinfo == dt.timezone.utc
+    assert db.get(User, prof.id).created_at.tzinfo == dt.UTC
 
 
 # --- end of semester ----------------------------------------------------------
@@ -303,7 +300,7 @@ def _count(db, table, where="1=1", **params):
 
 
 def test_delete_course_removes_course_data_keeps_questions_users_logs(db, course_setup):
-    prof, course, s1, s2, q = course_setup
+    prof, course, s1, _s2, q = course_setup
     bank = svc.QuestionBank(owner_id=prof.id, course_id=course.id, name="bank")
     db.add(bank)
     db.flush()
@@ -330,7 +327,7 @@ def test_delete_course_removes_course_data_keeps_questions_users_logs(db, course
 
 
 def test_delete_course_with_logs(db, course_setup):
-    prof, course, s1, s2, q = course_setup
+    prof, course, s1, _s2, q = course_setup
     poll = svc.open_poll(db, course, q, prof)
     svc.submit_response(db, poll, s1, option_ids=[q.options[1].id])
     svc.delete_course(db, course, prof, delete_logs=True)
@@ -339,7 +336,7 @@ def test_delete_course_with_logs(db, course_setup):
 
 
 def test_only_owner_can_delete_course(db, course_setup):
-    prof, course, s1, s2, q = course_setup
+    _prof, course, s1, _s2, _q = course_setup
     ta, _ = svc.find_or_create_user(db, net_id="tas00001")
     svc.add_instructor(db, course, ta, role="ta")
     for user in (ta, s1):
@@ -349,7 +346,7 @@ def test_only_owner_can_delete_course(db, course_setup):
 
 
 def test_archive_and_restore(db, course_setup):
-    prof, course, s1, s2, q = course_setup
+    prof, course, s1, _s2, _q = course_setup
     svc.archive_course(db, course, prof)
     assert course.archived_at is not None
     svc.unarchive_course(db, course, prof)
@@ -359,7 +356,7 @@ def test_archive_and_restore(db, course_setup):
 
 
 def test_deleting_a_user_keeps_their_log_entries(db, course_setup):
-    prof, course, s1, s2, q = course_setup
+    _prof, _course, s1, _s2, _q = course_setup
     svc.record_login(db, net_id="abc12345", email="ann.able@uconn.edu")
     db.delete(s1)
     db.flush()
@@ -431,7 +428,7 @@ def test_email_cannot_switch_netid(db):
 
 
 def test_roster_email_gets_netid_at_first_login(db, course_setup):
-    prof, course, *_ = course_setup
+    _prof, course, *_ = course_setup
     import_identifiers(db, course, "jonathan.smith@uconn.edu")
     roster_user = svc.find_user(db, email="jonathan.smith@uconn.edu")
     assert roster_user.net_id is None
@@ -447,7 +444,7 @@ def test_db_requires_netid_once_logged_in(db):
 # --- account roles ----------------------------------------------------------------
 
 def test_new_login_is_guest_until_on_a_roster(db, course_setup):
-    prof, course, *_ = course_setup
+    _prof, course, *_ = course_setup
     u = svc.record_login(db, email="new.person@uconn.edu", net_id="npe12345")
     assert u.role == "guest"
     svc.enroll(db, course, u)
@@ -455,13 +452,13 @@ def test_new_login_is_guest_until_on_a_roster(db, course_setup):
 
 
 def test_roster_import_creates_students(db, course_setup):
-    prof, course, *_ = course_setup
+    _prof, course, *_ = course_setup
     import_identifiers(db, course, "fresh.student@uconn.edu")
     assert svc.find_user(db, email="fresh.student@uconn.edu").role == "student"
 
 
 def test_adding_course_staff_promotes_but_never_demotes(db, course_setup):
-    prof, course, s1, *_ = course_setup
+    _prof, course, s1, *_ = course_setup
     assert s1.role == "student"
     svc.add_instructor(db, course, s1, role="ta")
     assert s1.role == "ta"                       # student -> ta
@@ -472,7 +469,7 @@ def test_adding_course_staff_promotes_but_never_demotes(db, course_setup):
 
 
 def test_only_instructors_and_admins_create_courses(db, course_setup):
-    prof, course, s1, *_ = course_setup
+    _prof, _course, s1, *_ = course_setup
     for role in ("ta", "student", "guest"):
         s1.role = role
         with pytest.raises(svc.NotAllowed, match="only instructors and admins"):
@@ -482,7 +479,7 @@ def test_only_instructors_and_admins_create_courses(db, course_setup):
 
 
 def test_set_role_rules(db, course_setup):
-    prof, course, s1, s2, q = course_setup
+    prof, _course, _s1, s2, _q = course_setup
     admin, _ = svc.find_or_create_user(db, net_id="adm00001")
     svc.set_role(db, admin, "admin")
     with pytest.raises(svc.NotAllowed, match="only an admin"):
@@ -498,7 +495,7 @@ def test_set_role_rules(db, course_setup):
 
 
 def test_admin_has_every_course_permission(db, course_setup):
-    prof, course, s1, s2, q = course_setup
+    _prof, course, _s1, _s2, _q = course_setup
     admin, _ = svc.find_or_create_user(db, net_id="adm00001")
     svc.set_role(db, admin, "admin")
     assert svc.is_instructor(db, course, admin) and svc.is_owner(db, course, admin)

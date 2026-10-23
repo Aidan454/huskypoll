@@ -1,17 +1,16 @@
 """API tests: python -m pytest -q tests/test_api.py"""
 from __future__ import annotations
 
-import io
 import struct
 import warnings
 import zlib
 from pathlib import Path
 
 import pytest
+from app.app import create_app
+from app.config import Settings
+from app.routers.auth import parse_cas_response
 from fastapi.testclient import TestClient
-from huskypoll_api.app import create_app
-from huskypoll_api.config import Settings
-from huskypoll_api.routers.auth import parse_cas_response
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -330,13 +329,13 @@ def test_websocket_live_updates(lecture):
 
 def test_websocket_requires_login_and_membership(app, lecture):
     from starlette.websockets import WebSocketDisconnect
-    with pytest.raises(WebSocketDisconnect) as exc:
-        with TestClient(app).websocket_connect(f"/ws/courses/{lecture['cid']}") as ws:
+    with (pytest.raises(WebSocketDisconnect) as exc, 
+          TestClient(app).websocket_connect(f"/ws/courses/{lecture['cid']}") as ws):
             ws.receive_json()
     assert exc.value.code == 4401
     outsider = login(app, "out99999@uconn.edu")
-    with pytest.raises(WebSocketDisconnect) as exc:
-        with outsider.websocket_connect(f"/ws/courses/{lecture['cid']}") as ws:
+    with (pytest.raises(WebSocketDisconnect) as exc, 
+          outsider.websocket_connect(f"/ws/courses/{lecture['cid']}") as ws):
             ws.receive_json()
     assert exc.value.code == 4403
 
@@ -427,7 +426,7 @@ def test_bad_public_url_rejected(tmp_path, bad):
 # --- account roles ----------------------------------------------------------------
 
 def test_role_rules_in_the_api(app, lecture):
-    prof, ta, ann, cid = lecture["prof"], lecture["ta"], lecture["ann"], lecture["cid"]
+    ta, ann = lecture["ta"], lecture["ann"]
     guest = login(app, "gus12345@uconn.edu")
     assert guest.get("/me").json()["role"] == "guest"
     assert ann.get("/me").json()["role"] == "student"      # roster import made her a student

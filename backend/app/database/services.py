@@ -10,7 +10,7 @@ import datetime as dt
 import math
 import re
 import secrets
-from typing import Iterable, Optional, Sequence
+from collections.abc import Iterable, Sequence
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
@@ -63,14 +63,14 @@ class NotAllowed(HuskyPollError):
 # Small helpers
 # ---------------------------------------------------------------------------
 
-def _clean(value: Optional[str]) -> Optional[str]:
+def _clean(value: str | None) -> str | None:
     if value is None:
         return None
     value = str(value).strip()
     return value or None
 
 
-def _lower(value: Optional[str]) -> Optional[str]:
+def _lower(value: str | None) -> str | None:
     value = _clean(value)
     return value.lower() if value else None
 
@@ -87,10 +87,10 @@ def log_event(
     db: Session,
     event_type: str,
     *,
-    user: Optional[User] = None,
-    course: Optional[Course] = None,
-    poll: Optional[Poll] = None,
-    ip_address: Optional[str] = None,
+    user: User | None = None,
+    course: Course | None = None,
+    poll: Poll | None = None,
+    ip_address: str | None = None,
     **details,
 ) -> EventLog:
     entry = EventLog(
@@ -109,7 +109,7 @@ def log_event(
 # Users and login
 # ---------------------------------------------------------------------------
 
-def normalize_net_id(net_id: Optional[str]) -> Optional[str]:
+def normalize_net_id(net_id: str | None) -> str | None:
     """Trim and lowercase a NetID; raise HuskyPollError if it isn't 3 letters + 5 digits."""
     value = _lower(net_id)
     if value is not None and not NETID_RE.match(value):
@@ -117,17 +117,17 @@ def normalize_net_id(net_id: Optional[str]) -> Optional[str]:
     return value
 
 
-def is_valid_net_id(net_id: Optional[str]) -> bool:
+def is_valid_net_id(net_id: str | None) -> bool:
     return bool(net_id) and bool(NETID_RE.match(str(net_id).strip().lower()))
 
 
 def find_user(
     db: Session,
     *,
-    net_id: Optional[str] = None,
-    email: Optional[str] = None,
-    student_id: Optional[str] = None,
-) -> Optional[User]:
+    net_id: str | None = None,
+    email: str | None = None,
+    student_id: str | None = None,
+) -> User | None:
     """Match by NetID, then student ID, then email (most to least reliable)."""
     for column, value in (
         (User.net_id, _lower(net_id)),
@@ -144,11 +144,11 @@ def find_user(
 def find_or_create_user(
     db: Session,
     *,
-    net_id: Optional[str] = None,
-    email: Optional[str] = None,
-    student_id: Optional[str] = None,
-    first_name: Optional[str] = None,
-    last_name: Optional[str] = None,
+    net_id: str | None = None,
+    email: str | None = None,
+    student_id: str | None = None,
+    first_name: str | None = None,
+    last_name: str | None = None,
 ) -> tuple[User, bool]:
     """Return (user, created). Fills in any identifiers the existing row is missing."""
     net_id, email, student_id = normalize_net_id(net_id), _lower(email), _clean(student_id)
@@ -181,7 +181,7 @@ def find_or_create_user(
     return user, created
 
 
-def check_login_email(email: Optional[str]) -> tuple[str, Optional[str]]:
+def check_login_email(email: str | None) -> tuple[str, str | None]:
     """Validate a login email. Returns (email lowercased, NetID if the email is netid@uconn.edu)."""
     value = _lower(email)
     m = LOGIN_EMAIL_RE.match(value or "")
@@ -197,11 +197,11 @@ def record_login(
     db: Session,
     *,
     email: str,
-    net_id: Optional[str] = None,
-    first_name: Optional[str] = None,
-    last_name: Optional[str] = None,
-    student_id: Optional[str] = None,
-    ip_address: Optional[str] = None,
+    net_id: str | None = None,
+    first_name: str | None = None,
+    last_name: str | None = None,
+    student_id: str | None = None,
+    ip_address: str | None = None,
 ) -> User:
     """Call after CAS/Entra authenticates someone. Links them to any roster row.
 
@@ -243,7 +243,7 @@ def promote(user: User, at_least: str) -> bool:
     return False
 
 
-def set_role(db: Session, user: User, role: str, by: Optional[User] = None) -> User:
+def set_role(db: Session, user: User, role: str, by: User | None = None) -> User:
     """Set a user's account role. `by` must be an admin (None = command line / system)."""
     if role not in USER_ROLES:
         raise HuskyPollError(f"role must be one of: {', '.join(USER_ROLES)}")
@@ -265,7 +265,7 @@ def create_course(
     subject: str,
     catalog: str,
     title: str,
-    section: Optional[str] = None,
+    section: str | None = None,
     points_participation: float = 1.0,
     points_correct: float = 0.0,
 ) -> Course:
@@ -372,7 +372,7 @@ def is_instructor(db: Session, course: Course, user: User) -> bool:
 
 
 def enroll(
-    db: Session, course: Course, user: User, *, source: str = "manual", section: Optional[str] = None
+    db: Session, course: Course, user: User, *, source: str = "manual", section: str | None = None
 ) -> tuple[Enrollment, str]:
     """Add or re-activate a student. Returns (enrollment, 'added'|'reactivated'|'unchanged')."""
     promote(user, "student")
@@ -408,13 +408,13 @@ def create_question(
     type: str,
     body_md: str,
     options: Sequence[tuple[str, bool]] = (),
-    bank: Optional[QuestionBank] = None,
-    explanation_md: Optional[str] = None,
-    text_answer: Optional[str] = None,
-    numeric_answer: Optional[float] = None,
-    numeric_tolerance: Optional[float] = None,
-    body_media_id: Optional[int] = None,
-    explanation_media_id: Optional[int] = None,
+    bank: QuestionBank | None = None,
+    explanation_md: str | None = None,
+    text_answer: str | None = None,
+    numeric_answer: float | None = None,
+    numeric_tolerance: float | None = None,
+    body_media_id: int | None = None,
+    explanation_media_id: int | None = None,
 ) -> Question:
     """Create a question. `options` is [(text, is_correct), ...] for multiple choice.
 
@@ -442,7 +442,7 @@ def create_question(
     return q
 
 
-def copy_question(db: Session, source: Question, author: User, bank: Optional[QuestionBank] = None) -> Question:
+def copy_question(db: Session, source: Question, author: User, bank: QuestionBank | None = None) -> Question:
     """Editable copy of a (possibly locked) question - for edits and for reuse in a new term."""
     q = Question(
         author_id=author.id,
@@ -466,7 +466,7 @@ def copy_question(db: Session, source: Question, author: User, bank: Optional[Qu
     return q
 
 
-def copy_bank(db: Session, source: QuestionBank, owner: User, *, name: str, course: Optional[Course] = None) -> QuestionBank:
+def copy_bank(db: Session, source: QuestionBank, owner: User, *, name: str, course: Course | None = None) -> QuestionBank:
     """Copy a whole question bank, e.g. last semester's bank into this semester's course."""
     bank = QuestionBank(owner_id=owner.id, course_id=course.id if course else None, name=name,
                         description=source.description)
@@ -482,7 +482,7 @@ def copy_bank(db: Session, source: QuestionBank, owner: User, *, name: str, cour
 # ---------------------------------------------------------------------------
 
 def get_or_create_session(
-    db: Session, course: Course, *, on_date: Optional[dt.date] = None, title: Optional[str] = None
+    db: Session, course: Course, *, on_date: dt.date | None = None, title: str | None = None
 ) -> LectureSession:
     """Today's lecture session for the course, auto-creating it on the first poll of the day."""
     on_date = on_date or dt.date.today()
@@ -509,7 +509,7 @@ def open_poll(
     question: Question,
     opened_by: User,
     *,
-    lecture_session: Optional[LectureSession] = None,
+    lecture_session: LectureSession | None = None,
     show_results: bool = False,
 ) -> Poll:
     """Open a poll on a question (from a bank, or just created in lecture)."""
@@ -554,7 +554,7 @@ def close_poll(db: Session, poll: Poll, closed_by: User) -> Poll:
     return poll
 
 
-def find_open_poll_by_code(db: Session, access_code: str) -> Optional[Poll]:
+def find_open_poll_by_code(db: Session, access_code: str) -> Poll | None:
     return db.scalar(select(Poll).where(Poll.access_code == access_code.strip().upper(), Poll.status == "open"))
 
 
@@ -565,9 +565,9 @@ def find_open_poll_by_code(db: Session, access_code: str) -> Optional[Poll]:
 def grade(
     question: Question,
     option_ids: Iterable[int] = (),
-    text_answer: Optional[str] = None,
-    numeric_answer: Optional[float] = None,
-) -> Optional[bool]:
+    text_answer: str | None = None,
+    numeric_answer: float | None = None,
+) -> bool | None:
     """True/False if the question has an answer key, None if it does not."""
     if question.type in ("mc_single", "mc_multi"):
         correct = {o.id for o in question.options if o.is_correct}
@@ -594,9 +594,9 @@ def submit_response(
     student: User,
     *,
     option_ids: Sequence[int] = (),
-    text_answer: Optional[str] = None,
-    numeric_answer: Optional[float] = None,
-    ip_address: Optional[str] = None,
+    text_answer: str | None = None,
+    numeric_answer: float | None = None,
+    ip_address: str | None = None,
 ) -> Response:
     """Record (or replace) a student's answer. The returned row is the confirmation."""
     course = poll.session.course
@@ -696,7 +696,7 @@ def drop_student(db: Session, course: Course, user: User, by: User) -> Enrollmen
     return enr
 
 
-def create_session(db: Session, course: Course, *, title: str, on_date: Optional[dt.date] = None) -> LectureSession:
+def create_session(db: Session, course: Course, *, title: str, on_date: dt.date | None = None) -> LectureSession:
     """Manually create a lecture session (several per day are allowed)."""
     sess = LectureSession(session_date=on_date or dt.date.today(), title=title.strip(),
                           started_at=utcnow(), is_auto=False)
@@ -728,8 +728,8 @@ def update_question(
     db: Session,
     q: Question,
     *,
-    options: Optional[Sequence[tuple[str, bool]]] = None,
-    correct_option_ids: Optional[Sequence[int]] = None,
+    options: Sequence[tuple[str, bool]] | None = None,
+    correct_option_ids: Sequence[int] | None = None,
     **changes,
 ) -> tuple[Question, int]:
     """Edit a question. Returns (question, number of responses re-marked).

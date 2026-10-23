@@ -1,9 +1,9 @@
 """Roster import: the StudentAdmin class-roster spreadsheet, or a pasted list of IDs/emails."""
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable, Optional
 
 from openpyxl import load_workbook
 from sqlalchemy import select
@@ -46,7 +46,7 @@ class ImportResult:
         return s
 
 
-def _split_name(name: Optional[str]) -> tuple[Optional[str], Optional[str]]:
+def _split_name(name: str | None) -> tuple[str | None, str | None]:
     """StudentAdmin writes 'LastName,FirstName'."""
     if not name:
         return None, None
@@ -96,7 +96,7 @@ def import_records(
     records: Iterable[dict],
     *,
     drop_missing: bool = False,
-    by: Optional[User] = None,
+    by: User | None = None,
 ) -> ImportResult:
     """Create/match users and enroll them. With drop_missing, students no longer on
     the roster are marked dropped (their past responses are kept)."""
@@ -138,13 +138,13 @@ def import_records(
 
 
 def import_studentadmin_xlsx(
-    db: Session, course: Course, path: str | Path, *, drop_missing: bool = False, by: Optional[User] = None
+    db: Session, course: Course, path: str | Path, *, drop_missing: bool = False, by: User | None = None
 ) -> ImportResult:
     return import_records(db, course, read_studentadmin_xlsx(path), drop_missing=drop_missing, by=by)
 
 
 def import_identifiers(
-    db: Session, course: Course, text: str, *, by: Optional[User] = None
+    db: Session, course: Course, text: str, *, by: User | None = None
 ) -> ImportResult:
     """Import a pasted list: one NetID, email or 7-digit student ID per line (commas also work)."""
     records = []

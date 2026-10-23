@@ -6,11 +6,12 @@ import logging
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from huskypoll_db import init_db, make_engine, make_session_factory
-from huskypoll_db.services import HuskyPollError, NotAllowed
 from sqlalchemy import inspect, text
 from sqlalchemy.exc import IntegrityError
 from starlette.middleware.sessions import SessionMiddleware
+
+from app.database.database import init_db, make_engine, make_session_factory
+from app.database.services import HuskyPollError, NotAllowed
 
 from .config import Settings
 from .routers import auth, courses, polls, questions, users
@@ -25,10 +26,11 @@ def _prepare_database(engine, settings: Settings) -> None:
     if not inspect(engine).has_table("users"):
         init_db(engine)
         try:
-            from huskypoll_db.__main__ import _stamp_alembic_head
+            from app.database.__main__ import _stamp_alembic_head
             _stamp_alembic_head(str(settings.db_path))
         except Exception as exc:  # alembic.ini missing (e.g. installed as a package)
             log.warning("created database but could not stamp Alembic version: %s", exc)
+            raise
         log.info("created new database %s", settings.db_path)
         return
     try:
@@ -45,6 +47,7 @@ def _prepare_database(engine, settings: Settings) -> None:
                         current, head)
     except Exception as exc:
         log.warning("could not check database migration version: %s", exc)
+        raise
 
 
 def create_app(settings: Settings | None = None) -> HuskyPollSite:
@@ -73,8 +76,9 @@ def create_app(settings: Settings | None = None) -> HuskyPollSite:
     app.add_middleware(SessionMiddleware, secret_key=settings.secret_key, session_cookie="huskypoll_session",
                        max_age=14 * 24 * 3600, path=settings.base_path or "/", same_site="lax",
                        https_only=settings.secure_cookies)
-    if settings.cors_origins:
-        app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins, allow_credentials=True,
+    if settings.cors_origins or settings.cors_origin_regex:
+        app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins,
+                           allow_origin_regex=settings.cors_origin_regex, allow_credentials=True,
                            allow_methods=["*"], allow_headers=["*"])
 
     @app.exception_handler(NotAllowed)

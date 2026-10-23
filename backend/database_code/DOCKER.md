@@ -9,7 +9,7 @@ help and exits successfully without creating or modifying a database.
 Docker must be installed and running. From the repository root:
 
 ```sh
-docker build -t huskypoll-db:local Backend/DataBase_Code
+docker build -t huskypoll-db:local backend/app
 ```
 
 The build downloads the Python 3.13 slim base image and installs the existing
@@ -18,7 +18,7 @@ includes pytest because it is already in that dependency file and is needed to
 test this preparation image. Dependency versions follow the existing ranges;
 builds at different times can install different versions.
 
-The build context is `Backend/DataBase_Code`, not the repository root.
+The build context is `backend/app`, not the repository root.
 `.dockerignore` excludes local environments, database files, CSV exports, and
 environment files. The Dockerfile copies only the files needed by the database
 package, migrations, tests, and demos.

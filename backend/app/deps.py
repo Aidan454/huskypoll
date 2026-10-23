@@ -1,11 +1,14 @@
 """Shared FastAPI dependencies: database session, current user, permission checks."""
 from __future__ import annotations
 
-from typing import Callable, Iterator
+from collections.abc import Callable, Iterator
+from typing import Annotated
 
 from fastapi import Depends, HTTPException, Request, status
-from huskypoll_db import services as svc
-from huskypoll_db.models import (
+from sqlalchemy.orm import Session
+
+from app.database import services as svc
+from app.database.models import (
     Course,
     CourseInstructor,
     LectureSession,
@@ -13,7 +16,6 @@ from huskypoll_db.models import (
     Question,
     User,
 )
-from sqlalchemy.orm import Session
 
 from .config import Settings
 
@@ -44,7 +46,7 @@ def after_commit(request: Request, fn: Callable[[], None]) -> None:
     request.state.after_commit.append(fn)
 
 
-def optional_user(request: Request, db: Session = Depends(get_db)) -> User | None:
+def optional_user(request: Request, db: Annotated[Session, Depends(get_db)]) -> User | None:
     user_id = request.session.get("user_id")
     if user_id is None:
         return None
@@ -54,7 +56,7 @@ def optional_user(request: Request, db: Session = Depends(get_db)) -> User | Non
     return user
 
 
-def current_user(user: User | None = Depends(optional_user)) -> User:
+def current_user(user: Annotated[User | None, Depends(optional_user)]) -> User:
     if user is None:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Not logged in")
     return user
