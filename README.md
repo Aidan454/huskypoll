@@ -3,6 +3,6 @@
 - [Figma](https://www.figma.com/design/K36XQd4ALpeLzsJDkizw6b/HuskyPoll?node-id=0-1&t=qNfZeEnPTAygMSzT-1)
 
 ## Tech Stack
-- Frontend: [React?](https://react.dev/)
+- Frontend: [React](https://react.dev/)
 - Backend:  [FastAPI](https://fastapi.tiangolo.com/)
 - Database: [SQLite](https://www.sqlite.org/docs.html)
