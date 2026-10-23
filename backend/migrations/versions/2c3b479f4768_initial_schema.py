@@ -7,9 +7,10 @@ Create Date: 2026-10-01 20:23:40.196484
 """
 from collections.abc import Sequence
 
-import huskypoll_db.models
 import sqlalchemy as sa
 from alembic import op
+
+import app.database.models
 
 # Triggers and views as they were at this revision. Copied, not imported,
 # so this migration never changes when triggers.py is edited later.
@@ -178,8 +179,8 @@ def upgrade() -> None:
     sa.Column('first_name', sa.String(length=100), nullable=True),
     sa.Column('last_name', sa.String(length=100), nullable=True),
     sa.Column('is_admin', sa.Boolean(create_constraint=True, name='is_admin'), nullable=False),
-    sa.Column('created_at', huskypoll_db.models.UTCDateTime(), nullable=False),
-    sa.Column('last_login_at', huskypoll_db.models.UTCDateTime(), nullable=True),
+    sa.Column('created_at', app.database.models.UTCDateTime(), nullable=False),
+    sa.Column('last_login_at', app.database.models.UTCDateTime(), nullable=True),
     sa.CheckConstraint('email IS NULL OR email = lower(email)', name=op.f('ck_users_email_lower')),
     sa.CheckConstraint('net_id IS NOT NULL OR email IS NOT NULL OR student_id IS NOT NULL', name=op.f('ck_users_has_identifier')),
     sa.CheckConstraint('net_id IS NULL OR net_id = lower(net_id)', name=op.f('ck_users_net_id_lower')),
@@ -199,8 +200,8 @@ def upgrade() -> None:
     sa.Column('points_participation', sa.Float(), nullable=False),
     sa.Column('points_correct', sa.Float(), nullable=False),
     sa.Column('created_by', sa.Integer(), nullable=True),
-    sa.Column('created_at', huskypoll_db.models.UTCDateTime(), nullable=False),
-    sa.Column('archived_at', huskypoll_db.models.UTCDateTime(), nullable=True),
+    sa.Column('created_at', app.database.models.UTCDateTime(), nullable=False),
+    sa.Column('archived_at', app.database.models.UTCDateTime(), nullable=True),
     sa.CheckConstraint('points_participation >= 0 AND points_correct >= 0', name=op.f('ck_courses_points_nonneg')),
     sa.ForeignKeyConstraint(['created_by'], ['users.id'], name=op.f('fk_courses_created_by_users'), ondelete='SET NULL'),
     sa.PrimaryKeyConstraint('id', name=op.f('pk_courses')),
@@ -214,7 +215,7 @@ def upgrade() -> None:
     sa.Column('mime_type', sa.String(length=100), nullable=False),
     sa.Column('size_bytes', sa.Integer(), nullable=True),
     sa.Column('uploaded_by', sa.Integer(), nullable=True),
-    sa.Column('created_at', huskypoll_db.models.UTCDateTime(), nullable=False),
+    sa.Column('created_at', app.database.models.UTCDateTime(), nullable=False),
     sa.CheckConstraint("mime_type LIKE 'image/%'", name=op.f('ck_media_image_only')),
     sa.ForeignKeyConstraint(['uploaded_by'], ['users.id'], name=op.f('fk_media_uploaded_by_users'), ondelete='SET NULL'),
     sa.PrimaryKeyConstraint('id', name=op.f('pk_media')),
@@ -224,7 +225,7 @@ def upgrade() -> None:
     sa.Column('course_id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('role', sa.String(length=16), nullable=False),
-    sa.Column('added_at', huskypoll_db.models.UTCDateTime(), nullable=False),
+    sa.Column('added_at', app.database.models.UTCDateTime(), nullable=False),
     sa.CheckConstraint("role IN ('owner', 'instructor', 'ta')", name=op.f('ck_course_instructors_role')),
     sa.ForeignKeyConstraint(['course_id'], ['courses.id'], name=op.f('fk_course_instructors_course_id_courses'), ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], name=op.f('fk_course_instructors_user_id_users'), ondelete='CASCADE'),
@@ -239,7 +240,7 @@ def upgrade() -> None:
     sa.Column('section', sa.String(length=16), nullable=True),
     sa.Column('source', sa.String(length=16), nullable=False),
     sa.Column('status', sa.String(length=16), nullable=False),
-    sa.Column('added_at', huskypoll_db.models.UTCDateTime(), nullable=False),
+    sa.Column('added_at', app.database.models.UTCDateTime(), nullable=False),
     sa.CheckConstraint("source IN ('import', 'manual', 'self')", name=op.f('ck_enrollments_source')),
     sa.CheckConstraint("status IN ('active', 'dropped')", name=op.f('ck_enrollments_status')),
     sa.ForeignKeyConstraint(['course_id'], ['courses.id'], name=op.f('fk_enrollments_course_id_courses'), ondelete='CASCADE'),
@@ -254,8 +255,8 @@ def upgrade() -> None:
     sa.Column('course_id', sa.Integer(), nullable=False),
     sa.Column('title', sa.String(length=200), nullable=True),
     sa.Column('session_date', sa.Date(), nullable=False),
-    sa.Column('started_at', huskypoll_db.models.UTCDateTime(), nullable=True),
-    sa.Column('ended_at', huskypoll_db.models.UTCDateTime(), nullable=True),
+    sa.Column('started_at', app.database.models.UTCDateTime(), nullable=True),
+    sa.Column('ended_at', app.database.models.UTCDateTime(), nullable=True),
     sa.Column('is_auto', sa.Boolean(create_constraint=True, name='is_auto'), nullable=False),
     sa.ForeignKeyConstraint(['course_id'], ['courses.id'], name=op.f('fk_lecture_sessions_course_id_courses'), ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id', name=op.f('pk_lecture_sessions'))
@@ -269,7 +270,7 @@ def upgrade() -> None:
     sa.Column('course_id', sa.Integer(), nullable=True),
     sa.Column('name', sa.String(length=200), nullable=False),
     sa.Column('description', sa.Text(), nullable=True),
-    sa.Column('created_at', huskypoll_db.models.UTCDateTime(), nullable=False),
+    sa.Column('created_at', app.database.models.UTCDateTime(), nullable=False),
     sa.ForeignKeyConstraint(['course_id'], ['courses.id'], name=op.f('fk_question_banks_course_id_courses'), ondelete='SET NULL'),
     sa.ForeignKeyConstraint(['owner_id'], ['users.id'], name=op.f('fk_question_banks_owner_id_users'), ondelete='RESTRICT'),
     sa.PrimaryKeyConstraint('id', name=op.f('pk_question_banks'))
@@ -292,8 +293,8 @@ def upgrade() -> None:
     sa.Column('numeric_tolerance', sa.Float(), nullable=True),
     sa.Column('copied_from_id', sa.Integer(), nullable=True),
     sa.Column('is_locked', sa.Boolean(create_constraint=True, name='is_locked'), nullable=False),
-    sa.Column('created_at', huskypoll_db.models.UTCDateTime(), nullable=False),
-    sa.Column('updated_at', huskypoll_db.models.UTCDateTime(), nullable=False),
+    sa.Column('created_at', app.database.models.UTCDateTime(), nullable=False),
+    sa.Column('updated_at', app.database.models.UTCDateTime(), nullable=False),
     sa.CheckConstraint("body_md <> '' OR body_media_id IS NOT NULL", name=op.f('ck_questions_has_body')),
     sa.CheckConstraint("type = 'numeric' OR (numeric_answer IS NULL AND numeric_tolerance IS NULL)", name=op.f('ck_questions_numeric_fields_only_for_numeric')),
     sa.CheckConstraint("type IN ('mc_single', 'mc_multi', 'free_text', 'numeric')", name=op.f('ck_questions_type')),
@@ -318,9 +319,9 @@ def upgrade() -> None:
     sa.Column('position', sa.Integer(), nullable=False),
     sa.Column('show_results', sa.Boolean(create_constraint=True, name='show_results'), nullable=False),
     sa.Column('opened_by', sa.Integer(), nullable=True),
-    sa.Column('opened_at', huskypoll_db.models.UTCDateTime(), nullable=True),
-    sa.Column('closed_at', huskypoll_db.models.UTCDateTime(), nullable=True),
-    sa.Column('created_at', huskypoll_db.models.UTCDateTime(), nullable=False),
+    sa.Column('opened_at', app.database.models.UTCDateTime(), nullable=True),
+    sa.Column('closed_at', app.database.models.UTCDateTime(), nullable=True),
+    sa.Column('created_at', app.database.models.UTCDateTime(), nullable=False),
     sa.CheckConstraint("status <> 'closed' OR closed_at IS NOT NULL", name=op.f('ck_polls_closed_has_time')),
     sa.CheckConstraint("status = 'draft' OR opened_at IS NOT NULL", name=op.f('ck_polls_opened_has_time')),
     sa.CheckConstraint("status IN ('draft', 'open', 'closed')", name=op.f('ck_polls_status')),
@@ -350,7 +351,7 @@ def upgrade() -> None:
     )
     op.create_table('event_log',
     sa.Column('id', sa.Integer(), nullable=False),
-    sa.Column('occurred_at', huskypoll_db.models.UTCDateTime(), nullable=False),
+    sa.Column('occurred_at', app.database.models.UTCDateTime(), nullable=False),
     sa.Column('event_type', sa.String(length=32), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=True),
     sa.Column('course_id', sa.Integer(), nullable=True),
@@ -374,8 +375,8 @@ def upgrade() -> None:
     sa.Column('text_answer', sa.Text(), nullable=True),
     sa.Column('numeric_answer', sa.Float(), nullable=True),
     sa.Column('is_correct', sa.Boolean(create_constraint=True, name='is_correct'), nullable=True),
-    sa.Column('submitted_at', huskypoll_db.models.UTCDateTime(), nullable=False),
-    sa.Column('updated_at', huskypoll_db.models.UTCDateTime(), nullable=False),
+    sa.Column('submitted_at', app.database.models.UTCDateTime(), nullable=False),
+    sa.Column('updated_at', app.database.models.UTCDateTime(), nullable=False),
     sa.ForeignKeyConstraint(['poll_id'], ['polls.id'], name=op.f('fk_responses_poll_id_polls'), ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], name=op.f('fk_responses_user_id_users'), ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id', name=op.f('pk_responses')),
@@ -393,7 +394,7 @@ def upgrade() -> None:
     )
     # ### end Alembic commands ###
 
-    # Triggers and views (see huskypoll_db/triggers.py)
+    # Triggers and views (see app/database/triggers.py)
     for stmt in DDL_STATEMENTS:
         op.execute(stmt)
 

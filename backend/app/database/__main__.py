@@ -25,7 +25,7 @@ from .models import Course
 def _stamp_alembic_head(db_path: str) -> None:
     """Record that a freshly created database is at the latest migration,
     so future `alembic upgrade head` runs apply only newer changes."""
-    ini = Path(__file__).resolve().parent.parent / "alembic.ini"
+    ini = Path(__file__).resolve().parent.parent.parent / "alembic.ini"
     if not ini.exists():
         return
     import os

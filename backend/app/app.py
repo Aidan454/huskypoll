@@ -30,7 +30,6 @@ def _prepare_database(engine, settings: Settings) -> None:
             _stamp_alembic_head(str(settings.db_path))
         except Exception as exc:  # alembic.ini missing (e.g. installed as a package)
             log.warning("created database but could not stamp Alembic version: %s", exc)
-            raise
         log.info("created new database %s", settings.db_path)
         return
     try:
@@ -47,7 +46,6 @@ def _prepare_database(engine, settings: Settings) -> None:
                         current, head)
     except Exception as exc:
         log.warning("could not check database migration version: %s", exc)
-        raise
 
 
 def create_app(settings: Settings | None = None) -> HuskyPollSite:
