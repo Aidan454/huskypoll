@@ -103,4 +103,4 @@ Invoke-RestMethod -Method Post "$api/polls/$($poll.id)/responses" -WebSession $s
 # 16. (Optional) The grades export
 (Need to make CID update automatically)
 Invoke-RestMethod "$api/courses/$cid/participation" -WebSession $s | Format-Table
-Invoke-WebRequest "$api/courses/$cid/export/huskyct.csv" -WebSession $s -OutFile grades.csv
+Invoke-WebRequest "$api/courses/$cid/export/participation.csv" -WebSession $s -OutFile grades.csv

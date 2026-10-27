@@ -20,7 +20,6 @@ export default function SettingsTab() {
     const updated = await api.patch(`/courses/${course.id}`, {
       title: body.title,
       section: body.section,
-      points_participation: body.points_participation,
       points_correct: body.points_correct,
     })
     setCourse(updated)
@@ -74,8 +73,8 @@ export default function SettingsTab() {
         <div className="card" style={{ borderColor: '#f0c8c4' }}>
           <h2 style={{ color: 'var(--red)' }}>Delete course</h2>
           <p className="muted">
-            Permanently removes the roster, lectures, polls and every answer. Question banks are kept. Download the HuskyCT
-            grades first; this cannot be undone.
+            Permanently removes the roster, lectures, polls and every answer. Question banks are kept. Download the
+            participation grades first; this cannot be undone.
           </p>
           <button type="button" className="btn btn-danger" onClick={() => setDeleting(true)}>
             Delete course…

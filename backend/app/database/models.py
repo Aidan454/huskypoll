@@ -192,7 +192,7 @@ class Course(Base):
     section: Mapped[str | None] = mapped_column(String(16))
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     join_code: Mapped[str | None] = mapped_column(String(16), unique=True)
-    # Grading: each poll is worth points_participation for answering plus
+    # Grading: each poll is worth a fixed 1 point for answering plus
     # points_correct for a correct answer.
     points_participation: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
     points_correct: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)

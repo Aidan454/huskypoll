@@ -3,7 +3,7 @@
   init                     create a new, empty database
   seed-demo                create a database filled with a demo course
   import-roster COURSE_ID FILE.xlsx [--drop-missing]
-  export COURSE_ID OUT.csv [--per-session]
+  export COURSE_ID OUT.csv  participation grades (100 answered / 0 missed)
   archive-course COURSE_ID --as NETID        hide a course, keep its data (undo with --undo)
   delete-course COURSE_ID --as NETID [--delete-logs] [--yes]   permanently delete a course
   set-role NETID ROLE      make someone admin / instructor / ta / student / guest
@@ -52,7 +52,6 @@ def main(argv: list[str] | None = None) -> int:
     e = sub.add_parser("export")
     e.add_argument("course_id", type=int)
     e.add_argument("out", type=Path)
-    e.add_argument("--per-session", action="store_true")
     a = sub.add_parser("archive-course")
     a.add_argument("course_id", type=int)
     a.add_argument("--as", dest="as_netid", required=True, help="NetID of an instructor of the course")
@@ -155,13 +154,9 @@ def main(argv: list[str] | None = None) -> int:
             for row, why in res.skipped:
                 print(f"  row {row}: {why}")
         elif args.cmd == "export":
-            from .export import per_session_csv, write_huskyct_csv
-            if args.per_session:
-                args.out.write_text(per_session_csv(db, course), encoding="utf-8")
-                print(f"Wrote {args.out}")
-            else:
-                n = write_huskyct_csv(db, course, args.out)
-                print(f"Wrote {n} students to {args.out}")
+            from .export import participation_csv
+            args.out.write_text(participation_csv(db, course), encoding="utf-8")
+            print(f"Wrote participation grades to {args.out}")
     return 0
 
 

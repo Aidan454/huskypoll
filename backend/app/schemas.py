@@ -49,14 +49,12 @@ class CourseCreate(BaseModel):
     catalog: str = Field(examples=["2050"])
     section: str | None = Field(None, examples=["001"])
     title: str = Field(examples=["Data Structures"])
-    points_participation: float = Field(1.0, ge=0)
     points_correct: float = Field(0.0, ge=0)
 
 
 class CourseUpdate(BaseModel):
     title: str | None = None
     section: str | None = None
-    points_participation: float | None = Field(None, ge=0)
     points_correct: float | None = Field(None, ge=0)
 
 
@@ -324,6 +322,11 @@ class ParticipationOut(BaseModel):
     correct: int
     points: float
     points_possible: float
+
+
+class ParticipationSessionOut(BaseModel):
+    date: dt.date
+    column: str
 
 
 class EventOut(BaseModel):

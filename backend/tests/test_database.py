@@ -2,13 +2,12 @@
 from __future__ import annotations
 
 import datetime as dt
-import io
 from pathlib import Path
 
 import pytest
 from app.database import services as svc
 from app.database.database import init_db, make_engine, make_session_factory
-from app.database.export import participation_totals, write_huskyct_csv
+from app.database.export import participation_csv, participation_sessions, participation_totals
 from app.database.models import (
     EventLog,
     Poll,
@@ -38,7 +37,7 @@ def course_setup(db):
     prof, _ = svc.find_or_create_user(db, net_id="prf00001", first_name="Pat", last_name="Prof")
     svc.set_role(db, prof, "instructor")
     course = svc.create_course(db, prof, term="Spring 2027", subject="cse", catalog="2050",
-                               title="Data Structures", points_participation=1, points_correct=2)
+                               title="Data Structures", points_correct=2)
     s1, _ = svc.find_or_create_user(db, net_id="abc12345", first_name="Ann", last_name="Able")
     s2, _ = svc.find_or_create_user(db, net_id="xyz67890", first_name="Bob", last_name="Baker")
     svc.enroll(db, course, s1)
@@ -278,11 +277,24 @@ def test_participation_export(db, course_setup):
     assert totals["abc12345"]["points"] == 3 and totals["abc12345"]["points_possible"] == 3
     assert totals["xyz67890"]["points"] == 0 and totals["xyz67890"]["polls"] == 1
 
-    buf = io.StringIO()
-    assert write_huskyct_csv(db, course, buf) == 2
-    lines = buf.getvalue().splitlines()
-    assert lines[0].endswith("[Total Pts: 3 Score]")
-    assert lines[1] == "Able,Ann,abc12345,,3"
+    next_week = svc.get_or_create_session(db, course, on_date=dt.date(2027, 2, 8))
+    week2_poll = svc.open_poll(db, course, q, prof, lecture_session=next_week)
+    svc.submit_response(db, week2_poll, s2, option_ids=[q.options[1].id])
+    svc.close_poll(db, week2_poll, prof)
+
+    lines = participation_csv(db, course).splitlines()
+    assert lines[0] == "Username,W1-02-01-PART,W2-02-08-PART"
+    assert lines[1] == "ABC12345,100,0"
+    assert lines[2] == "XYZ67890,0,100"
+
+    assert participation_sessions(db, course) == [
+        {"date": dt.date(2027, 2, 1), "column": "W1-02-01-PART"},
+        {"date": dt.date(2027, 2, 8), "column": "W2-02-08-PART"},
+    ]
+    filtered = participation_csv(db, course, dates=[dt.date(2027, 2, 8)]).splitlines()
+    assert filtered[0] == "Username,W2-02-08-PART"
+    assert filtered[1] == "ABC12345,0"
+    assert filtered[2] == "XYZ67890,100"
 
     assert participation_totals(db, course, start=dt.date(2027, 3, 1))[0]["points"] == 0
 

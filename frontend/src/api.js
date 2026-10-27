@@ -80,5 +80,10 @@ export const api = {
   /** Address of the UConn login. `next` is a page path relative to the site, e.g. '/courses/3'. */
   loginUrl: (next = '/') => `${API_BASE}/auth/login?next=${encodeURIComponent(next)}`,
   qrUrl: (pollId, fmt = 'svg') => `${API_BASE}/polls/${pollId}/qr.${fmt}`,
-  exportUrl: (courseId, kind = 'huskyct') => `${API_BASE}/courses/${courseId}/export/${kind}.csv`,
+  participationUrl: (courseId, dates = []) => {
+    const params = new URLSearchParams()
+    for (const date of dates) params.append('dates', date)
+    const query = params.toString()
+    return `${API_BASE}/courses/${courseId}/export/participation.csv${query ? `?${query}` : ''}`
+  },
 }

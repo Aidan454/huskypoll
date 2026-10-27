@@ -23,7 +23,17 @@ To stop the containers, use `docker compose down`
 - Development login: `POST /api/auth/dev-login` with
   `{"email": "pat.prof@uconn.edu", "net_id": "prf00001", "role": "instructor"}`.
 - The database and uploaded images are kept in `backend/data/` (not committed).
-  To start over: `docker compose down`, delete `backend/data`, `docker compose up -d`.
+  Plain `docker compose up -d --build` uses `backend/data/huskypoll.db` and does
+  not seed it.
+- Demo mode: `./scripts/demo.sh` builds the images, resets and seeds a separate
+  `backend/data/huskypoll-demo.db`, and starts the app with a demo course
+  (`CSE 2050-001`, 40 students, 6 polls). Demo logins: `prf00001` (instructor),
+  `tas00001` (TA), `adm00001` (admin), `ccb23028` (student). The normal database
+  is left alone; `docker compose up -d` switches back to it.
+- To start the normal database over: `docker compose down`, then
+  `docker compose run --rm backend sh -c 'rm -f /data/huskypoll.db*'`, then
+  `docker compose up -d --build`. (The container owns `backend/data/`, so delete
+  the files through a container rather than with the host user.)
 - Backend code changes reload automatically. After pulling new backend code with a new
   database migration, just restart: `docker compose restart backend` (migrations run on start).
 - Logs: `docker compose logs -f backend` (or `frontend`).

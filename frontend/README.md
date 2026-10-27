@@ -32,7 +32,7 @@ Instructor / TA / Admin / Student buttons on the login page.
 | `/courses/:id/lectures` | staff | Add, rename, re-date and delete lectures |
 | `/courses/:id/roster` | staff | Roster, add by pasted list / StudentAdmin .xlsx / one student, drop |
 | `/courses/:id/staff` | staff | Add or remove instructors and TAs |
-| `/courses/:id/grades` | staff | Points per student, HuskyCT and per-lecture CSV downloads |
+| `/courses/:id/grades` | staff | Points per student and participation CSV download with lecture-date selection |
 | `/courses/:id/activity` | staff | Course event log |
 | `/courses/:id/settings` | staff | Title, section, points; archive; delete (owner/admin) |
 | `/polls/:id` | staff | Classroom view: code, QR, live result bars, show results, close, answer key and re-mark |

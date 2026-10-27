@@ -48,7 +48,7 @@ def lecture(app):
     """A course with an owner, a TA, two students and one multiple-choice question."""
     prof = login(app, "pat.prof@uconn.edu", "prf00001", "Pat", "Prof", role="instructor")
     course = prof.post("/courses", json={"term": "Spring 2027", "subject": "cse", "catalog": "2050",
-                                         "title": "Data Structures", "points_participation": 1,
+                                         "title": "Data Structures",
                                          "points_correct": 1}).json()
     cid = course["id"]
     assert prof.post(f"/courses/{cid}/instructors", json={"identifier": "tas00001", "role": "ta"}).status_code == 201
@@ -85,6 +85,18 @@ def test_dev_login_rules(app):
 def test_dev_login_disabled_by_default(tmp_path):
     app = create_app(make_settings(tmp_path, dev_login=False))
     assert TestClient(app).post("/auth/dev-login", json={"email": "abc12345@uconn.edu"}).status_code == 404
+
+
+def test_participation_points_are_fixed_at_one(app):
+    prof = login(app, "pat.prof@uconn.edu", "prf00001", "Pat", "Prof", role="instructor")
+    body = {"term": "Spring 2027", "subject": "cse", "catalog": "2050", "title": "Data Structures"}
+    course = prof.post("/courses", json={**body, "points_participation": 9}).json()
+    assert course["points_participation"] == 1
+
+    updated = prof.patch(f"/courses/{course['id']}",
+                         json={"points_participation": 9, "points_correct": 2}).json()
+    assert updated["points_participation"] == 1
+    assert updated["points_correct"] == 2
 
 
 def test_cas_login_flow(app):
@@ -181,12 +193,17 @@ def test_full_lecture_flow(lecture):
         "polls": 1, "answered": 1, "correct": 1, "points": 2.0, "points_possible": 2.0}
 
     # Export and log
-    csv = prof.get(f"/courses/{cid}/export/huskyct.csv")
+    csv = prof.get(f"/courses/{cid}/export/participation.csv")
     assert csv.headers["content-type"].startswith("text/csv")
-    assert "Able,Ann,aab11111,,2" in csv.text and "Baker,Bob,bba22222,,1" in csv.text
-    assert "Total" in prof.get(f"/courses/{cid}/export/sessions.csv").text
+    header, ann_row, bob_row = csv.text.strip().splitlines()
+    assert header.startswith("Username,W1-") and header.endswith("-PART")
+    assert ann_row == "AAB11111,100" and bob_row == "BBA22222,100"
+    sessions = prof.get(f"/courses/{cid}/participation/sessions").json()
+    assert len(sessions) == 1 and sessions[0]["column"] == header.split(",")[1]
+    only_username = prof.get(f"/courses/{cid}/export/participation.csv", params={"dates": "2000-01-01"})
+    assert only_username.text.strip().splitlines()[0] == "Username"
     events = {e["event_type"] for e in prof.get(f"/courses/{cid}/events").json()}
-    assert {"poll_open", "response_submit", "response_update", "poll_close", "export_huskyct"} <= events
+    assert {"poll_open", "response_submit", "response_update", "poll_close", "export_participation"} <= events
 
 
 def test_quick_poll_then_add_answer_and_regrade(lecture):
@@ -236,7 +253,8 @@ def test_permissions(app, lecture):
     assert ann.post(f"/courses/{cid}/polls", json={"question_id": q["id"]}).status_code == 403
     assert ann.get(f"/courses/{cid}/roster").status_code == 403
     assert ann.get(f"/questions/{q['id']}").status_code == 404        # answer key not reachable
-    assert ann.get(f"/courses/{cid}/export/huskyct.csv").status_code == 403
+    assert ann.get(f"/courses/{cid}/export/participation.csv").status_code == 403
+    assert ann.get(f"/courses/{cid}/participation/sessions").status_code == 403
     poll = prof.post(f"/courses/{cid}/polls", json={"question_id": q["id"]}).json()
     r = outsider.post(f"/polls/{poll['id']}/responses", json={"option_ids": [q["options"][0]["id"]]})
     assert r.status_code == 404  # not without the code (see test_anyone_with_the_code_can_answer)

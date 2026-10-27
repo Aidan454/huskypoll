@@ -1,0 +1,8 @@
+# Demo mode, used by `./scripts/demo.sh`.
+#
+# It points the backend at a separate database so the demo data never touches
+# the normal development database used by plain `docker compose up`.
+services:
+  backend:
+    environment:
+      HUSKYPOLL_DB: /data/huskypoll-demo.db

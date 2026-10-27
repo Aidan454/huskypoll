@@ -266,7 +266,6 @@ def create_course(
     catalog: str,
     title: str,
     section: str | None = None,
-    points_participation: float = 1.0,
     points_correct: float = 0.0,
 ) -> Course:
     if not creator.has_role_at_least("instructor"):
@@ -278,7 +277,7 @@ def create_course(
         section=_clean(section),
         title=title.strip(),
         join_code=_unique_join_code(db),
-        points_participation=points_participation,
+        points_participation=1.0,
         points_correct=points_correct,
         created_by=creator.id,
     )
@@ -329,7 +328,7 @@ def delete_course(db: Session, course: Course, by: User, *, delete_logs: bool = 
     user accounts, and the event log - unless delete_logs=True, which also
     removes the course's log entries.
 
-    Only the course owner (or an admin) may do this. Export grades first.
+    Only the course owner (or an admin) may do this. Export participation grades first.
     """
     if not is_owner(db, course, by):
         raise NotAllowed("only the course owner can delete a course")
@@ -751,10 +750,10 @@ def regrade_poll(db: Session, poll: Poll) -> int:
 # ---------------------------------------------------------------------------
 
 def update_course(db: Session, course: Course, by: User, **changes) -> Course:
-    """Change title / section / points. Only keys that are passed are changed."""
+    """Change title / section / correctness points. Only keys that are passed are changed."""
     if not is_instructor(db, course, by):
         raise NotAllowed("only an instructor of this course can change it")
-    for key in ("title", "section", "points_participation", "points_correct"):
+    for key in ("title", "section", "points_correct"):
         if key in changes and changes[key] is not None:
             setattr(course, key, changes[key])
     db.flush()

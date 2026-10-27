@@ -31,7 +31,7 @@ def seed_demo(db: Session, *, students: int = 40, roster_xlsx: Path | None = Non
 
     course = svc.create_course(db, prof, term="Spring 2027", subject="CSE", catalog="2050",
                                section="001", title="Data Structures and Object-Oriented Design",
-                               points_participation=1, points_correct=1)
+                               points_correct=1)
     svc.add_instructor(db, course, ta, role="ta")
 
     # Roster: the real StudentAdmin layout (if given) plus generated students.

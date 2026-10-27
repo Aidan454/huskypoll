@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
-import io
 import sys
 import tempfile
 from pathlib import Path
@@ -23,7 +22,7 @@ sys.path.insert(0, str(ROOT))
 
 from app.database import services as svc
 from app.database.database import init_db, make_engine, make_session_factory
-from app.database.export import per_session_csv, write_huskyct_csv
+from app.database.export import participation_csv
 from app.database.models import QuestionBank
 from app.database.roster import import_identifiers, import_studentadmin_xlsx
 
@@ -111,7 +110,7 @@ say(f"New accounts start as '{prof.role}'. An admin makes professors instructors
 svc.set_role(db, prof, "instructor")  # in the app: PATCH /users/{id}/role, or `python -m app.database set-role`
 say(f"  {prof.net_id} is now '{prof.role}' and can create courses")
 course = svc.create_course(db, prof, term="Spring 2027", subject="cse", catalog="2050", section="001",
-                           title="Data Structures", points_participation=1, points_correct=1)
+                           title="Data Structures", points_correct=1)
 say(f"Created {course.code} - join code {course.join_code}")
 say(f"Grading: {course.points_participation:g} pt for answering + {course.points_correct:g} pt if correct")
 ta = svc.record_login(db, net_id="tas00001", email="terry.assistant@uconn.edu", first_name="Terry", last_name="Assistant")
@@ -253,19 +252,13 @@ bank2 = svc.copy_bank(db, bank, prof, name="Week 1 (Fall 2027)", course=fall)
 say(f"Whole bank copied to {fall.code}: {len(bank2.questions)} questions, all editable.")
 
 # ---------------------------------------------------------------------------
-step("Students' participation and the HuskyCT export")
+step("Students' participation and the participation grade export")
 say("Per-student, per-poll scores (v_poll_scores), first student:")
 rows(db, "SELECT session_date, poll_id, answered, is_correct, points, points_possible FROM v_poll_scores "
          "WHERE user_id = :u ORDER BY poll_id", {"u": students[0].id})
-buf = io.StringIO()
-write_huskyct_csv(db, course, buf, by=prof)
 say("")
-say("HuskyCT grade file (first lines):")
-for line in buf.getvalue().splitlines()[:5]:
-    say(f"  {line}")
-say("")
-say("Per-lecture review sheet (first lines):")
-for line in per_session_csv(db, course).splitlines()[:4]:
+say("Participation grade file (first lines):")
+for line in participation_csv(db, course, by=prof).splitlines()[:5]:
     say(f"  {line}")
 
 # ---------------------------------------------------------------------------

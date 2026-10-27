@@ -3,7 +3,7 @@
 The HuskyPoll backend has two parts:
 
 - `app.database` is the SQLite database layer: the schema, the rules the
-  database enforces, roster import, the HuskyCT export and demo data
+  database enforces, roster import, the participation grade export and demo data
   (SQLAlchemy 2).
 - `app` is the web API the frontend talks to (FastAPI): UConn login,
   courses, rosters, question banks, images, live polls with QR codes and
@@ -64,7 +64,7 @@ or pass `--db` to use another file.
 | `python -m app.database init` | Create an empty database (and mark it as up to date for Alembic) |
 | `python -m app.database seed-demo` | Demo course: CSE 2050, 40 students, 5 questions, 6 closed polls over 3 lectures |
 | `python -m app.database import-roster COURSE_ID roster.xlsx [--drop-missing]` | Import a StudentAdmin class roster |
-| `python -m app.database export COURSE_ID out.csv [--per-session]` | Participation CSV for HuskyCT (or per-lecture breakdown) |
+| `python -m app.database export COURSE_ID out.csv` | Participation CSV: 100 for each lecture the student answered a poll, 0 otherwise |
 | `python -m app.database archive-course COURSE_ID --as NETID [--undo]` | Hide a finished course but keep all its data (reversible) |
 | `python -m app.database delete-course COURSE_ID --as NETID [--delete-logs]` | Permanently delete a course (owner or admin only; asks you to confirm) |
 | `python -m app.database set-role NETID ROLE` | Make someone `admin`, `instructor`, `ta`, `student` or `guest` |
@@ -92,7 +92,7 @@ app/database/
   triggers.py   triggers and views (rules a CHECK constraint can't express)
   services.py   operations the API calls: login, courses, questions, polls, responses, grading
   roster.py     StudentAdmin .xlsx import, pasted NetID/email/ID lists
-  export.py     HuskyCT participation CSV
+  export.py     participation grade CSV
   seed.py       demo data
 migrations/     Alembic (schema changes after the first release)
 schema.sql      generated, read-only view of the schema
@@ -156,7 +156,7 @@ helpers already handle this:
 | File | Use it for |
 | --- | --- |
 | `src/config.js` | `API_BASE`, `BASE_PATH` (the router's `basename`), `pagePath('/courses/3')` |
-| `src/api.js` | `api.get/post/patch/delete/upload`, `api.me()`, `api.loginUrl(next)`, `api.qrUrl(pollId)`, `api.exportUrl(courseId)`; throws `ApiError` with `.status` and a readable message |
+| `src/api.js` | `api.get/post/patch/delete/upload`, `api.me()`, `api.loginUrl(next)`, `api.qrUrl(pollId)`, `api.participationUrl(courseId)`; throws `ApiError` with `.status` and a readable message |
 | `src/live.js` | `connectCourse(courseId, onMessage)` for live updates, with automatic reconnect |
 
 - **Use the URLs the API returns as they are.** That means `join_url` (a
@@ -184,7 +184,7 @@ try-it-out page are at `SITE_URL/api/docs`.
 | Images | `POST /media` (upload or paste), `GET /media/{sha256}` |
 | Polls | `POST /courses/{id}/polls`, `POST /courses/{id}/polls/quick`, `POST /courses/{id}/polls/set` (several questions asked one at a time), `POST /polls/{id}/open` (next question, same code), `DELETE /polls/{id}` (unopened only), `GET /courses/{id}/polls`, `GET /polls/by-code/{code}`, `GET/PATCH /polls/{id}`, `POST /polls/{id}/close`, `POST /polls/{id}/regrade`, `GET /polls/{id}/results`, `GET /polls/{id}/responses`, `GET /polls/{id}/qr.svg` / `qr.png` |
 | Students | `POST /polls/{id}/responses` (answer; the reply is the confirmation), `GET /courses/{id}/history`, `GET /courses/{id}/my-participation` |
-| Grades and logs | `GET /courses/{id}/export/huskyct.csv`, `/export/sessions.csv`, `GET /courses/{id}/participation`, `GET /courses/{id}/events` |
+| Grades and logs | `GET /courses/{id}/export/participation.csv` (optional repeatable `?dates=YYYY-MM-DD`), `GET /courses/{id}/participation/sessions`, `GET /courses/{id}/participation`, `GET /courses/{id}/events` |
 | Live updates | WebSocket `/ws/courses/{id}`: `poll_opened`, `poll_closed`, `results` (results go to students only when shown) |
 
 Students never see the answer key, the explanation, or whether they were
@@ -284,8 +284,8 @@ break them:
 - **Times are stored in UTC.** Every timestamp comes back timezone-aware.
 
 Two views do common queries:
-- `v_poll_scores`: one row per student per closed poll, with points. The export
-  is built from it.
+- `v_poll_scores`: one row per student per closed poll, with points. The grades
+  table and participation CSV are built from it.
 - `v_poll_option_counts`: live vote counts for the results bar chart.
 
 ## End of semester: archive or delete a course
@@ -300,7 +300,7 @@ Two views do common queries:
 | Event log | Kept | Kept, unless `delete_logs=True` |
 | Undo | `unarchive_course()` | Not possible, except from a backup |
 
-Export the HuskyCT CSV before deleting, because the answers are gone afterwards.
+Export the participation CSV before deleting, because the answers are gone afterwards.
 
 ## Changing the schema
 
@@ -342,9 +342,6 @@ course) and `tas00001` (TA), so for example: `python -m app.database delete-cour
   e.g. whether duplicate names get addresses with numbers (`john.smith2@`), which
   are currently refused. The rule is `LOGIN_EMAIL_RE` in `services.py`.
 
-- **HuskyCT column headers.** The export uses `Last Name, First Name, Username,
-  Student ID, HuskyPoll Participation [Total Pts: N Score]`. Check these against
-  a grade-center CSV downloaded from a test course.
 - **Roster rows with only a student ID.** These can't be matched to a login
   unless CAS/Entra sends the student ID. Rows with a NetID or email match
   automatically.

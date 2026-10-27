@@ -1,22 +1,39 @@
 import { useState } from 'react'
 import { useOutletContext } from 'react-router'
 import { api } from '../../api.js'
-import { Loaded } from '../../components/ui.jsx'
-import { pct, points } from '../../format.js'
+import { Loaded, Modal } from '../../components/ui.jsx'
+import { points } from '../../format.js'
 import { useApi } from '../../hooks.js'
 
 const COLUMNS = [
   ['last_name', 'Name'],
   ['net_id', 'NetID'],
   ['answered', 'Answered'],
-  ['correct', 'Correct'],
-  ['points', 'Points'],
 ]
 
 export default function GradesTab() {
   const { course } = useOutletContext()
   const rows = useApi(`/courses/${course.id}/participation`)
+  const sessions = useApi(`/courses/${course.id}/participation/sessions`)
   const [sort, setSort] = useState({ key: 'last_name', desc: false })
+  const [exportOpen, setExportOpen] = useState(false)
+  const [deselected, setDeselected] = useState(() => new Set())
+
+  function toggleDate(date) {
+    setDeselected((current) => {
+      const next = new Set(current)
+      if (next.has(date)) next.delete(date)
+      else next.add(date)
+      return next
+    })
+  }
+
+  function download() {
+    const selected = (sessions.data || []).filter((s) => !deselected.has(s.date)).map((s) => s.date)
+    if (!selected.length) return
+    window.location.href = api.participationUrl(course.id, selected)
+    setExportOpen(false)
+  }
 
   function sorted(list) {
     const { key, desc } = sort
@@ -33,18 +50,11 @@ export default function GradesTab() {
       <div className="card-head">
         <div>
           <h2>Grades</h2>
-          <p className="small muted" style={{ margin: 0 }}>
-            {points(course.points_participation)} pt for answering each closed poll, plus {points(course.points_correct)} pt
-            when correct (polls with an answer key).
-          </p>
         </div>
         <div className="row">
-          <a className="btn btn-primary" href={api.exportUrl(course.id, 'huskyct')} download>
-            Download for HuskyCT
-          </a>
-          <a className="btn" href={api.exportUrl(course.id, 'sessions')} download>
-            By lecture (CSV)
-          </a>
+          <button type="button" className="btn btn-primary" onClick={() => setExportOpen(true)}>
+            Download participation (CSV)
+          </button>
         </div>
       </div>
       <Loaded state={rows}>
@@ -68,7 +78,6 @@ export default function GradesTab() {
                         </button>
                       </th>
                     ))}
-                    <th className="num">%</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -81,11 +90,6 @@ export default function GradesTab() {
                       <td className="num">
                         {r.answered}/{r.polls}
                       </td>
-                      <td className="num">{r.correct}</td>
-                      <td className="num">
-                        {points(r.points)}/{points(r.points_possible)}
-                      </td>
-                      <td className="num">{pct(r.points, r.points_possible)}%</td>
                     </tr>
                   ))}
                 </tbody>
@@ -94,6 +98,60 @@ export default function GradesTab() {
           )
         }
       </Loaded>
+
+      <Modal open={exportOpen} onClose={() => setExportOpen(false)} title="Download participation CSV">
+        <Loaded state={sessions}>
+          {(list) => {
+            const selected = list.filter((s) => !deselected.has(s.date))
+            return list.length === 0 ? (
+              <p className="empty">No closed polls yet. Close a poll before exporting participation.</p>
+            ) : (
+              <>
+                <p className="muted">
+                  All lecture dates are selected. Untick any date you do not want in the CSV.
+                </p>
+                <div className="row" style={{ justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span className="small muted">
+                    {selected.length} of {list.length} selected
+                  </span>
+                  <div className="row">
+                    <button type="button" className="linkbtn" onClick={() => setDeselected(new Set())}>
+                      Select all
+                    </button>
+                    <button
+                      type="button"
+                      className="linkbtn"
+                      onClick={() => setDeselected(new Set(list.map((s) => s.date)))}
+                    >
+                      Clear all
+                    </button>
+                  </div>
+                </div>
+                <div className="stack">
+                  {list.map((s) => (
+                    <label key={s.date} className="check">
+                      <input
+                        type="checkbox"
+                        checked={!deselected.has(s.date)}
+                        onChange={() => toggleDate(s.date)}
+                      />
+                      <span>{s.column}</span>
+                    </label>
+                  ))}
+                </div>
+                <div className="form-actions">
+                  <button type="button" className="btn" onClick={() => setExportOpen(false)}>
+                    Cancel
+                  </button>
+                  <button type="button" className="btn btn-primary" onClick={download} disabled={!selected.length}>
+                    Download CSV
+                  </button>
+                </div>
+              </>
+            )
+          }}
+        </Loaded>
+      </Modal>
     </div>
   )
 }

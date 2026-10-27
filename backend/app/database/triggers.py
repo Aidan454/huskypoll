@@ -132,7 +132,7 @@ END""",
 
 VIEWS: dict[str, str] = {
     # One row per active student x closed poll in their course: did they answer,
-    # were they right, points earned and possible. The HuskyCT export sums this.
+    # were they right, points earned and possible. The participation export uses this.
     "v_poll_scores": """
 CREATE VIEW v_poll_scores AS
 SELECT
@@ -150,15 +150,8 @@ SELECT
         WHEN 'free_text' THEN q.text_answer IS NOT NULL
         ELSE EXISTS (SELECT 1 FROM question_options o WHERE o.question_id = q.id AND o.is_correct = 1)
     END AS has_answer_key,
-    (CASE WHEN r.id IS NULL THEN 0 ELSE c.points_participation END)
-      + (CASE WHEN r.is_correct = 1 THEN c.points_correct ELSE 0 END) AS points,
-    c.points_participation
-      + (CASE WHEN (CASE q.type
-                        WHEN 'numeric'   THEN q.numeric_answer IS NOT NULL
-                        WHEN 'free_text' THEN q.text_answer IS NOT NULL
-                        ELSE EXISTS (SELECT 1 FROM question_options o
-                                     WHERE o.question_id = q.id AND o.is_correct = 1)
-                    END) THEN c.points_correct ELSE 0 END) AS points_possible
+    (CASE WHEN r.id IS NULL THEN 0 ELSE c.points_participation END) AS points,
+    c.points_participation AS points_possible
 FROM enrollments e
 JOIN courses c          ON c.id = e.course_id
 JOIN lecture_sessions s ON s.course_id = e.course_id

@@ -1,18 +1,18 @@
 """Courses, instructors, rosters, lecture sessions, exports and the course event log."""
 from __future__ import annotations
 
-import io
+import datetime as dt
 import tempfile
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from fastapi.responses import Response as RawResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database import services as svc
-from app.database.export import participation_totals, per_session_csv, write_huskyct_csv
+from app.database.export import participation_csv, participation_sessions, participation_totals
 from app.database.models import (
     Course,
     CourseInstructor,
@@ -272,26 +272,25 @@ def delete_session(session_id: int, db: Annotated[Session, Depends(get_db)], use
 
 # --- exports, participation, events ------------------------------------------
 
-@router.get("/courses/{course_id}/export/huskyct.csv", response_class=RawResponse,
-            summary="Participation grades for HuskyCT")
-def export_huskyct(course_id: int, db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)]):
+@router.get("/courses/{course_id}/export/participation.csv", response_class=RawResponse,
+            summary="Participation grades (100 for answering any poll, 0 otherwise)")
+def export_participation(course_id: int, db: Annotated[Session, Depends(get_db)],
+                         user: Annotated[User, Depends(current_user)],
+                         dates: list[dt.date] | None = Query(None, description="Lecture dates to include; omit for all")):
     c = course_or_404(db, course_id)
     require_instructor(db, c, user)
-    buf = io.StringIO()
-    write_huskyct_csv(db, c, buf, by=user)
-    name = f"{c.subject}{c.catalog}-{c.term}-huskypoll.csv".replace(" ", "")
-    return RawResponse(buf.getvalue(), media_type="text/csv",
+    name = f"{c.subject}{c.catalog}-{c.term}-participation.csv".replace(" ", "")
+    return RawResponse(participation_csv(db, c, by=user, dates=dates), media_type="text/csv",
                        headers={"Content-Disposition": f'attachment; filename="{name}"'})
 
 
-@router.get("/courses/{course_id}/export/sessions.csv", response_class=RawResponse,
-            summary="Points per student per lecture")
-def export_sessions(course_id: int, db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)]):
+@router.get("/courses/{course_id}/participation/sessions", response_model=list[s.ParticipationSessionOut],
+            summary="Lecture dates available for the participation export")
+def participation_session_list(course_id: int, db: Annotated[Session, Depends(get_db)],
+                               user: Annotated[User, Depends(current_user)]):
     c = course_or_404(db, course_id)
     require_instructor(db, c, user)
-    name = f"{c.subject}{c.catalog}-{c.term}-by-lecture.csv".replace(" ", "")
-    return RawResponse(per_session_csv(db, c), media_type="text/csv",
-                       headers={"Content-Disposition": f'attachment; filename="{name}"'})
+    return participation_sessions(db, c)
 
 
 @router.get("/courses/{course_id}/participation", response_model=list[dict],

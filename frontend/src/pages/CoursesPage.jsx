@@ -38,7 +38,6 @@ export function CourseForm({ initial, onSubmit, busy, error, submitLabel, onCanc
       catalog: '',
       section: '',
       title: '',
-      points_participation: 1,
       points_correct: 0,
     },
   )
@@ -50,7 +49,6 @@ export function CourseForm({ initial, onSubmit, busy, error, submitLabel, onCanc
       ...form,
       subject: form.subject.trim().toUpperCase(),
       section: form.section?.trim() || null,
-      points_participation: Number(form.points_participation),
       points_correct: Number(form.points_correct),
     }
     onSubmit(body)
@@ -79,14 +77,9 @@ export function CourseForm({ initial, onSubmit, busy, error, submitLabel, onCanc
       <Field label="Course title">
         <input value={form.title} onChange={set('title')} required placeholder="Data Structures" maxLength={200} />
       </Field>
-      <div className="form-row">
-        <Field label="Points for answering" hint="Per poll, right or wrong">
-          <input type="number" min="0" step="0.5" value={form.points_participation} onChange={set('points_participation')} />
-        </Field>
-        <Field label="Extra points if correct" hint="Only polls with an answer key">
-          <input type="number" min="0" step="0.5" value={form.points_correct} onChange={set('points_correct')} />
-        </Field>
-      </div>
+      <Field label="Extra points if correct" hint="Only polls with an answer key">
+        <input type="number" min="0" step="0.5" value={form.points_correct} onChange={set('points_correct')} />
+      </Field>
       <ErrorBox error={error} />
       <div className="form-actions">
         {onCancel && (
