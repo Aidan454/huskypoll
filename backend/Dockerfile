@@ -15,7 +15,6 @@ COPY app/ ./app/
 COPY migrations/ ./migrations/
 COPY alembic.ini pytest.ini ./
 COPY tests/ ./tests/
-COPY scripts/ ./scripts/
 COPY samples/studentadmin-template.xlsx ./samples/studentadmin-template.xlsx
 
 RUN useradd --create-home --uid 10001 huskypoll \

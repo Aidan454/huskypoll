@@ -1,0 +1,7 @@
+# linting rules for ruff so that github actions and 
+# local linting sorts imports the same way.
+
+src = ["."]
+
+[lint.isort]
+known-first-party = ["app"]

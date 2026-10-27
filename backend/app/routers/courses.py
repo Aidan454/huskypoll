@@ -12,7 +12,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.database import services as svc
-from app.database.export import participation_csv, participation_sessions, participation_totals
+from app.database.export import (
+    participation_csv,
+    participation_sessions,
+    participation_totals,
+)
 from app.database.models import (
     Course,
     CourseInstructor,

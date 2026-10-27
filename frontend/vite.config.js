@@ -12,5 +12,9 @@ export default defineConfig(({ command }) => ({
     proxy: {
       '/api': { target: 'http://localhost:8000', changeOrigin: true, ws: true },
     },
+    watch: {
+      // Reliable file watching when the source is a bind mount (Windows/WSL).
+      usePolling: true,
+    }
   },
-}))
+}));

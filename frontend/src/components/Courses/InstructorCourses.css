@@ -1,0 +1,238 @@
+/* Global layout: remove the default browser and Vite spacing.
+   These rules affect the entire app, including other pages. */
+html,
+body {
+  margin: 0;
+  min-width: 30em;
+}
+
+body {
+  display: block;
+}
+
+#root {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+  font: 18px/145% var(--sans);
+
+}
+
+/* All have cm to distinguish these are components for course managment
+/* Outer dark frame */
+.cm-page {
+  min-height: 100vh;
+  padding: 24px 0 6px 32px;
+  background: #202020;
+  color: #111;
+  box-sizing: border-box;
+}
+
+.cm-page *,
+.cm-page *::before,
+.cm-page *::after {
+  box-sizing: border-box;
+}
+
+.cm-page button,
+.cm-page input {
+  font: inherit;
+}
+
+/* White page container */
+.cm-shell {
+  min-height: calc(100vh - 68px);
+  background: #fff;
+}
+
+/* Header and profile circle */
+.cm-topbar {
+  height: 60px;
+  padding: 0 24px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  background: #d9d9d9;
+  border-bottom: 1px solid #777;
+}
+
+.cm-avatar {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #087cff;
+  color: #fff;
+  font-size: 14px;
+}
+
+/* Center the course content */
+.cm-main {
+  width: min(100% - 40px, 585px);
+  margin: 0 auto;
+  padding: 52px 0 80px;
+}
+
+.cm-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.cm-heading h1 {
+  margin: 0 0 0 20px;
+  font-size: 20px;
+  font-weight: 400;
+}
+
+/* Blue create/save buttons */
+.cm-primary {
+  min-height: 32px;
+  padding: 10px 12px;
+  border: 1px solid #087cff;
+  background: #087cff;
+  color: #fff;
+  font-size: 14px !important;
+  cursor: pointer;
+}
+
+.cm-primary:hover {
+  background: #0068df;
+}
+
+/* Course list and individual cards */
+.cm-list {
+  display: grid;
+}
+
+.cm-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 1em;
+  border: 0.05em solid #000000;
+  background: #d9d9d9;
+}
+
+.cm-link {
+  width: 100%;
+  display: flex;
+  padding: 2em;
+  border: 1px solid black;
+  background: #d9d9d9;
+  color:#000000;
+  z-index: 10;
+}
+
+.cm-code,
+.cm-title {
+  margin: 0;
+  font-size: 14px;
+  line-height: 17px;
+}
+
+/* Three-dot button */
+.cm-more {
+  position: absolute;
+  right: 1em;
+  background: transparent;
+  font-size: 21px !important;
+  line-height: 16px;
+  color: #0c0b0b;
+  cursor: pointer;
+  z-index: 20;
+}
+
+/* Dropdown positioned relative to its course card */
+.cm-menu {
+  position: absolute;
+  top: 64px;
+  right: 12px;
+  z-index: 30;
+  width: 130px;
+  padding: 4px;
+  border: 1px solid #aaa;
+  background: #fff;
+  box-shadow: 0 3px 10px #0002;
+}
+
+.cm-menu button {
+  display: block;
+  width: 100%;
+  padding: 9px;
+  border: 0;
+  background: #fff;
+  text-align: left;
+  font-size: 13px;
+  color: #000000;
+  cursor: pointer;
+}
+.cm-menu button:hover {
+  background: #eee;
+}
+.cm-menu .cm-delete {
+  color: #b42318;
+}
+
+
+/* Create/edit Course module */
+.cm-dialog {
+  width: min(420px, calc(100vw - 32px));
+  padding: 24px;
+  border: 1px solid #858585;
+  color: #111;
+  font-family: Arial, Helvetica, sans-serif;
+}
+/* Dim the page while the modal is open */
+.cm-dialog::backdrop {
+  background: #0006;
+}
+.cm-dialog h2 {
+  margin: 0 0 20px;
+  font-size: 20px;
+}
+.cm-dialog label {
+  display: block;
+  margin-top: 14px;
+  font-size: 13px;
+}
+.cm-dialog input {
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px;
+  border: 1px solid #999;
+}
+/* Modal action buttons */
+.cm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.cm-cancel {
+  padding: 8px 12px;
+  border: 1px solid #aaa;
+  background: #838080;
+  cursor: pointer;
+}
+
+/* Visible focus indicator for keyboard navigation */
+.cm-page button:focus-visible,
+.cm-page input:focus-visible {
+  outline: 2px solid #005ac2;
+  outline-offset: 3px;
+}
+
+.cm-empty {
+  padding: 24px 0;
+  color: #666;
+  font-size: 14px;
+  text-align: center;
+}
+
