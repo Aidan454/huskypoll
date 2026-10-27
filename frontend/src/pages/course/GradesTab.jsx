@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useOutletContext } from 'react-router'
 import { api } from '../../api.js'
 import { Loaded, Modal } from '../../components/ui.jsx'
-import { points } from '../../format.js'
 import { useApi } from '../../hooks.js'
 
 const COLUMNS = [
