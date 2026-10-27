@@ -278,9 +278,14 @@ def delete_session(session_id: int, db: Annotated[Session, Depends(get_db)], use
 
 @router.get("/courses/{course_id}/export/participation.csv", response_class=RawResponse,
             summary="Participation grades (100 for answering any poll, 0 otherwise)")
-def export_participation(course_id: int, db: Annotated[Session, Depends(get_db)],
-                         user: Annotated[User, Depends(current_user)],
-                         dates: list[dt.date] | None = Query(None, description="Lecture dates to include; omit for all")):
+def export_participation(
+        course_id: int, db: Annotated[Session, Depends(get_db)],
+        user: Annotated[User, Depends(current_user)],
+        dates: Annotated[
+            list[dt.date] | None,
+            Query(description="Lecture dates to include; omit for all"),
+        ] = None,
+    ):
     c = course_or_404(db, course_id)
     require_instructor(db, c, user)
     name = f"{c.subject}{c.catalog}-{c.term}-participation.csv".replace(" ", "")
