@@ -1,17 +1,12 @@
-import { Link, NavLink, Outlet, useNavigate } from 'react-router'
-import { canTeach, initials } from '../format.js'
+import { Link, NavLink, Outlet } from 'react-router'
+import { canTeach } from '../format.js'
 import { useAuth } from '../hooks.js'
+import AvatarMenu from './Header/AvatarMenu.jsx'
 import { RoleBadge } from './ui.jsx'
 
 /** Top bar and page frame for every logged-in page. */
 export default function Layout() {
-  const { user, logout } = useAuth()
-  const navigate = useNavigate()
-
-  async function signOut() {
-    await logout()
-    navigate('/login')
-  }
+  const { user } = useAuth()
 
   return (
     <>
@@ -27,15 +22,8 @@ export default function Layout() {
             {user?.role === 'admin' && <NavLink to="/admin/users">Users</NavLink>}
           </nav>
           <div className="usermenu">
-            <span className="avatar" title={user?.display_name}>
-              {initials(user)}
-            </span>
-            <span className="username">
-              {user?.display_name} <RoleBadge role={user?.role} />
-            </span>
-            <button type="button" className="btn btn-sm" onClick={signOut}>
-              Log out
-            </button>
+            <RoleBadge role={user?.role} />
+            <AvatarMenu />
           </div>
         </div>
       </header>

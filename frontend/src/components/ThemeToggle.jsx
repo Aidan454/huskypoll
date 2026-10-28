@@ -13,19 +13,17 @@ export default function ThemeToggle() {
   }
 
   return (
-    <div className="theme-toolbar">
-      <button
-        type="button"
-        className="theme-toggle"
-        role="switch"
-        aria-checked={theme === 'dark'}
-        aria-label="Dark mode"
-        onClick={toggle}
-      >
-        <span aria-hidden="true">{theme === 'dark' ? '☾' : '☀'}</span>
-        {theme === 'dark' ? 'Dark mode' : 'Light mode'}
-        <span className="theme-track" aria-hidden="true"><span /></span>
-      </button>
-    </div>
+    <button
+      type="button"
+      className="theme-toggle"
+      role="switch"
+      aria-checked={theme === 'dark'}
+      aria-label="Dark mode"
+      onClick={toggle}
+    >
+      <span className="theme-icon" aria-hidden="true">{theme === 'dark' ? '☾' : '☀'}</span>
+      {theme === 'dark' ? 'Dark mode' : 'Light mode'}
+      <span className="theme-track" aria-hidden="true"><span /></span>
+    </button>
   )
 }
