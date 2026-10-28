@@ -9,7 +9,8 @@ export default function Login(){
         <div className='buttons'>
             <a class='btn'>Login with email(@uconn.edu)</a>
             <a class='btn'>Login with NetID (SSO)</a>
-            <Link to="/Home">Bypass Login</Link>
+            <Link to="/InstructorHome">Instructor Bypass Login</Link>
+            <Link to="/StudentHome">Student Bypass Login</Link>
         </div>
     </div>
     </>)

@@ -1,0 +1,41 @@
+# HuskyPoll in one container: the built React pages and the API, both on port 8000.
+# Build from the repository root (the folder that holds frontend/ and backend/):
+#   docker build -f Dockerfile.server -t huskypoll .
+# compose.server.yml builds and runs it for the server.
+
+# 1. build the frontend (frontend/dist)
+FROM node:22-alpine AS frontend
+WORKDIR /frontend
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build
+
+# 2. the backend, serving the pages from step 1 at HUSKYPOLL_SITE_URL/
+FROM python:3.13-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    HUSKYPOLL_DB=/data/huskypoll.db \
+    HUSKYPOLL_MEDIA_DIR=/data/media \
+    HUSKYPOLL_FRONTEND_DIST=/app/frontend-dist
+
+WORKDIR /app
+COPY backend/requirements.txt ./
+RUN python -m pip install --no-cache-dir -r requirements.txt
+
+COPY backend/app/ ./app/
+COPY backend/migrations/ ./migrations/
+COPY backend/alembic.ini ./
+COPY --from=frontend /frontend/dist ./frontend-dist
+
+RUN useradd --create-home --uid 10001 huskypoll \
+    && mkdir -p /data/media \
+    && chown -R huskypoll:huskypoll /data
+USER huskypoll
+
+EXPOSE 8000
+
+# 1. bring the database up to date (creates it on first run)
+# 2. start ONE server process (SQLite has one writer; live updates are in-process)
+CMD ["sh", "-c", "python -m alembic upgrade head && exec python -m uvicorn app.main:app --host 0.0.0.0 --port 8000"]

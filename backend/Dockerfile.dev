@@ -1,0 +1,19 @@
+# HuskyPoll backend for local development (used by compose.yml at the repo root).
+# compose mounts backend/ over /code, so code edits reload instantly.
+FROM python:3.13-slim
+
+WORKDIR /code
+
+WORKDIR /code
+COPY requirements.txt .
+RUN python -m pip install --no-cache-dir -r requirements.txt
+COPY . .
+RUN mkdir -p /data
+
+COPY ./requirements.txt /code/requirements.txt
+
+RUN python -m pip install --no-cache-dir -r requirements.txt
+
+EXPOSE 8000
+
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

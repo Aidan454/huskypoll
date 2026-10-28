@@ -1,0 +1,106 @@
+powershell commands to run after starting the backend from README.md
+$api = "http://localhost:8000/api"
+
+# 1. Log in (creates $s, which holds your login cookie)
+Invoke-RestMethod -Method Post "$api/auth/dev-login" -SessionVariable s -ContentType "application/json" `
+  -Body '{"email": "pat.prof@uconn.edu", "net_id": "prf00001", "role": "instructor"}'
+
+# 2. Who am I?
+Invoke-RestMethod "$api/me" -WebSession $s
+
+# 3. Create a course
+$course = Invoke-RestMethod -Method Post "$api/courses" -WebSession $s -ContentType "application/json" `
+  -Body '{"term": "Spring 2027", "subject": "CSE", "catalog": "2050", "title": "Data Structures"}'
+$course
+
+# 4. Create a question
+$q = Invoke-RestMethod -Method Post "$api/questions" -WebSession $s -ContentType "application/json" `
+  -Body '{"type": "mc_single", "body_md": "2+2?", "options": [{"text_md": "3"}, {"text_md": "4", "is_correct": true}]}'
+
+# 5. Open a poll on it
+$poll = Invoke-RestMethod -Method Post "$api/courses/$($course.id)/polls" -WebSession $s -ContentType "application/json" `
+  -Body (@{ question_id = $q.id } | ConvertTo-Json)
+$poll.access_code
+
+# 6. As the instructor: put a student on the roster
+Invoke-RestMethod -Method Post "$api/courses/$($course.id)/roster" -WebSession $s -ContentType "application/json" `
+  -Body '{"identifier": "ann.able@uconn.edu"}'
+
+# 7. Log in as that student (a separate session, $stu)
+$api = "http://localhost:8000/api"
+Invoke-RestMethod -Method Post "$api/auth/dev-login" -SessionVariable stu -ContentType "application/json" `
+  -Body '{"email": "ann.able@uconn.edu", "net_id": "aab11111", "first_name": "Ann", "last_name": "Able"}'
+
+# 8. As the student: find the poll by its code (what they'd type or scan)
+Invoke-RestMethod "$api/me" -WebSession $stu   # role should be 'student'
+$courses = Invoke-RestMethod "$api/courses" -WebSession $stu
+$courses | Format-Table id, code, title, my_role
+$cid = $courses[0].id                                   # pick a course
+
+# 9. Find the open poll (either works)
+
+# a) The way a student in class does it: type or scan the code
+$poll = Invoke-RestMethod "$api/polls/by-code/ABCDE" -WebSession $stu     # use the real code 
+
+# b) Or list the course's open polls
+$poll = (Invoke-RestMethod "$api/courses/$cid/polls?status=open" -WebSession $stu)[0]
+$poll
+
+
+$poll.question.body_md                                   # the question
+$poll.question.options | Format-Table id, letter, text_md
+
+# 10. Answer. 
+
+$url = "$api/polls/$($poll.id)/responses"
+
+# mc_single: one option
+$url = "$api/polls/$($poll.id)/responses"
+Invoke-RestMethod -Method Post $url -WebSession $stu -ContentType "application/json" -Body '{"option_ids": [id]}'
+# mc_multi: select all that apply
+Invoke-RestMethod -Method Post $url -WebSession $stu -ContentType "application/json" `
+  -Body (@{ option_ids = @($poll.question.options[0].id, $poll.question.options[2].id) } | ConvertTo-Json)
+
+# numeric
+Invoke-RestMethod -Method Post $url -WebSession $stu -ContentType "application/json" -Body '{"numeric_answer": 9}'
+
+# free_text
+Invoke-RestMethod -Method Post $url -WebSession $stu -ContentType "application/json" -Body '{"text_answer": "stack"}'
+
+# 11. See the live results (before closing) (instructor)
+Invoke-RestMethod "$api/polls/$($poll.id)/results" -WebSession $s | ConvertTo-Json -Depth 5
+Better formatted table 
+$res  = Invoke-RestMethod "$api/polls/$($poll.id)/results" -WebSession $s
+$full = Invoke-RestMethod "$api/polls/$($poll.id)" -WebSession $s
+$full.question.options | ForEach-Object {
+  $o = $_; [pscustomobject]@{ Letter = $o.letter; Answer = $o.text_md; Correct = $o.is_correct
+    Votes = ($res.options | Where-Object option_id -eq $o.id).votes }
+} | Format-Table
+
+# 12. see each student's answer (instructor)
+Invoke-RestMethod "$api/polls/$($poll.id)/responses" -WebSession $s |
+  ForEach-Object { [pscustomobject]@{ NetID = $_.user.net_id; Options = ($_.option_ids -join ","); Correct = $_.is_correct } } |
+  Format-Table
+
+# 13. Show the results to students. In class this is the "show results on screen" moment:
+Invoke-RestMethod -Method Patch "$api/polls/$($poll.id)" -WebSession $s -ContentType "application/json" -Body '{"show_results": true}'
+
+# 14. Close the poll
+Invoke-RestMethod -Method Post "$api/polls/$($poll.id)/close" -WebSession $s | Select-Object id, status, closed_at
+
+# 15. Check from both sides
+
+# Professor: final results
+Invoke-RestMethod "$api/polls/$($poll.id)/results" -WebSession $s | ConvertTo-Json -Depth 5
+
+# Student: now sees whether they were right, plus the correct answer
+(Invoke-RestMethod "$api/courses/$cid/history" -WebSession $stu)[0].poll.my_response
+Invoke-RestMethod "$api/courses/$cid/my-participation" -WebSession $stu
+
+# Student tries to answer after closing -> 400 "this poll is closed"
+Invoke-RestMethod -Method Post "$api/polls/$($poll.id)/responses" -WebSession $stu -ContentType "application/json" -Body '{"option_ids": [3]}' 
+
+# 16. (Optional) The grades export
+(Need to make CID update automatically)
+Invoke-RestMethod "$api/courses/$cid/participation" -WebSession $s | Format-Table
+Invoke-WebRequest "$api/courses/$cid/export/participation.csv" -WebSession $s -OutFile grades.csv
