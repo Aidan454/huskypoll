@@ -190,8 +190,9 @@ def test_full_lecture_flow(lecture):
     hist = ann.get(f"/courses/{cid}/history").json()
     assert hist[0]["answered"] and hist[0]["poll"]["my_response"]["is_correct"] is True
     assert hist[0]["poll"]["question"]["explanation_md"] == "Arithmetic."
+    # Participation is earned for answering, whether or not the answer was correct.
     assert ann.get(f"/courses/{cid}/my-participation").json() == {
-        "polls": 1, "answered": 1, "correct": 1, "points": 2.0, "points_possible": 2.0}
+        "polls": 1, "answered": 1, "correct": 0, "points": 1.0, "points_possible": 1.0}
 
     # Export and log
     csv = prof.get(f"/courses/{cid}/export/participation.csv")
