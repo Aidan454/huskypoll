@@ -99,6 +99,9 @@ export default function CoursesPage() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const [showArchived, setShowArchived] = useState(false)
+  const [search, setSearch] = useState('')
+  const [term, setTerm] = useState('')
+  const [subject, setSubject] = useState('')
   const courses = useApi(`/courses${showArchived ? '?include_archived=true' : ''}`)
   const [creating, setCreating] = useState(false)
 
@@ -127,10 +130,45 @@ export default function CoursesPage() {
         </div>
       </div>
 
+      <Field label="Search courses">
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search by course name or code, e.g. CSE 2050"
+        />
+      </Field>
+
       <Loaded state={courses}>
         {(list) => {
-          const teaching = list.filter(isStaff)
-          const enrolled = list.filter((c) => !isStaff(c))
+          const terms = [...new Set(list.map((course) => course.term).filter(Boolean))].sort()
+          const subjects = [...new Set(list.map((course) => course.subject).filter(Boolean))].sort()
+          const filters = canTeach(user) && (
+            <div className="form-row">
+              <Field label="Term">
+                <select value={term} onChange={(e) => setTerm(e.target.value)}>
+                  <option value="">All terms</option>
+                  {terms.map((value) => <option key={value} value={value}>{value}</option>)}
+                </select>
+              </Field>
+              <Field label="Subject">
+                <select value={subject} onChange={(e) => setSubject(e.target.value)}>
+                  <option value="">All subjects</option>
+                  {subjects.map((value) => <option key={value} value={value}>{value}</option>)}
+                </select>
+              </Field>
+            </div>
+          )
+          const query = search.trim().toLowerCase().replace(/\s+/g, ' ')
+          const matching = list.filter((course) => {
+            const code = `${course.subject} ${course.catalog}`.toLowerCase()
+            const title = (course.title || '').toLowerCase()
+            return `${code} ${title}`.includes(query)
+              && (!canTeach(user) || !term || course.term === term)
+              && (!canTeach(user) || !subject || course.subject === subject)
+          })
+          const teaching = matching.filter(isStaff)
+          const enrolled = matching.filter((c) => !isStaff(c))
           if (!list.length) {
             return (
               <div className="card empty">
@@ -143,8 +181,23 @@ export default function CoursesPage() {
               </div>
             )
           }
+          if (!matching.length) {
+            return (
+              <>
+              {filters}
+              <div className="card empty" role="status">
+                <p>No courses found.</p>
+                <p className="small">Try a different search or filter.</p>
+                <button type="button" className="btn" onClick={() => { setSearch(''); setTerm(''); setSubject('') }}>
+                  Clear search and filters
+                </button>
+              </div>
+              </>
+            )
+          }
           return (
             <>
+              {filters}
               {teaching.length > 0 && (
                 <section style={{ marginBottom: 28 }}>
                   {enrolled.length > 0 && <h2>Teaching</h2>}

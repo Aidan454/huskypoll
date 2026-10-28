@@ -1,5 +1,10 @@
 /* HuskyPoll global styles. Colors follow UConn navy with one blue accent. */
 :root {
+  --on-accent: #ffffff;
+  --danger-hover: #8f1c13;
+  --heading: #000e2f;
+  --subtle: #eef1f5;
+  --hover: #f0f2f6;
   --navy: #000e2f;
   --navy-2: #0d1d45;
   --blue: #013ecd;
@@ -57,7 +62,7 @@ body {
 h1,
 h2,
 h3 {
-  color: var(--navy);
+  color: var(--heading);
   line-height: 1.2;
   margin: 0 0 12px;
 }
@@ -87,7 +92,7 @@ a {
 }
 code {
   font-family: var(--mono);
-  background: #eef1f5;
+  background: var(--subtle);
   border-radius: 4px;
   padding: 1px 6px;
 }
@@ -243,7 +248,7 @@ textarea {
 }
 .course-code {
   font-weight: 600;
-  color: var(--navy);
+  color: var(--heading);
 }
 .course-title {
   color: var(--muted);
@@ -337,7 +342,7 @@ th.num {
   font-weight: 500;
 }
 .tabs a:hover {
-  color: var(--navy);
+  color: var(--heading);
 }
 .tabs a.active {
   color: var(--blue);
@@ -362,7 +367,7 @@ th.num {
   white-space: nowrap;
 }
 .btn:hover {
-  background: #f0f2f6;
+  background: var(--hover);
 }
 .btn:disabled {
   opacity: 0.55;
@@ -389,7 +394,7 @@ th.num {
   color: #fff;
 }
 .btn-solid-danger:hover {
-  background: #8f1c13;
+  background: var(--danger-hover);
 }
 .btn-sm {
   padding: 4px 10px;
@@ -448,7 +453,7 @@ textarea {
   padding: 8px 10px;
   border: 1px solid #b9c1cd;
   border-radius: 8px;
-  background: #fff;
+  background: var(--surface);
 }
 textarea {
   min-height: 80px;
@@ -482,7 +487,7 @@ textarea {
   border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
-  background: #eef1f5;
+  background: var(--subtle);
   color: var(--muted);
   text-transform: capitalize;
   white-space: nowrap;
@@ -492,7 +497,7 @@ textarea {
   color: var(--green);
 }
 .badge-closed {
-  background: #eef1f5;
+  background: var(--subtle);
   color: var(--muted);
 }
 .badge-blue {
@@ -525,7 +530,7 @@ textarea {
 }
 .alert-info {
   background: var(--blue-soft);
-  color: var(--navy);
+  color: var(--heading);
   border: 1px solid #c8d6f7;
 }
 .alert-warn {
@@ -536,6 +541,8 @@ textarea {
 
 /* ---------- dialog ---------- */
 .modal {
+  background: var(--surface);
+  color: var(--text);
   width: min(560px, calc(100vw - 32px));
   max-height: calc(100vh - 48px);
   padding: 0;
@@ -559,7 +566,7 @@ textarea {
 /* ---------- polls ---------- */
 .question-body {
   font-size: 18px;
-  color: var(--navy);
+  color: var(--heading);
   margin-bottom: 14px;
 }
 .question-img {
@@ -578,7 +585,7 @@ textarea {
   margin-bottom: 8px;
   border: 2px solid var(--border);
   border-radius: 10px;
-  background: #fff;
+  background: var(--surface);
   cursor: pointer;
   text-align: left;
 }
@@ -603,8 +610,8 @@ textarea {
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: #eef1f5;
-  color: var(--navy);
+  background: var(--subtle);
+  color: var(--heading);
   font-weight: 700;
   font-size: 14px;
 }
@@ -632,7 +639,7 @@ textarea {
   margin-bottom: 2px;
 }
 .bar-track {
-  background: #eef1f5;
+  background: var(--subtle);
   border-radius: 6px;
   height: 28px;
   overflow: hidden;
@@ -661,7 +668,7 @@ textarea {
 @media (min-width: 861px) {
   .present > :last-child {
     position: sticky;
-    top: 16px;
+    top: 64px;
   }
 }
 @media (max-width: 860px) {
@@ -677,11 +684,15 @@ textarea {
   font-size: 40px;
   font-weight: 700;
   letter-spacing: 6px;
-  color: var(--navy);
+  color: var(--heading);
 }
 .qr {
   width: 100%;
   max-width: 240px;
+  background: #ffffff;
+  padding: 12px;
+  border-radius: 8px;
+  color-scheme: light;
   aspect-ratio: 1;
   display: block;
   margin: 8px auto;
@@ -689,7 +700,7 @@ textarea {
 .stat {
   font-size: 32px;
   font-weight: 700;
-  color: var(--navy);
+  color: var(--heading);
   font-variant-numeric: tabular-nums;
 }
 .stats {
@@ -722,7 +733,7 @@ textarea {
 }
 .login-card {
   width: min(440px, 100%);
-  background: #fff;
+  background: var(--surface);
   border-radius: 14px;
   padding: 32px 28px;
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
@@ -782,3 +793,76 @@ textarea {
     padding-top: 20px;
   }
 }
+
+/* Shared theme control remains visible on every route. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --on-accent: #101722;
+  --danger-hover: #ffcbc5;
+  --heading: #e5edff;
+  --text: #e5eaf2;
+  --muted: #aeb9cb;
+  --bg: #101722;
+  --surface: #1a2535;
+  --border: #3b4a60;
+  --subtle: #253246;
+  --hover: #2c3b51;
+  --blue: #9abbff;
+  --blue-hover: #bed2ff;
+  --blue-soft: #233c66;
+  --green: #86dfa2;
+  --green-soft: #193e30;
+  --red: #ffaba3;
+  --red-soft: #4c272c;
+  --amber: #f4ce79;
+  --amber-soft: #443820;
+  --shadow: 0 4px 16px rgba(0, 0, 0, .25);
+}
+.theme-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  justify-content: flex-end;
+  padding: 6px max(16px, calc((100% - 1200px) / 2));
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--subtle);
+  color: var(--text);
+  font-size: 14px;
+}
+.theme-toggle:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
+.theme-track { width: 32px; height: 18px; padding: 3px; border-radius: 20px; background: var(--muted); }
+.theme-track > span { display: block; width: 12px; height: 12px; background: var(--surface); border-radius: 50%; }
+[data-theme='dark'] .theme-track > span { transform: translateX(14px); }
+[data-theme='dark'] .btn-primary,
+[data-theme='dark'] .btn-solid-danger,
+[data-theme='dark'] .choice.selected .letter,
+[data-theme='dark'] .choice.correct .letter,
+[data-theme='dark'] .avatar { color: #101722; }
+
+.image-dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px 16px;
+  border: 2px dashed var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+  text-align: center;
+}
+.image-dropzone svg { color: var(--muted); pointer-events: none; }
+.image-dropzone small { color: var(--muted); }
+.image-dropzone:focus-visible,
+.image-dropzone.is-dragging { outline: 2px solid var(--blue); outline-offset: 2px; background: var(--blue-soft); }
+.image-dropzone[aria-busy='true'] { opacity: .7; }
+.image-dropzone button:disabled { cursor: wait; }

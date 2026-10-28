@@ -139,7 +139,7 @@ const styles = {
   title: { margin: "0 0 8px" },
   api: { margin: "0 0 8px", fontSize: "0.85em", opacity: 0.8 },
   row: { margin: "4px 0" },
-  good: { color: "#1a7f37" },
-  bad: { color: "#cf222e" },
+  good: { color: "var(--green)" },
+  bad: { color: "var(--red)" },
   buttons: { display: "flex", gap: 8, marginTop: 8 },
 };

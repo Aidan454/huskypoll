@@ -36,7 +36,7 @@ export function ResultsView({ question, results, revealCorrect = true }) {
                 <Markdown text={o.text_md} />
               </div>
               <div className="bar-row">
-                <span className="letter" style={correct ? { background: 'var(--green)', color: '#fff' } : undefined}>
+                <span className="letter" style={correct ? { background: 'var(--green)', color: 'var(--on-accent)' } : undefined}>
                   {o.letter}
                 </span>
                 <div className="bar-track">

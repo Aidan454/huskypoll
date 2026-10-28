@@ -57,7 +57,7 @@ function HistoryItem({ item }) {
             <ul className="list small">
               {q.options.map((o) => (
                 <li key={o.id} style={{ justifyContent: 'flex-start' }}>
-                  <span className="letter" style={o.is_correct ? { background: 'var(--green)', color: '#fff' } : undefined}>
+                  <span className="letter" style={o.is_correct ? { background: 'var(--green)', color: 'var(--on-accent)' } : undefined}>
                     {o.letter}
                   </span>
                   <span className="grow">

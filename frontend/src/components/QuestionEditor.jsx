@@ -2,9 +2,8 @@
 // Once a question has been polled it is locked: only the answer key and explanation
 // can change, and the form shows just those.
 import { useState } from 'react'
-import { api } from '../api.js'
 import { QUESTION_TYPES } from '../format.js'
-import { useAction } from '../hooks.js'
+import ImagePicker from './ImagePicker.jsx'
 import { ErrorBox, Field } from './ui.jsx'
 
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -38,36 +37,6 @@ function formFromQuestion(q) {
   }
 }
 
-function ImagePicker({ label, url, onUploaded, onRemove, disabled }) {
-  const [upload, busy, error] = useAction(async (file) => {
-    const media = await api.upload('/media', file)
-    onUploaded(media)
-  })
-  return (
-    <div className="field">
-      <span>{label}</span>
-      {url && <img src={url} alt="" className="question-img" style={{ display: 'block' }} />}
-      {!disabled && (
-        <div className="row">
-          <input
-            type="file"
-            accept="image/*"
-            disabled={busy}
-            onChange={(e) => e.target.files[0] && upload(e.target.files[0])}
-          />
-          {url && (
-            <button type="button" className="btn btn-sm btn-danger" onClick={onRemove}>
-              Remove picture
-            </button>
-          )}
-        </div>
-      )}
-      {busy && <small>Uploading…</small>}
-      <ErrorBox error={error} />
-    </div>
-  )
-}
-
 /**
  * Props:
  *   question   existing question to edit (omit to write a new one)
@@ -81,6 +50,8 @@ export default function QuestionEditor({ question, onSubmit, submitLabel = 'Save
   // undefined = unchanged, null = removed, number = new upload
   const [bodyMedia, setBodyMedia] = useState({ id: undefined, url: question?.body_media_url ?? null })
   const [explMedia, setExplMedia] = useState({ id: undefined, url: question?.explanation_media_url ?? null })
+  const [bodyUploading, setBodyUploading] = useState(false)
+  const [explanationUploading, setExplanationUploading] = useState(false)
   const [formError, setFormError] = useState(null)
 
   const isMc = form.type === 'mc_single' || form.type === 'mc_multi'
@@ -111,6 +82,7 @@ export default function QuestionEditor({ question, onSubmit, submitLabel = 'Save
 
   function submit(e) {
     e.preventDefault()
+    if (bodyUploading || explanationUploading || busy) return
     setFormError(null)
     const body = {}
     if (!locked) {
@@ -163,6 +135,7 @@ export default function QuestionEditor({ question, onSubmit, submitLabel = 'Save
       </Field>
       <ImagePicker
         label="Picture (optional)"
+        onBusyChange={setBodyUploading}
         url={bodyMedia.url}
         disabled={locked}
         onUploaded={(m) => setBodyMedia({ id: m.id, url: m.url })}
@@ -245,6 +218,7 @@ export default function QuestionEditor({ question, onSubmit, submitLabel = 'Save
       </Field>
       <ImagePicker
         label="Explanation picture (optional)"
+        onBusyChange={setExplanationUploading}
         url={explMedia.url}
         onUploaded={(m) => setExplMedia({ id: m.id, url: m.url })}
         onRemove={() => setExplMedia({ id: null, url: null })}
@@ -258,8 +232,8 @@ export default function QuestionEditor({ question, onSubmit, submitLabel = 'Save
             Cancel
           </button>
         )}
-        <button type="submit" className="btn btn-primary" disabled={busy}>
-          {busy ? 'Saving…' : submitLabel}
+        <button type="submit" className="btn btn-primary" disabled={busy || bodyUploading || explanationUploading}>
+          {bodyUploading || explanationUploading ? 'Uploading picture…' : busy ? 'Saving…' : submitLabel}
         </button>
       </div>
     </form>

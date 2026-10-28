@@ -1,6 +1,7 @@
 import { createBrowserRouter, Link, Navigate, Outlet, RouterProvider } from 'react-router'
 import { AuthProvider, RequireLogin } from './components/AuthProvider.jsx'
 import Layout from './components/Layout.jsx'
+import ThemeToggle from './components/ThemeToggle.jsx'
 import { BASE_PATH } from './config.js'
 import BankPage from './pages/BankPage.jsx'
 import BanksPage from './pages/BanksPage.jsx'
@@ -81,5 +82,8 @@ const router = createBrowserRouter(
 )
 
 export default function App() {
-  return <RouterProvider router={router} />
+  return <>
+    <ThemeToggle />
+    <RouterProvider router={router} />
+  </>
 }

@@ -47,7 +47,7 @@ function QuestionCard({ q, onEdit, onCopy, onDelete }) {
         <ul className="list small">
           {q.options.map((o) => (
             <li key={o.id} style={{ justifyContent: 'flex-start', padding: '6px 0' }}>
-              <span className="letter" style={o.is_correct ? { background: 'var(--green)', color: '#fff' } : undefined}>
+              <span className="letter" style={o.is_correct ? { background: 'var(--green)', color: 'var(--on-accent)' } : undefined}>
                 {o.letter}
               </span>
               <span>
