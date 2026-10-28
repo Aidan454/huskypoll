@@ -609,6 +609,18 @@ textarea {
   background: var(--red-soft);
   color: var(--red);
 }
+.badge-role-student {
+  background: #eef1f5;
+  color: #5d6675;
+}
+.badge-role-instructor {
+  background: #e8eefc;
+  color: #013ecd;
+}
+.badge-role-ta {
+  background: #fff4d6;
+  color: #8a5a00;
+}
 .alert {
   border-radius: 8px;
   padding: 10px 14px;

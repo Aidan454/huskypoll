@@ -74,7 +74,12 @@ export function StatusBadge({ status }) {
 
 export function RoleBadge({ role }) {
   if (!role) return null
-  const cls = role === 'student' ? 'badge' : role === 'ta' ? 'badge badge-amber' : 'badge badge-blue'
+  const cls =
+    role === 'student'
+      ? 'badge badge-role-student'
+      : role === 'ta'
+        ? 'badge badge-role-ta'
+        : 'badge badge-role-instructor'
   return <span className={cls}>{role === 'ta' ? 'TA' : role}</span>
 }
 
