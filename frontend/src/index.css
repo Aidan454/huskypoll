@@ -356,7 +356,7 @@ th.num {
   justify-content: center;
   gap: 6px;
   padding: 8px 14px;
-  border-radius: 8px;
+  border-radius: 10px;
   border: 1px solid var(--border);
   background: var(--surface);
   color: var(--text);
@@ -731,43 +731,6 @@ textarea {
   padding: 32px 16px;
   background: linear-gradient(160deg, var(--navy) 0%, var(--navy-2) 60%, #1b3a8c 100%);
 }
-.login-card {
-  width: min(440px, 100%);
-  background: var(--surface);
-  border-radius: 14px;
-  padding: 32px 28px;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
-}
-.login-card h1 {
-  font-size: 34px;
-  text-align: center;
-  margin-bottom: 4px;
-}
-.login-card .subtitle {
-  text-align: center;
-  margin-bottom: 24px;
-}
-.divider {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--muted);
-  font-size: 13px;
-  margin: 22px 0 14px;
-}
-.divider::before,
-.divider::after {
-  content: '';
-  flex: 1;
-  border-top: 1px solid var(--border);
-}
-.preset-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
 /* ---------- option editor ---------- */
 .option-edit {
   display: grid;
