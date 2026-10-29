@@ -1,8 +1,9 @@
 # AGENTS.md
 
 Guide for coding agents (and new teammates) working on HuskyPoll, a live
-classroom polling site for UConn. Read this before changing code. The feature
-list, with what is done and what is planned, is in [FEATURES.md](FEATURES.md).
+classroom polling site for UConn. Read this before changing code. Instructors
+run polls in lecture, students answer with a code or QR image, and the
+participation grades are exported as a CSV for HuskyCT.
 
 ## Stack
 
@@ -136,9 +137,36 @@ docker compose -f compose.server.yml logs -f
 
 - Match the style of the file you're in. Python: ruff config in
   `backend/ruff.toml`. JS: ESLint config in `frontend/eslint.config.js`.
-- Keep docs in step with the code: the root `README.md`, `backend/README.md`,
-  and `FEATURES.md` when a feature lands or changes status.
+- Keep docs in step with the code: the root `README.md`, `backend/README.md`
+  (its API table lists every endpoint), and this file.
+- UI follows the UConn brand (brand.uconn.edu): navy `#000E2F`, grey `#7C878E`,
+  white, and Royal Blue `#013ECD` as an accent only. Text must meet 4.5:1
+  contrast. The colors are CSS variables in `index.css`; don't add new hex values.
 - Branch from `main` and open a pull request; CI must pass.
+
+## How the main features work
+
+- **NetIDs** are stored lowercase (a CHECK constraint enforces it) and every
+  lookup ignores case, so a StudentAdmin `ABC12345` and a CAS login `abc12345`
+  are the same user. Pages and the grade CSV show NetIDs in UPPERCASE. Emails
+  are stored lowercase. Normalize through `services.normalize_net_id`, never by hand.
+- **Roster import** (`database/roster.py`) takes the StudentAdmin roster as .xlsx
+  or .csv (`NetID, Email`, or `ID, Name, ...`). New students are added. Students
+  on the roster but missing from the file come back as `missing`; nobody is
+  dropped until the instructor picks them (`POST /courses/{id}/roster/drop`).
+  Dropping keeps past answers, and re-adding restores the student.
+- **Polls** go draft -> open -> closed. A closed poll can be reopened
+  (`services.reopen_poll`): earlier answers stay, students can change them, and
+  the answer key is hidden again until it closes. Only closed polls count toward
+  grades. Every poll belongs to a lecture (`lecture_sessions`); the Lectures tab
+  can open a poll in a chosen lecture, otherwise today's lecture is used.
+- **Participation export** (`database/export.py`) has one column per lecture date
+  with a closed poll (`W1-01-20-PART`), 100 if the student answered any poll that
+  day, else 0. Each download is logged in `event_log` with its dates, and
+  `GET /courses/{id}/participation/sessions` returns each date's `exported_at`,
+  so the export dialog leaves already-exported dates unticked.
+- **Event log** (`event_log`) records logins, poll open/close/reopen, answers,
+  imports, drops and exports. Instructors see it on the Activity tab.
 
 ## Gotchas
 
@@ -163,4 +191,10 @@ docker compose -f compose.server.yml logs -f
   `components/BackendStatus.jsx` are early prototypes not used by any route.
   Some import CSS files that aren't in the repo, so importing them breaks the
   build. Don't build on them; the live pages are the ones in `App.jsx`.
-- **Microsoft sign-in doesn't exist yet.** Only CAS is coded; see FEATURES.md.
+- **Microsoft sign-in doesn't exist yet.** Only CAS is coded.
+- **Line endings.** The Windows checkout uses CRLF (`core.autocrlf`). Tools
+  running outside Windows git should pass `-c core.autocrlf=true`, or `git status`
+  shows every file as changed.
+- **Known lint:** ruff flags `DTZ011` (`date.today()`) in `services.py` and
+  `scripts/demo_tour.py` on `main`. It isn't from new code; leave it unless you're
+  fixing it on purpose.
