@@ -63,7 +63,7 @@ or pass `--db` to use another file.
 | --- | --- |
 | `python -m app.database init` | Create an empty database (and mark it as up to date for Alembic) |
 | `python -m app.database seed-demo` | Demo course: CSE 2050, 40 students, 5 questions, 6 closed polls over 3 lectures |
-| `python -m app.database import-roster COURSE_ID roster.xlsx [--drop-missing]` | Import a StudentAdmin class roster |
+| `python -m app.database import-roster COURSE_ID roster.xlsx [--drop-missing]` | Import a StudentAdmin class roster (.xlsx or .csv); lists students missing from the file |
 | `python -m app.database export COURSE_ID out.csv` | Participation CSV: 100 for each lecture the student answered a poll, 0 otherwise |
 | `python -m app.database archive-course COURSE_ID --as NETID [--undo]` | Hide a finished course but keep all its data (reversible) |
 | `python -m app.database delete-course COURSE_ID --as NETID [--delete-logs]` | Permanently delete a course (owner or admin only; asks you to confirm) |
@@ -91,7 +91,7 @@ app/database/
   models.py     the 13 tables - the single source of truth for the schema
   triggers.py   triggers and views (rules a CHECK constraint can't express)
   services.py   operations the API calls: login, courses, questions, polls, responses, grading
-  roster.py     StudentAdmin .xlsx import, pasted NetID/email/ID lists
+  roster.py     StudentAdmin .xlsx/.csv import (reports who is missing), pasted NetID/email/ID lists
   export.py     participation grade CSV
   seed.py       demo data
 migrations/     Alembic (schema changes after the first release)
@@ -178,13 +178,13 @@ try-it-out page are at `SITE_URL/api/docs`.
 | Roles (admins) | `GET /users?q=&role=`, `PATCH /users/{id}/role` |
 | Courses | `GET/POST /courses`, `GET/PATCH/DELETE /courses/{id}`, `POST /courses/{id}/archive`, `/unarchive` |
 | Instructors | `GET/POST /courses/{id}/instructors`, `DELETE /courses/{id}/instructors/{user_id}` |
-| Roster | `GET/POST /courses/{id}/roster`, `POST .../roster/paste`, `POST .../roster/import` (.xlsx), `DELETE .../roster/{user_id}` |
+| Roster | `GET/POST /courses/{id}/roster`, `POST .../roster/paste`, `POST .../roster/import` (.xlsx or .csv; the reply lists `added` and `missing` students), `POST .../roster/drop` (drop several, e.g. the `missing` list), `DELETE .../roster/{user_id}` |
 | Lectures | `GET/POST /courses/{id}/sessions`, `PATCH/DELETE /sessions/{id}` |
 | Questions | `GET/POST /banks`, `GET/PATCH/DELETE /banks/{id}`, `POST /banks/{id}/copy`, `POST /questions`, `GET/PATCH/DELETE /questions/{id}`, `POST /questions/{id}/copy` |
 | Images | `POST /media` (upload or paste), `GET /media/{sha256}` |
-| Polls | `POST /courses/{id}/polls`, `POST /courses/{id}/polls/quick`, `POST /courses/{id}/polls/set` (several questions asked one at a time), `POST /polls/{id}/open` (next question, same code), `DELETE /polls/{id}` (unopened only), `GET /courses/{id}/polls`, `GET /polls/by-code/{code}`, `GET/PATCH /polls/{id}`, `POST /polls/{id}/close`, `POST /polls/{id}/regrade`, `GET /polls/{id}/results`, `GET /polls/{id}/responses`, `GET /polls/{id}/qr.svg` / `qr.png` |
+| Polls | `POST /courses/{id}/polls`, `POST /courses/{id}/polls/quick`, `POST /courses/{id}/polls/set` (several questions asked one at a time), `POST /polls/{id}/open` (next question, same code), `DELETE /polls/{id}` (unopened only), `GET /courses/{id}/polls`, `GET /polls/by-code/{code}`, `GET/PATCH /polls/{id}`, `POST /polls/{id}/close`, `POST /polls/{id}/reopen` (closed poll; earlier answers kept), `POST /polls/{id}/regrade`, `GET /polls/{id}/results`, `GET /polls/{id}/responses`, `GET /polls/{id}/qr.svg` / `qr.png` |
 | Students | `POST /polls/{id}/responses` (answer; the reply is the confirmation), `GET /courses/{id}/history`, `GET /courses/{id}/my-participation` |
-| Grades and logs | `GET /courses/{id}/export/participation.csv` (optional repeatable `?dates=YYYY-MM-DD`), `GET /courses/{id}/participation/sessions`, `GET /courses/{id}/participation`, `GET /courses/{id}/events` |
+| Grades and logs | `GET /courses/{id}/export/participation.csv` (optional repeatable `?dates=YYYY-MM-DD`), `GET /courses/{id}/participation/sessions` (each date's `exported_at`, from the export log), `GET /courses/{id}/participation`, `GET /courses/{id}/events` |
 | Live updates | WebSocket `/ws/courses/{id}`: `poll_opened`, `poll_closed`, `results` (results go to students only when shown) |
 
 Students never see the answer key, the explanation, or whether they were
@@ -264,7 +264,9 @@ break them:
   must have a NetID, email or student ID. A NetID must be 3 letters followed by
   5 numbers (e.g. `abc12345`); `services` raises a friendly error for anything
   else, and roster imports list bad NetIDs as skipped rows. Anyone who has logged
-  in must have a NetID. NetIDs and emails are stored in lowercase.
+  in must have a NetID. NetIDs and emails are stored in lowercase, and matching
+  ignores case, so a StudentAdmin `ABC12345` and a CAS login `abc12345` are the
+  same person. The pages and the grade CSV show NetIDs in UPPERCASE.
 - **One answer per student per poll.** Resubmitting while the poll is open
   updates the same row.
 - **Answers only while the poll is open.** This is enforced by a trigger.

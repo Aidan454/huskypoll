@@ -625,6 +625,32 @@ def close_poll(db: Session, poll: Poll, closed_by: User) -> Poll:
     return poll
 
 
+def reopen_poll(db: Session, poll: Poll, reopened_by: User) -> Poll:
+    """Open a closed poll again. Earlier answers are kept and students may change them.
+
+    The poll keeps its access code unless another open poll is using it now.
+    While it is open again it drops out of grades, answer keys are hidden from
+    students again, and closing it re-counts it.
+    """
+    course = poll.session.course
+    if not is_instructor(db, course, reopened_by):
+        raise NotAllowed("only an instructor of this course can reopen polls")
+    if course.archived_at is not None:
+        raise HuskyPollError("this course is archived; restore it before reopening polls")
+    if poll.status != "closed":
+        raise HuskyPollError("only a closed poll can be reopened")
+    code = poll.access_code
+    if code is None or db.scalar(select(Poll.id).where(Poll.access_code == code, Poll.status == "open")):
+        code = _unique_open_access_code(db)
+    poll.access_code = code
+    poll.status = "open"
+    poll.closed_at = None
+    db.flush()
+    log_event(db, "poll_reopen", user=reopened_by, course=course, poll=poll,
+              responses=_count(db, Response, Response.poll_id == poll.id))
+    return poll
+
+
 def find_open_poll_by_code(db: Session, access_code: str) -> Poll | None:
     return db.scalar(select(Poll).where(Poll.access_code == access_code.strip().upper(), Poll.status == "open"))
 

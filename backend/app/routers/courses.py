@@ -26,8 +26,10 @@ from app.database.models import (
     User,
 )
 from app.database.roster import (
+    drop_students,
     import_identifiers,
     import_records,
+    import_studentadmin_csv,
     import_studentadmin_xlsx,
 )
 
@@ -48,11 +50,17 @@ router = APIRouter(tags=["courses"])
 MAX_ROSTER_BYTES = 5 * 1024 * 1024
 
 
+def _student_out(u: User) -> s.RosterStudentOut:
+    return s.RosterStudentOut(id=u.id, net_id=u.net_id, email=u.email, student_id=u.student_id,
+                              display_name=u.display_name)
+
+
 def _import_out(res) -> s.ImportResultOut:
     return s.ImportResultOut(
         users_created=res.users_created, users_matched=res.users_matched, enrolled=res.enrolled,
         reactivated=res.reactivated, unchanged=res.unchanged, dropped=res.dropped,
-        skipped=[{"row": r, "reason": why} for r, why in res.skipped], summary=res.summary())
+        skipped=[{"row": r, "reason": why} for r, why in res.skipped], summary=res.summary(),
+        added=[_student_out(u) for u in res.added], missing=[_student_out(u) for u in res.missing])
 
 
 def _find_by_identifier(db: Session, identifier: str) -> User | None:
@@ -197,7 +205,9 @@ def paste_roster(course_id: int, body: s.RosterPaste, db: Annotated[Session, Dep
 
 
 @router.post("/courses/{course_id}/roster/import", response_model=s.ImportResultOut,
-             summary="Import a StudentAdmin class roster (.xlsx)")
+             summary="Import a StudentAdmin class roster (.xlsx or .csv)",
+             description="Adds new students. Students on the roster but not in the file come back in "
+                         "`missing`; drop them with POST /roster/drop (or pass drop_missing=true).")
 def import_roster(course_id: int, file: Annotated[UploadFile, File(...)],
                    db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)],
                    drop_missing: bool = False):
@@ -206,8 +216,11 @@ def import_roster(course_id: int, file: Annotated[UploadFile, File(...)],
     data = file.file.read(MAX_ROSTER_BYTES + 1)
     if len(data) > MAX_ROSTER_BYTES:
         raise HTTPException(413, "Roster file is too large (5 MB max)")
-    if not data.startswith(b"PK"):
-        raise HTTPException(400, "Please upload the roster as an .xlsx file")
+    if not data.startswith(b"PK"):  # not a zip, so not .xlsx: read it as CSV
+        try:
+            return _import_out(import_studentadmin_csv(db, c, data, drop_missing=drop_missing, by=user))
+        except svc.HuskyPollError as exc:
+            raise HTTPException(400, f"Please upload the StudentAdmin roster as .xlsx or .csv: {exc}") from exc
     with tempfile.TemporaryDirectory() as tmp:
         path = Path(tmp) / "roster.xlsx"
         path.write_bytes(data)
@@ -220,6 +233,15 @@ def import_roster(course_id: int, file: Annotated[UploadFile, File(...)],
                 400, "Could not read that spreadsheet; is it the StudentAdmin roster .xlsx?"
                 ) from exc
     return _import_out(res)
+
+
+@router.post("/courses/{course_id}/roster/drop", response_model=s.RosterDropOut,
+             summary="Drop several students at once (e.g. those missing from a new roster import)")
+def drop_many(course_id: int, body: s.RosterDrop, db: Annotated[Session, Depends(get_db)],
+              user: Annotated[User, Depends(current_user)]):
+    c = course_or_404(db, course_id)
+    require_instructor(db, c, user)
+    return s.RosterDropOut(dropped=drop_students(db, c, body.user_ids, by=user))
 
 
 @router.delete("/courses/{course_id}/roster/{user_id}", status_code=204,

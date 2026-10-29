@@ -10,6 +10,9 @@ that had a closed poll:
 The Username is the student's NetID in capitals. Each PART column is 100 when
 the student answered at least one poll on that date, and 0 when they answered
 none. The W## prefix counts the first lecture of the course as week 1.
+
+Each export is logged with the dates it included, so the export dialog can show
+which dates were already downloaded and leave them unticked.
 """
 from __future__ import annotations
 
@@ -18,10 +21,10 @@ import datetime as dt
 import io
 from collections.abc import Iterable
 
-from sqlalchemy import text
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
-from .models import Course, User
+from .models import Course, EventLog, User
 from .services import log_event
 
 
@@ -77,12 +80,24 @@ def _participation_column(session_date: dt.date, first_lecture: dt.date) -> str:
     return f"W{week}-{session_date.month:02d}-{session_date.day:02d}-PART"
 
 
+def exported_dates(db: Session, course: Course) -> dict[dt.date, dt.datetime]:
+    """Lecture dates already in a downloaded participation CSV -> when they were last exported."""
+    out: dict[dt.date, dt.datetime] = {}
+    for entry in db.scalars(select(EventLog).where(
+        EventLog.course_id == course.id, EventLog.event_type == "export_participation"
+    ).order_by(EventLog.id)):
+        for d in (entry.details_json or {}).get("dates") or []:
+            out[_as_date(d)] = entry.occurred_at
+    return out
+
+
 def participation_sessions(db: Session, course: Course) -> list[dict]:
-    """The date columns available for the participation CSV."""
+    """The date columns available for the participation CSV, and when each was last exported."""
     first_lecture = _first_lecture(db, course)
     if first_lecture is None:
         return []
-    return [{"date": d, "column": _participation_column(d, first_lecture)}
+    exported = exported_dates(db, course)
+    return [{"date": d, "column": _participation_column(d, first_lecture), "exported_at": exported.get(d)}
             for d in _participation_dates(db, course)]
 
 
@@ -124,5 +139,6 @@ def participation_csv(
                     + ["100" if answered.get((student.id, d)) else "0" for d in session_dates])
 
     log_event(db, "export_participation", user=by, course=course,
-              students=len(students), sessions=len(session_dates))
+              students=len(students), sessions=len(session_dates),
+              dates=[d.isoformat() for d in session_dates])
     return buf.getvalue()

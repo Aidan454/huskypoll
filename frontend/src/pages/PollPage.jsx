@@ -66,6 +66,7 @@ function InstructorPoll({ poll, setPoll, reloadPoll }) {
       connectCourse(poll.course_id, (msg) => {
         if (msg.type === 'results' && msg.results.poll_id === poll.id) setResults(msg.results)
         if (msg.type === 'poll_closed' && msg.poll_id === poll.id) reloadPoll()
+        if (msg.type === 'poll_opened' && msg.poll.id === poll.id) reloadPoll()
       }),
     [poll.course_id, poll.id, setResults, reloadPoll],
   )
@@ -75,6 +76,11 @@ function InstructorPoll({ poll, setPoll, reloadPoll }) {
   })
   const [close, closing, closeError] = useAction(async () => {
     setPoll(await api.post(`/polls/${poll.id}/close`))
+    results.reload()
+  })
+  const [reopen, reopening, reopenError] = useAction(async () => {
+    setPoll(await api.post(`/polls/${poll.id}/reopen`))
+    setNotice(null)
     results.reload()
   })
   const [saveKey, savingKey, keyError] = useAction(async (body) => {
@@ -110,9 +116,20 @@ function InstructorPoll({ poll, setPoll, reloadPoll }) {
                   {closing ? 'Closing…' : 'Close poll'}
                 </button>
               )}
+              {poll.status === 'closed' && (
+                <button
+                  type="button"
+                  className="btn btn-sm btn-primary"
+                  onClick={() => reopen()}
+                  disabled={reopening}
+                  title="Let students answer again. Earlier answers are kept and can be changed."
+                >
+                  {reopening ? 'Reopening…' : 'Reopen poll'}
+                </button>
+              )}
             </div>
           </div>
-          <ErrorBox error={shareError || closeError} />
+          <ErrorBox error={shareError || closeError || reopenError} />
           <QuestionBody question={q} />
           <h3 style={{ marginTop: 8 }}>Results</h3>
           {results.error ? <ErrorBox error={results.error} /> : <ResultsView question={q} results={r} />}
@@ -181,8 +198,19 @@ function InstructorPoll({ poll, setPoll, reloadPoll }) {
   )
 }
 
-function StudentPoll({ poll }) {
+function StudentPoll({ poll, reloadPoll }) {
   const q = poll.question
+
+  // The instructor may close or reopen this poll while the student is on the page.
+  useEffect(
+    () =>
+      connectCourse(poll.course_id, (msg) => {
+        if ((msg.type === 'poll_closed' && msg.poll_id === poll.id) || (msg.type === 'poll_opened' && msg.poll.id === poll.id))
+          reloadPoll()
+      }),
+    [poll.course_id, poll.id, reloadPoll],
+  )
+
   if (poll.status === 'open') {
     return (
       <div className="card page-narrow" style={{ margin: '0 auto' }}>
@@ -237,7 +265,7 @@ export default function PollPage() {
       {staff ? (
         <InstructorPoll poll={poll.data} setPoll={poll.setData} reloadPoll={poll.reload} />
       ) : (
-        <StudentPoll poll={poll.data} />
+        <StudentPoll poll={poll.data} reloadPoll={poll.reload} />
       )}
     </main>
   )
