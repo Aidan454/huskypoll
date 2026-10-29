@@ -27,5 +27,5 @@ export function pagePath(path) {
 /** The WebSocket version of API_BASE. */
 export const WS_BASE = API_BASE.replace(/^http/, 'ws')
 
-/** Whether the developer login is on. The backend says so when it serves the pages; the Vite dev server assumes yes. */
-export const DEV_LOGIN = injected ? Boolean(injected.devLogin) : true
+/** Whether the developer login is on. The backend says so when it serves the pages; Disabled in production */
+export const DEV_LOGIN = injected ? Boolean(injected.devLogin) : !import.meta.env.PROD
