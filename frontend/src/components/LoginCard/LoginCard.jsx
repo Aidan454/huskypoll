@@ -28,10 +28,12 @@ export default function LoginCard2({ next = '/courses' }) {
 
   return (
     <div className={styles.card}>
-      <h1 className={styles.title}>
-        Husky<span style={{ color: 'var(--blue)' }}>Poll</span>
-      </h1>
-      <p className={styles.subtitle}>Live polls for UConn classes</p>
+      <div className={styles.titleWrap}>
+        <h1 className={styles.title}>
+          Husky<span style={{ color: 'var(--blue)' }}>Poll</span>
+        </h1>
+        <p className={styles.subtitle}>Live polls for UConn classes</p>
+      </div>
 
       {/* No href yet */}
       <a className="btn btn-primary btn-lg btn-block">
@@ -45,10 +47,6 @@ export default function LoginCard2({ next = '/courses' }) {
       {DEV_LOGIN && (
         <>
           <div className={styles.divider}>Developer login</div>
-          <p className="small muted">
-            Works only when the backend runs with <code>HUSKYPOLL_DEV_LOGIN=1</code>. The buttons use the demo
-            accounts from <code>seed-demo</code>.
-          </p>
           <ErrorBox error={error?.status === 404 ? new Error('Developer login is turned off on this server.') : error} />
           <div className={styles.presetGrid}>
             {DEMO_ACCOUNTS.map((a) => (

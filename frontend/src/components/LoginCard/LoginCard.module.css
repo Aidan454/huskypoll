@@ -7,7 +7,7 @@
 }
 
 .title {
-  font-size: 34px;
+  font-size: 40px;
   text-align: center;
   margin-bottom: 4px;
 }
@@ -16,6 +16,10 @@
   color: var(--muted);
   text-align: center;
   margin: 4px 0 24px;
+}
+
+.titleWrap {
+  margin-block: 50px;
 }
 
 .divider {
