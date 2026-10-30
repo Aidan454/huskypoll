@@ -21,7 +21,10 @@ export default function ThemeToggle() {
       aria-label="Dark mode"
       onClick={toggle}
     >
-      <span className="theme-icon" aria-hidden="true">{theme === 'dark' ? '☾' : '☀'}</span>
+      <span
+        className={`theme-icon ${theme === 'dark' ? 'theme-icon-moon' : 'theme-icon-sun'}`}
+        aria-hidden="true"
+      />
       {theme === 'dark' ? 'Dark mode' : 'Light mode'}
       <span className="theme-track" aria-hidden="true"><span /></span>
     </button>
