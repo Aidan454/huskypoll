@@ -23,12 +23,12 @@ function SessionSelect({ sessions, value, onChange }) {
 }
 
 /** Pick one question to open, or several to ask one at a time in the order chosen. */
-function OpenFromBank({ course, sessions, onOpened, onCancel }) {
+export function OpenFromBank({ course, sessions, onOpened, onCancel, initialSessionId = '' }) {
   const banks = useApi('/banks')
   const [bankId, setBankId] = useState('')
   const bank = useApi(bankId ? `/banks/${bankId}` : null)
   const [questionIds, setQuestionIds] = useState([]) // in the order they were ticked
-  const [sessionId, setSessionId] = useState('')
+  const [sessionId, setSessionId] = useState(String(initialSessionId))
   const [showResults, setShowResults] = useState(false)
 
   function toggle(id) {
@@ -168,8 +168,8 @@ function OpenFromBank({ course, sessions, onOpened, onCancel }) {
 }
 
 /** Write a question on the spot and open it right away. */
-function QuickPoll({ course, sessions, onOpened, onCancel }) {
-  const [sessionId, setSessionId] = useState('')
+export function QuickPoll({ course, sessions, onOpened, onCancel, initialSessionId = '' }) {
+  const [sessionId, setSessionId] = useState(String(initialSessionId))
   const [showResults, setShowResults] = useState(false)
   const [open, busy, error] = useAction(async (body) => {
     const poll = await api.post(`/courses/${course.id}/polls/quick`, {
@@ -221,6 +221,10 @@ export default function InstructorPolls({ course }) {
   const [closePoll, , closeError] = useAction(async (poll) => {
     await api.post(`/polls/${poll.id}/close`)
     reloadPolls()
+  })
+  const [reopenPoll, , reopenError] = useAction(async (poll) => {
+    await api.post(`/polls/${poll.id}/reopen`)
+    navigate(`/polls/${poll.id}`)
   })
 
   function opened(list) {
@@ -295,7 +299,7 @@ export default function InstructorPolls({ course }) {
           </ul>
           </>
         )}
-        <ErrorBox error={closeError} />
+        <ErrorBox error={closeError || reopenError} />
       </div>
 
       <h2>All polls</h2>
@@ -320,6 +324,11 @@ export default function InstructorPolls({ course }) {
                 </span>
                 <span className="badge">{QUESTION_TYPE_SHORT[p.question.type]}</span>
                 <StatusBadge status={p.status} />
+                {p.status === 'closed' && !course.archived_at && (
+                  <button type="button" className="btn btn-sm" onClick={() => reopenPoll(p)} title="Let students answer again">
+                    Reopen
+                  </button>
+                )}
               </li>
             ))}
           </ul>

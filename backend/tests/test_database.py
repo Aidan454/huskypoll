@@ -21,7 +21,14 @@ from app.database.models import (
     Response,
     User,
 )
-from app.database.roster import import_identifiers, import_studentadmin_xlsx
+from app.database.roster import (
+    drop_students,
+    import_identifiers,
+    import_records,
+    import_studentadmin_csv,
+    import_studentadmin_xlsx,
+    read_studentadmin_csv,
+)
 
 SAMPLE_ROSTER = Path(__file__).parent.parent / "samples" / "studentadmin-template.xlsx"
 
@@ -119,10 +126,39 @@ def test_studentadmin_import(db, course_setup):
 
 def test_drop_missing_keeps_history(db, course_setup):
     _prof, course, _s1, s2, _q = course_setup
-    from app.database.roster import import_records
     res = import_records(db, course, [{"net_id": "abc12345"}], drop_missing=True)
     assert res.dropped == 1
     assert not svc.is_enrolled(db, course, s2)
+
+
+def test_studentadmin_csv_normalizes_case():
+    rows = read_studentadmin_csv("\ufeffNetID,Email\r\nabc12345,Ann.Able@UConn.edu\r\n,\r\nXyz67890 , BOB@uconn.edu\r\n")
+    assert [(r["net_id"], r["email"], r["_row"]) for r in rows] == [
+        ("ABC12345", "ann.able@uconn.edu", 2),
+        ("XYZ67890", "bob@uconn.edu", 4),
+    ]
+    with pytest.raises(svc.HuskyPollError, match="header row"):
+        read_studentadmin_csv("hello,world\n1,2\n")
+
+
+def test_reimport_reports_missing_without_dropping(db, course_setup):
+    prof, course, s1, s2, _q = course_setup
+    # s2 (xyz67890) dropped the course, one new student joined; NetIDs arrive in any case.
+    res = import_studentadmin_csv(db, course, "NetID,Email\nABC12345,\nNEW11111,New.Student@UCONN.edu\n", by=prof)
+    assert (res.enrolled, res.unchanged, res.dropped) == (1, 1, 0)
+    assert [u.net_id for u in res.added] == ["new11111"]
+    assert res.missing == [s2]
+    assert svc.is_enrolled(db, course, s2)  # nothing dropped until the instructor says so
+    new = svc.find_user(db, net_id="NEW11111")
+    assert new.net_id == "new11111" and new.email == "new.student@uconn.edu"
+
+    assert drop_students(db, course, [u.id for u in res.missing] + [s1.id + 999], by=prof) == 1
+    assert not svc.is_enrolled(db, course, s2) and svc.is_enrolled(db, course, s1)
+    assert drop_students(db, course, [s2.id], by=prof) == 0  # already dropped
+
+    # The student logs in through CAS later and is matched to the imported row.
+    u = svc.record_login(db, net_id="new11111", email="new11111@uconn.edu")
+    assert u is new
 
 
 # --- check constraints --------------------------------------------------------
@@ -164,6 +200,39 @@ def test_full_poll_flow_and_grading(db, course_setup):
         svc.submit_response(db, poll, s2, option_ids=[right.id])
     types = [e.event_type for e in db.query(EventLog).order_by(EventLog.id)]
     assert {"poll_open", "response_submit", "response_update", "poll_close"} <= set(types)
+
+
+def test_reopen_closed_poll(db, course_setup):
+    prof, course, s1, s2, q = course_setup
+    right = next(o for o in q.options if o.is_correct)
+    poll = svc.open_poll(db, course, q, prof)
+    code = poll.access_code
+    svc.submit_response(db, poll, s1, option_ids=[right.id])
+    with pytest.raises(svc.HuskyPollError, match="only a closed poll"):
+        svc.reopen_poll(db, poll, prof)
+    svc.close_poll(db, poll, prof)
+    with pytest.raises(svc.NotAllowed):
+        svc.reopen_poll(db, poll, s1)
+
+    svc.reopen_poll(db, poll, prof)
+    assert (poll.status, poll.closed_at, poll.access_code) == ("open", None, code)
+    assert svc.find_open_poll_by_code(db, code) is poll
+    svc.submit_response(db, poll, s2, option_ids=[right.id])  # late students can answer now
+    assert db.query(Response).filter_by(poll_id=poll.id).count() == 2  # earlier answer kept
+    svc.close_poll(db, poll, prof)
+    assert "poll_reopen" in {e.event_type for e in db.query(EventLog)}
+
+    # If another open poll took the code meanwhile, the reopened poll gets a new one.
+    other = svc.open_poll(db, course, q, prof)
+    other.access_code = code
+    db.flush()
+    svc.reopen_poll(db, poll, prof)
+    assert poll.access_code != code and poll.status == "open"
+
+    svc.archive_course(db, course, prof)
+    svc.close_poll(db, poll, prof)
+    with pytest.raises(svc.HuskyPollError, match="archived"):
+        svc.reopen_poll(db, poll, prof)
 
 
 def test_not_enrolled_cannot_answer(db, course_setup):
@@ -294,14 +363,23 @@ def test_participation_export(db, course_setup):
     assert lines[1] == "ABC12345,100,0"
     assert lines[2] == "XYZ67890,0,100"
 
-    assert participation_sessions(db, course) == [
-        {"date": dt.date(2027, 2, 1), "column": "W1-02-01-PART"},
-        {"date": dt.date(2027, 2, 8), "column": "W2-02-08-PART"},
-    ]
     filtered = participation_csv(db, course, dates=[dt.date(2027, 2, 8)]).splitlines()
     assert filtered[0] == "Username,W2-02-08-PART"
     assert filtered[1] == "ABC12345,0"
     assert filtered[2] == "XYZ67890,100"
+
+    # Both dates have been exported; a new lecture date has not.
+    third = svc.get_or_create_session(db, course, on_date=dt.date(2027, 2, 15))
+    svc.close_poll(db, svc.open_poll(db, course, q, prof, lecture_session=third), prof)
+    db.flush()
+    sessions = participation_sessions(db, course)
+    assert [(x["date"], x["column"]) for x in sessions] == [
+        (dt.date(2027, 2, 1), "W1-02-01-PART"),
+        (dt.date(2027, 2, 8), "W2-02-08-PART"),
+        (dt.date(2027, 2, 15), "W3-02-15-PART"),
+    ]
+    assert [x["exported_at"] is not None for x in sessions] == [True, True, False]
+    assert sessions[0]["exported_at"].tzinfo is not None
 
     assert participation_totals(db, course, start=dt.date(2027, 3, 1))[0]["points"] == 0
 

@@ -223,6 +223,17 @@ def close_poll(poll_id: int, request: Request, db: Annotated[Session, Depends(ge
     return poll_out(settings, poll, is_instructor=True)
 
 
+@router.post("/polls/{poll_id}/reopen", response_model=s.PollOut,
+             summary="Open a closed poll again (earlier answers are kept)")
+def reopen_poll(poll_id: int, request: Request, db: Annotated[Session, Depends(get_db)],
+                user: Annotated[User, Depends(current_user)], settings: Annotated[Settings, Depends(get_settings)]):
+    poll = poll_or_404(db, poll_id)
+    require_instructor(db, poll.session.course, user)
+    svc.reopen_poll(db, poll, user)
+    _announce_open(request, settings, poll)
+    return poll_out(settings, poll, is_instructor=True)
+
+
 @router.post("/polls/{poll_id}/regrade", response_model=s.RegradeOut,
              summary="Re-mark all answers (after fixing the answer key)")
 def regrade(poll_id: int, db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)]):

@@ -2,7 +2,7 @@
 
   init                     create a new, empty database
   seed-demo                create a database filled with a demo course
-  import-roster COURSE_ID FILE.xlsx [--drop-missing]
+  import-roster COURSE_ID FILE.xlsx|FILE.csv [--drop-missing]
   export COURSE_ID OUT.csv  participation grades (100 answered / 0 missed)
   archive-course COURSE_ID --as NETID        hide a course, keep its data (undo with --undo)
   delete-course COURSE_ID --as NETID [--delete-logs] [--yes]   permanently delete a course
@@ -148,11 +148,18 @@ def main(argv: list[str] | None = None) -> int:
                   f"{summary['polls']} polls, {summary['responses']} responses. Question banks were kept.")
             return 0
         if args.cmd == "import-roster":
-            from .roster import import_studentadmin_xlsx
-            res = import_studentadmin_xlsx(db, course, args.file, drop_missing=args.drop_missing)
+            from .roster import import_studentadmin_csv, import_studentadmin_xlsx
+            if Path(args.file).suffix.lower() == ".csv":
+                res = import_studentadmin_csv(db, course, Path(args.file).read_bytes(), drop_missing=args.drop_missing)
+            else:
+                res = import_studentadmin_xlsx(db, course, args.file, drop_missing=args.drop_missing)
             print(res.summary())
             for row, why in res.skipped:
                 print(f"  row {row}: {why}")
+            if res.missing and not args.drop_missing:
+                print("Not in the file (run again with --drop-missing to drop them):")
+                for u in res.missing:
+                    print(f"  {(u.net_id or '').upper() or u.email or u.student_id}  {u.display_name}")
         elif args.cmd == "export":
             from .export import participation_csv
             args.out.write_text(participation_csv(db, course), encoding="utf-8")

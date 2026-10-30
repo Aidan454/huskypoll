@@ -23,12 +23,106 @@ function ImportSummary({ result }) {
   )
 }
 
+function StudentName({ user }) {
+  const netId = user.net_id?.toUpperCase()
+  if (!netId || user.display_name === user.net_id) return <span className="netid">{netId ?? user.display_name}</span>
+  return (
+    <>
+      {user.display_name} <span className="muted netid">{netId}</span>
+    </>
+  )
+}
+
+function StudentList({ students }) {
+  return (
+    <ul className="small roster-diff-list">
+      {students.map((u) => (
+        <li key={u.id}>
+          <StudentName user={u} />
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+/** After a StudentAdmin import: who joined, and who is on the roster but not in the file. */
+function RosterChanges({ course, result, onDone }) {
+  const [unchecked, setUnchecked] = useState(() => new Set())
+  const [dropped, setDropped] = useState(null)
+  const missing = result.missing ?? []
+  const chosen = missing.filter((u) => !unchecked.has(u.id))
+
+  const [drop, busy, error] = useAction(async () => {
+    const r = await api.post(`/courses/${course.id}/roster/drop`, { user_ids: chosen.map((u) => u.id) })
+    setDropped(r.dropped)
+    onDone()
+  })
+
+  function toggle(id) {
+    setUnchecked((current) => {
+      const next = new Set(current)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  return (
+    <div className="roster-diff">
+      {result.added?.length > 0 && (
+        <section>
+          <h3>Joined the course ({result.added.length})</h3>
+          <p className="small muted">These students were added to the roster.</p>
+          <StudentList students={result.added} />
+        </section>
+      )}
+      {missing.length > 0 && dropped === null && (
+        <section>
+          <h3>Not in this roster file ({missing.length})</h3>
+          <p className="small muted">
+            These students are on the course roster but not in the file you imported, which usually means they dropped the
+            course. Nobody is dropped until you choose to. Their past answers are kept either way.
+          </p>
+          <div className="row" style={{ marginBottom: 8 }}>
+            <button type="button" className="linkbtn" onClick={() => setUnchecked(new Set())}>
+              Select all
+            </button>
+            <button type="button" className="linkbtn" onClick={() => setUnchecked(new Set(missing.map((u) => u.id)))}>
+              Deselect all
+            </button>
+          </div>
+          <div className="stack roster-diff-list">
+            {missing.map((u) => (
+              <label key={u.id} className="check">
+                <input type="checkbox" checked={!unchecked.has(u.id)} onChange={() => toggle(u.id)} />
+                <span>
+                  <StudentName user={u} />
+                </span>
+              </label>
+            ))}
+          </div>
+          <ErrorBox error={error} />
+          <div className="form-actions">
+            <button type="button" className="btn btn-danger" onClick={drop} disabled={busy || chosen.length === 0}>
+              {busy ? 'Dropping…' : `Drop ${chosen.length} ${chosen.length === 1 ? 'student' : 'students'} not in the new roster`}
+            </button>
+          </div>
+        </section>
+      )}
+      {dropped !== null && (
+        <div className="alert alert-info">
+          Dropped {dropped} {dropped === 1 ? 'student' : 'students'}. Turn on “Show dropped” to see them.
+        </div>
+      )}
+    </div>
+  )
+}
+
 function AddStudents({ course, onDone }) {
   const [mode, setMode] = useState('paste')
   const [text, setText] = useState('')
   const [one, setOne] = useState({ identifier: '', first_name: '', last_name: '', section: '' })
   const [file, setFile] = useState(null)
-  const [dropMissing, setDropMissing] = useState(false)
   const [result, setResult] = useState(null)
 
   const [submit, busy, error] = useAction(async () => {
@@ -37,7 +131,7 @@ function AddStudents({ course, onDone }) {
     else if (mode === 'one') {
       const body = Object.fromEntries(Object.entries(one).map(([k, v]) => [k, v.trim() || null]))
       r = await api.post(`/courses/${course.id}/roster`, body)
-    } else r = await api.upload(`/courses/${course.id}/roster/import`, file, { drop_missing: dropMissing })
+    } else r = await api.upload(`/courses/${course.id}/roster/import`, file)
     setResult(r)
     onDone()
   })
@@ -94,18 +188,24 @@ function AddStudents({ course, onDone }) {
           </>
         )}
         {mode === 'import' && (
-          <>
-            <Field label="Class roster (.xlsx from StudentAdmin)">
-              <input type="file" accept=".xlsx" onChange={(e) => setFile(e.target.files[0] ?? null)} required />
-            </Field>
-            <label className="check small">
-              <input type="checkbox" checked={dropMissing} onChange={(e) => setDropMissing(e.target.checked)} />
-              Drop students who are not in this file
-            </label>
-          </>
+          <Field
+            label="Class roster from StudentAdmin (.xlsx or .csv)"
+            hint="Import the full, current class list. New students are added, and you can then review anyone who is no longer on it."
+          >
+            <input
+              type="file"
+              accept=".xlsx,.csv,text/csv"
+              onChange={(e) => {
+                setFile(e.target.files[0] ?? null)
+                setResult(null)
+              }}
+              required
+            />
+          </Field>
         )}
         <ErrorBox error={error} />
         <ImportSummary result={result} />
+        {result && mode === 'import' && <RosterChanges key={result.summary} course={course} result={result} onDone={onDone} />}
         <div className="form-actions">
           <button type="submit" className="btn btn-primary" disabled={busy}>
             {busy ? 'Adding…' : 'Add to roster'}
@@ -177,7 +277,7 @@ export default function RosterTab() {
                     {shown.map((r) => (
                       <tr key={r.user.id}>
                         <td>{r.user.display_name}</td>
-                        <td>{r.user.net_id ?? <span className="muted">—</span>}</td>
+                        <td className="netid">{r.user.net_id?.toUpperCase() ?? <span className="muted">—</span>}</td>
                         <td className="small">{r.user.email}</td>
                         <td>{r.user.student_id}</td>
                         <td>{r.section}</td>

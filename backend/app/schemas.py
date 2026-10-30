@@ -102,6 +102,22 @@ class RosterEntryOut(BaseModel):
     added_at: dt.datetime
 
 
+class RosterStudentOut(BaseModel):
+    id: int
+    net_id: str | None
+    email: str | None
+    student_id: str | None
+    display_name: str
+
+
+class RosterDrop(BaseModel):
+    user_ids: list[int] = Field(description="Students to drop, e.g. the `missing` list from an import")
+
+
+class RosterDropOut(BaseModel):
+    dropped: int
+
+
 class ImportResultOut(BaseModel):
     users_created: int
     users_matched: int
@@ -111,6 +127,10 @@ class ImportResultOut(BaseModel):
     dropped: int
     skipped: list[dict]
     summary: str
+    added: list[RosterStudentOut] = Field(default_factory=list, description="Newly enrolled or re-activated")
+    missing: list[RosterStudentOut] = Field(
+        default_factory=list,
+        description="Active students not in the imported StudentAdmin file (probably dropped the course)")
 
 
 # --- questions ---------------------------------------------------------------------
@@ -327,6 +347,7 @@ class ParticipationOut(BaseModel):
 class ParticipationSessionOut(BaseModel):
     date: dt.date
     column: str
+    exported_at: dt.datetime | None = Field(None, description="When this date was last in a downloaded CSV")
 
 
 class EventOut(BaseModel):

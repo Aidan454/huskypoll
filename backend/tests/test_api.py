@@ -194,6 +194,15 @@ def test_full_lecture_flow(lecture):
     assert ann.get(f"/courses/{cid}/my-participation").json() == {
         "polls": 1, "answered": 1, "correct": 0, "points": 1.0, "points_possible": 1.0}
 
+    # Reopen: students only, answers hidden again, late answers accepted, then close again
+    assert ann.post(f"/polls/{poll['id']}/reopen").status_code in (403, 404)
+    reopened = prof.post(f"/polls/{poll['id']}/reopen").json()
+    assert reopened["status"] == "open" and reopened["access_code"] == poll["access_code"]
+    assert ann.get(f"/polls/{poll['id']}").json()["question"]["explanation_md"] is None
+    assert bob.post(f"/polls/{poll['id']}/responses", json={"option_ids": [right]}).status_code == 200
+    assert prof.post(f"/polls/{poll['id']}/reopen").status_code == 400
+    prof.post(f"/polls/{poll['id']}/close")
+
     # Export and log
     csv = prof.get(f"/courses/{cid}/export/participation.csv")
     assert csv.headers["content-type"].startswith("text/csv")
@@ -202,6 +211,7 @@ def test_full_lecture_flow(lecture):
     assert ann_row == "AAB11111,100" and bob_row == "BBA22222,100"
     sessions = prof.get(f"/courses/{cid}/participation/sessions").json()
     assert len(sessions) == 1 and sessions[0]["column"] == header.split(",")[1]
+    assert sessions[0]["exported_at"] is not None  # the download above included it
     only_username = prof.get(f"/courses/{cid}/export/participation.csv", params={"dates": "2000-01-01"})
     assert only_username.text.strip().splitlines()[0] == "Username"
     events = {e["event_type"] for e in prof.get(f"/courses/{cid}/events").json()}
@@ -296,6 +306,27 @@ def test_roster_endpoints(lecture):
     assert prof.delete(f"/courses/{cid}/roster/{ann_id}").status_code == 204
     assert len(prof.get(f"/courses/{cid}/roster").json()) == 3
     assert lecture["ann"].get(f"/courses/{cid}").status_code == 404
+
+
+def test_roster_csv_reimport_and_drop_missing(lecture):
+    prof, cid = lecture["prof"], lecture["cid"]
+    # New StudentAdmin export: Bob is still in, Ann dropped the course, Cat joined.
+    csv = b"NetID,Email\r\nbba22222,BOB.BAKER@uconn.edu\r\nCCA33333,Cat.Cole@UConn.edu\r\n"
+    r = prof.post(f"/courses/{cid}/roster/import", files={"file": ("roster.csv", csv, "text/csv")})
+    assert r.status_code == 200
+    res = r.json()
+    assert (res["enrolled"], res["unchanged"], res["dropped"]) == (1, 1, 0)
+    assert [u["net_id"] for u in res["added"]] == ["cca33333"]
+    assert [u["net_id"] for u in res["missing"]] == ["aab11111"]
+    assert len(prof.get(f"/courses/{cid}/roster").json()) == 3  # nobody dropped yet
+
+    r = prof.post(f"/courses/{cid}/roster/drop", json={"user_ids": [u["id"] for u in res["missing"]]})
+    assert r.json() == {"dropped": 1}
+    assert {e["user"]["net_id"] for e in prof.get(f"/courses/{cid}/roster").json()} == {"bba22222", "cca33333"}
+    assert lecture["ann"].post(f"/courses/{cid}/roster/drop", json={"user_ids": []}).status_code in (403, 404)
+
+    bad = prof.post(f"/courses/{cid}/roster/import", files={"file": ("x.csv", b"foo,bar\n1,2\n")})
+    assert bad.status_code == 400 and "header row" in bad.json()["detail"]
 
 
 def test_banks_and_media(app, lecture):
