@@ -44,7 +44,7 @@ export default function CourseLayout() {
         </div>
       </div>
 
-      <nav className="tabs">
+      <nav className={`tabs${staff ? '' : ' tabs-student'}`} aria-label="Course sections">
         {staff ? (
           <NavLink to={base} end>Polls</NavLink>
         ) : (

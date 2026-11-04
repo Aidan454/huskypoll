@@ -899,6 +899,41 @@ textarea {
   .page {
     padding-top: 20px;
   }
+  .page:has(.tabs-student) {
+    padding-bottom: calc(88px + env(safe-area-inset-bottom));
+  }
+  .tabs-student {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    margin: 0;
+    padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+    background: var(--navy);
+    border-top: 1px solid var(--navy-2);
+    border-bottom: 0;
+    gap: 8px;
+    overflow: visible;
+  }
+  .tabs-student a {
+    flex: 1;
+    text-align: center;
+    padding: 12px;
+    border-bottom: 0;
+    border-radius: 8px;
+    color: #cfd8ee;
+    font-weight: 600;
+  }
+  .tabs-student a:hover {
+    color: #fff;
+    background: var(--navy-2);
+  }
+  .tabs-student a.active {
+    color: #fff;
+    background: var(--navy-2);
+    border-bottom-color: transparent;
+  }
 }
 
 /* Shared theme control remains visible on every route. */
