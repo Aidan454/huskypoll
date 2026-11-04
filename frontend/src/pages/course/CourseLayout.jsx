@@ -45,9 +45,14 @@ export default function CourseLayout() {
       </div>
 
       <nav className="tabs">
-        <NavLink to={base} end>
-          {staff ? 'Polls' : 'Polls & history'}
-        </NavLink>
+        {staff ? (
+          <NavLink to={base} end>Polls</NavLink>
+        ) : (
+          <>
+            <NavLink to={base} end>Polls</NavLink>
+            <NavLink to={`${base}/history`}>History</NavLink>
+          </>
+        )}
         {staff && <NavLink to={`${base}/lectures`}>Lectures</NavLink>}
         {staff && <NavLink to={`${base}/roster`}>Roster</NavLink>}
         {staff && <NavLink to={`${base}/staff`}>Instructors & TAs</NavLink>}
