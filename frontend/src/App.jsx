@@ -13,6 +13,7 @@ import LiveTab from './pages/course/LiveTab.jsx'
 import RosterTab from './pages/course/RosterTab.jsx'
 import SettingsTab from './pages/course/SettingsTab.jsx'
 import StaffTab from './pages/course/StaffTab.jsx'
+import StudentHistory from './pages/course/StudentHistory.jsx'
 import CoursesPage from './pages/CoursesPage.jsx'
 import JoinPage from './pages/JoinPage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
@@ -56,6 +57,7 @@ const router = createBrowserRouter(
               element: <CourseLayout />,
               children: [
                 { index: true, element: <CourseHome /> },
+                { path: 'history', element: <StudentHistory /> },
                 { path: 'live', element: <LiveTab /> },
                 { path: 'lectures', element: <LecturesTab /> },
                 { path: 'roster', element: <RosterTab /> },
