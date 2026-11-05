@@ -17,7 +17,7 @@ export default function Layout() {
           </Link>
           <nav className="topnav">
             <NavLink to="/courses">Courses</NavLink>
-            <NavLink to="/join">Join a poll</NavLink>
+            {!canTeach(user) && <NavLink to="/join">Join a poll</NavLink>}
             {canTeach(user) && <NavLink to="/banks">Question banks</NavLink>}
             {user?.role === 'admin' && <NavLink to="/admin/users">Users</NavLink>}
           </nav>
