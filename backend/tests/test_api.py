@@ -73,6 +73,25 @@ def test_health_and_login_required(app):
     assert c.get("/courses").status_code == 401
 
 
+def test_db_dependency_commits_before_the_response():
+    """A client may fetch a row right after creating it, so get_db must commit
+    before the response is sent (scope="function", not the FastAPI default)."""
+    from app.deps import get_db
+    from app.routers import auth, courses, polls, questions, users
+
+    def walk(dependant):
+        for sub in dependant.dependencies:
+            if sub.call is get_db:
+                assert sub.scope == "function", "use Depends(get_db, scope='function')"
+            walk(sub)
+
+    for module in (auth, courses, polls, questions, users):
+        for route in module.router.routes:
+            dependant = getattr(route, "dependant", None)
+            if dependant is not None:
+                walk(dependant)
+
+
 def test_dev_login_rules(app):
     c = TestClient(app)
     assert c.post("/auth/dev-login", json={"email": "someone@gmail.com", "net_id": "abc12345"}).status_code == 403
