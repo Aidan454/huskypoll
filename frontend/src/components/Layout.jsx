@@ -10,7 +10,7 @@ function Navigation({ user, onNavigate }) {
   return (
     <>
       <NavLink to="/courses" onClick={onNavigate}>Courses</NavLink>
-      <NavLink to="/join" onClick={onNavigate}>Join a poll</NavLink>
+      {!canTeach(user) && <NavLink to="/join" onClick={onNavigate}>Join a poll</NavLink>}
       {canTeach(user) && <NavLink to="/banks" onClick={onNavigate}>Question banks</NavLink>}
       {user?.role === 'admin' && <NavLink to="/admin/users" onClick={onNavigate}>Users</NavLink>}
     </>
