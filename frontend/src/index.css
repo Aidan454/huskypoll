@@ -647,6 +647,9 @@ textarea {
   background: var(--red-soft);
   color: var(--red);
 }
+.countdown {
+  font-variant-numeric: tabular-nums;
+}
 .badge-role-student {
   background: #eef1f5;
   color: #5d6675;

@@ -409,6 +409,8 @@ class Poll(Base):
     opened_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     opened_at: Mapped[dt.datetime | None] = mapped_column(UTCDateTime)
     closed_at: Mapped[dt.datetime | None] = mapped_column(UTCDateTime)
+    duration_seconds: Mapped[int | None] = mapped_column(Integer)  # limit chosen when the poll was created
+    closes_at: Mapped[dt.datetime | None] = mapped_column(UTCDateTime)  # opened_at + duration_seconds
     created_at: Mapped[dt.datetime] = _created_at()
 
     session: Mapped[LectureSession] = relationship(back_populates="polls")
@@ -420,6 +422,9 @@ class Poll(Base):
         CheckConstraint("status = 'draft' OR opened_at IS NOT NULL", name="opened_has_time"),
         CheckConstraint("status <> 'closed' OR closed_at IS NOT NULL", name="closed_has_time"),
         CheckConstraint("closed_at IS NULL OR closed_at >= opened_at", name="close_after_open"),
+        CheckConstraint("duration_seconds IS NULL OR duration_seconds > 0", name="duration_positive"),
+        CheckConstraint("closes_at IS NULL OR opened_at IS NOT NULL", name="closes_needs_open"),
+        Index("ix_polls_open_closes_at", "closes_at", sqlite_where=text("status = 'open'")),
         # Access codes only need to be unique among polls that are open right now,
         # so short codes can be reused.
         Index(

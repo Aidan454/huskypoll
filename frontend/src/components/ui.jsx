@@ -80,7 +80,7 @@ export function RoleBadge({ role }) {
       : role === 'ta'
         ? 'badge badge-role-ta'
         : 'badge badge-role-instructor'
-  return <span className={cls}>{role === 'ta' ? 'TA' : role}</span>
+  return <span className={cls}>{role === 'ta' ? 'TA' : role === 'owner' ? 'instructor' : role}</span>
 }
 
 export function Field({ label, hint, children }) {

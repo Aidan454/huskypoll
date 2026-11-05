@@ -93,7 +93,8 @@ def open_poll(course_id: int, body: s.PollOpen, request: Request, db: Annotated[
     q = question_or_404(db, body.question_id)
     require_question_access(db, q, user)
     sess = session_or_404(db, body.session_id) if body.session_id else None
-    poll = svc.open_poll(db, course, q, user, lecture_session=sess, show_results=body.show_results)
+    poll = svc.open_poll(db, course, q, user, lecture_session=sess, show_results=body.show_results,
+                         duration_seconds=body.duration_seconds)
     _announce_open(request, settings, poll)
     return poll_out(settings, poll, is_instructor=True)
 
@@ -111,7 +112,8 @@ def create_poll_set(course_id: int, body: s.PollSetCreate, request: Request, db:
         require_question_access(db, q, user)
         questions.append(q)
     sess = session_or_404(db, body.session_id) if body.session_id else None
-    polls = svc.create_poll_set(db, course, questions, user, lecture_session=sess, show_results=body.show_results)
+    polls = svc.create_poll_set(db, course, questions, user, lecture_session=sess, show_results=body.show_results,
+                                duration_seconds=body.duration_seconds)
     if body.open_first:
         svc.open_draft_poll(db, polls[0], user)
         _announce_open(request, settings, polls[0])
@@ -141,10 +143,11 @@ def quick_poll(course_id: int, body: s.QuickPoll, request: Request, db: Annotate
                user: Annotated[User, Depends(current_user)], settings: Annotated[Settings, Depends(get_settings)]):
     course = course_or_404(db, course_id)
     require_instructor(db, course, user)
-    data = body.model_dump(exclude={"options", "session_id", "show_results", "bank_id"})
+    data = body.model_dump(exclude={"options", "session_id", "show_results", "bank_id", "duration_seconds"})
     q = svc.create_question(db, user, options=[(o.text_md, o.is_correct) for o in body.options], **data)
     sess = session_or_404(db, body.session_id) if body.session_id else None
-    poll = svc.open_poll(db, course, q, user, lecture_session=sess, show_results=body.show_results)
+    poll = svc.open_poll(db, course, q, user, lecture_session=sess, show_results=body.show_results,
+                         duration_seconds=body.duration_seconds)
     _announce_open(request, settings, poll)
     return poll_out(settings, poll, is_instructor=True)
 
@@ -219,7 +222,8 @@ def close_poll(poll_id: int, request: Request, db: Annotated[Session, Depends(ge
     require_instructor(db, poll.session.course, user)
     svc.close_poll(db, poll, user)
     course_id = poll.session.course_id
-    after_commit(request, lambda: hub.publish(course_id, {"type": "poll_closed", "poll_id": poll_id}))
+    after_commit(request, lambda: hub.publish(course_id, {"type": "poll_closed", "poll_id": poll_id,
+                                                          "reason": "manual"}))
     return poll_out(settings, poll, is_instructor=True)
 
 
@@ -232,6 +236,25 @@ def reopen_poll(poll_id: int, request: Request, db: Annotated[Session, Depends(g
     svc.reopen_poll(db, poll, user)
     _announce_open(request, settings, poll)
     return poll_out(settings, poll, is_instructor=True)
+
+
+@router.post("/polls/{poll_id}/extend", response_model=s.PollOut,
+             summary="Add time to a timed poll (reopens it if it already closed)")
+def extend_poll(poll_id: int, body: s.PollExtend, request: Request, db: Annotated[Session, Depends(get_db)],
+                user: Annotated[User, Depends(current_user)], settings: Annotated[Settings, Depends(get_settings)]):
+    poll = poll_or_404(db, poll_id)
+    require_instructor(db, poll.session.course, user)
+    was_closed = poll.status == "closed"
+    svc.extend_poll(db, poll, user, body.seconds)
+    out = poll_out(settings, poll, is_instructor=True)
+    course_id = poll.session.course_id
+    payload = {"type": "poll_extended", "poll_id": poll.id,
+               "closes_at": poll.closes_at.isoformat() if poll.closes_at else None,
+               "seconds_remaining": out.seconds_remaining}
+    if was_closed:
+        _announce_open(request, settings, poll)
+    after_commit(request, lambda: hub.publish(course_id, payload))
+    return out
 
 
 @router.post("/polls/{poll_id}/regrade", response_model=s.RegradeOut,

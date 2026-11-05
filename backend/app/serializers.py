@@ -15,6 +15,7 @@ from app.database.models import (
     QuestionBank,
     Response,
     User,
+    utcnow,
 )
 
 from . import schemas as s
@@ -75,12 +76,16 @@ def poll_out(settings: Settings, poll: Poll, *, is_instructor: bool,
     # Students see the answer key and their marks only once the poll is closed.
     reveal = is_instructor or poll.status == "closed"
     open_ = poll.status == "open"
+    remaining = None
+    if open_ and poll.closes_at is not None:
+        remaining = max(0, int((poll.closes_at - utcnow()).total_seconds()))
     return s.PollOut(
         id=poll.id, course_id=poll.session.course_id, session_id=poll.session_id, status=poll.status,
         access_code=poll.access_code if open_ else None,
         join_url=settings.frontend_link(f"/join/{poll.access_code}") if open_ and poll.access_code else None,
         position=poll.position, show_results=poll.show_results,
         opened_at=poll.opened_at, closed_at=poll.closed_at,
+        duration_seconds=poll.duration_seconds, closes_at=poll.closes_at, seconds_remaining=remaining,
         question=question_out(settings, poll.question, reveal=reveal),
         my_response=my_response_out(my_response, reveal=reveal) if my_response else None,
     )

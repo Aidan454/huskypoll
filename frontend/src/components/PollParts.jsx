@@ -1,9 +1,9 @@
 // Pieces shared by the instructor's live view, the student's answer page and history.
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api } from '../api.js'
 import { answerText, formatTime, pct } from '../format.js'
 import { useAction } from '../hooks.js'
-import { ErrorBox } from './ui.jsx'
+import { ErrorBox, Field, Modal } from './ui.jsx'
 import Markdown from './Markdown.jsx'
 
 export function QuestionBody({ question }) {
@@ -112,11 +112,70 @@ export function Mark({ response }) {
   return <span className="badge badge-blue">Answered</span>
 }
 
+/** Seconds left, counted down locally from the server's `seconds_remaining`. */
+function useCountdown(seconds) {
+  const [left, setLeft] = useState(seconds ?? null)
+  useEffect(() => {
+    if (left === null || left <= 0) return
+    const timer = setTimeout(() => setLeft((s) => (s === null ? s : Math.max(0, s - 1))), 1000)
+    return () => clearTimeout(timer)
+  }, [left])
+  return left
+}
+
+/** "⏱ 4:32", amber in the last minute, red once the time is up. */
+export function PollCountdown({ seconds, onExpire }) {
+  // Remount when the server sends a new deadline, so its value wins over the local countdown.
+  return <Countdown key={seconds ?? 'none'} seconds={seconds} onExpire={onExpire} />
+}
+
+function Countdown({ seconds, onExpire }) {
+  const left = useCountdown(seconds)
+  useEffect(() => {
+    if (left === 0) onExpire?.()
+  }, [left, onExpire])
+  if (left === null) return null
+  const cls = left === 0 ? 'badge badge-red' : left < 60 ? 'badge badge-amber' : 'badge'
+  return (
+    <span className={`${cls} countdown`} title="Time left">
+      {left === 0 ? 'Time is up' : `⏱ ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`}
+    </span>
+  )
+}
+
+/** The instructor's prompt when a timed poll reaches zero. */
+export function TimeUpModal({ open, busy, error, onClose, onAddTime }) {
+  const [minutes, setMinutes] = useState('2')
+  const seconds = Math.round(Number(minutes) * 60)
+  return (
+    <Modal open={open} onClose={onClose} title="Time's up">
+      <p>The timer for this poll has ended.</p>
+      <Field label="Add time (minutes)">
+        <input type="number" min="1" step="1" value={minutes} onChange={(e) => setMinutes(e.target.value)} />
+      </Field>
+      <ErrorBox error={error} />
+      <div className="form-actions">
+        <button type="button" className="btn" onClick={onClose} disabled={busy}>
+          Close poll
+        </button>
+        <button
+          type="button"
+          className="btn btn-primary"
+          disabled={busy || !Number.isFinite(seconds) || seconds <= 0}
+          onClick={() => onAddTime(seconds)}
+        >
+          {busy ? 'Adding…' : 'Add time'}
+        </button>
+      </div>
+    </Modal>
+  )
+}
+
 /**
  * A student answers an open poll. Re-submitting while the poll is open changes the answer.
  * `poll` is a PollOut (with my_response); onSaved(myResponse) after each save.
  */
-export function AnswerForm({ poll, onSaved }) {
+export function AnswerForm({ poll, onSaved, expired = false }) {
   const q = poll.question
   const mine = poll.my_response
   const [optionIds, setOptionIds] = useState(mine?.option_ids ?? [])
@@ -176,13 +235,14 @@ export function AnswerForm({ poll, onSaved }) {
         <input type="number" step="any" value={num} onChange={(e) => setNum(e.target.value)} placeholder="Your answer" />
       )}
       <ErrorBox error={error} />
+      {expired && <div className="alert alert-error">Time is up — your answer can no longer be submitted.</div>}
       {saved && !error && (
         <div className="alert alert-success" style={{ marginTop: 12 }}>
           ✓ Answer received at {formatTime(saved.updated_at)}
           {answerText(q, saved) !== '' && <> ({String(answerText(q, saved))})</>}. You can change it until the poll closes.
         </div>
       )}
-      <button type="submit" className="btn btn-primary btn-lg btn-block" disabled={busy || empty} style={{ marginTop: 12 }}>
+      <button type="submit" className="btn btn-primary btn-lg btn-block" disabled={busy || empty || expired} style={{ marginTop: 12 }}>
         {busy ? 'Sending…' : saved ? 'Update answer' : 'Submit answer'}
       </button>
     </form>
