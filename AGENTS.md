@@ -5,6 +5,10 @@ classroom polling site for UConn. Read this before changing code. Instructors
 run polls in lecture, students answer with a code or QR image, and the
 participation grades are exported as a CSV for HuskyCT.
 
+> **Agents: log every change.** Any AI agent that changes this repository must
+> add an entry to [`AGENT_CHANGES.md`](AGENT_CHANGES.md) in the same commit.
+> See "Agent change log" below.
+
 ## Stack
 
 - **Backend:** Python 3.11+ (3.13 in Docker), FastAPI, SQLAlchemy 2, Alembic, SQLite. In `backend/`.
@@ -15,6 +19,8 @@ participation grades are exported as a CSV for HuskyCT.
 ## Layout
 
 ```
+AGENTS.md               this guide
+AGENT_CHANGES.md        log of every change made by an AI agent (add an entry for yours)
 backend/
   app/
     main.py, app.py     entry point (uvicorn app.main:app) and app factory
@@ -138,11 +144,28 @@ docker compose -f compose.server.yml logs -f
 - Match the style of the file you're in. Python: ruff config in
   `backend/ruff.toml`. JS: ESLint config in `frontend/eslint.config.js`.
 - Keep docs in step with the code: the root `README.md`, `backend/README.md`
-  (its API table lists every endpoint), and this file.
+  (its API table lists every endpoint), this file, and `AGENT_CHANGES.md`.
 - UI follows the UConn brand (brand.uconn.edu): navy `#000E2F`, grey `#7C878E`,
   white, and Royal Blue `#013ECD` as an accent only. Text must meet 4.5:1
   contrast. The colors are CSS variables in `index.css`; don't add new hex values.
 - Branch from `main` and open a pull request; CI must pass.
+
+### Agent change log
+
+`AGENT_CHANGES.md` (repository root, next to this file) is the record of every
+change an AI agent makes to HuskyPoll. This file says how to work on the code;
+`AGENT_CHANGES.md` says what agents actually changed, so the team can review
+agent work and the next agent can pick up where the last one stopped.
+
+- **Every** change an agent makes gets an entry: code, tests, migrations,
+  config, Docker files and docs. No change is too small.
+- Add the entry in the same commit or pull request as the change, newest entry
+  at the top, using the template at the top of `AGENT_CHANGES.md`: date, agent,
+  who asked, branch/PR, every file touched, a summary, checks run, follow-up.
+- Before starting work, read the latest entries to see what other agents have
+  changed recently.
+- Never edit or remove another task's entry; add a new one to correct it.
+- A pull request from an agent without an `AGENT_CHANGES.md` entry is not done.
 
 ## How the main features work
 
