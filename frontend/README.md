@@ -53,3 +53,5 @@ src/
   components/    layout, login guard, dialogs, question editor, poll pieces, Markdown
   pages/         one file per page; pages/course/ holds the course tabs
 ```
+## Icons
+https://www.svgrepo.com/

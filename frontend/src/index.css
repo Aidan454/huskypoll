@@ -431,12 +431,51 @@ th.num {
   overflow-x: auto;
 }
 .tabs a {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   padding: 10px 14px;
   text-decoration: none;
   color: var(--muted);
   border-bottom: 3px solid transparent;
   white-space: nowrap;
   font-weight: 500;
+}
+.tab-icon {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  background-color: currentColor;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+.tab-icon-polls {
+  -webkit-mask-image: url('./assets/bar-chart.svg');
+  mask-image: url('./assets/bar-chart.svg');
+}
+.tab-icon-lectures {
+  -webkit-mask-image: url('./assets/screen.svg');
+  mask-image: url('./assets/screen.svg');
+}
+.tab-icon-roster {
+  -webkit-mask-image: url('./assets/person.svg');
+  mask-image: url('./assets/person.svg');
+}
+.tab-icon-activity {
+  -webkit-mask-image: url('./assets/clock-file.svg');
+  mask-image: url('./assets/clock-file.svg');
+}
+.tab-icon-grades {
+  -webkit-mask-image: url('./assets/edit.svg');
+  mask-image: url('./assets/edit.svg');
+}
+.tab-icon-settings {
+  -webkit-mask-image: url('./assets/settings.svg');
+  mask-image: url('./assets/settings.svg');
 }
 .tabs a:hover {
   color: var(--heading);
@@ -941,8 +980,21 @@ textarea {
   width: 16px;
   height: 16px;
   flex: none;
-  font-size: 14px;
-  line-height: 1;
+  background-color: currentColor;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+}
+.theme-icon-moon {
+  -webkit-mask-image: url('./assets/moon.svg');
+  mask-image: url('./assets/moon.svg');
+}
+.theme-icon-sun {
+  -webkit-mask-image: url('./assets/sun.svg');
+  mask-image: url('./assets/sun.svg');
 }
 .theme-toggle:focus-visible { outline: 3px solid var(--blue); outline-offset: 2px; }
 .theme-track { width: 32px; height: 18px; padding: 3px; border-radius: 20px; background: var(--muted); }

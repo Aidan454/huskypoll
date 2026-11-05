@@ -46,14 +46,40 @@ export default function CourseLayout() {
 
       <nav className="tabs">
         <NavLink to={base} end>
+          <span className="tab-icon tab-icon-polls" aria-hidden="true" />
           {staff ? 'Polls' : 'Polls & history'}
         </NavLink>
-        {staff && <NavLink to={`${base}/lectures`}>Lectures</NavLink>}
-        {staff && <NavLink to={`${base}/roster`}>Roster</NavLink>}
+        {staff && (
+          <NavLink to={`${base}/lectures`}>
+            <span className="tab-icon tab-icon-lectures" aria-hidden="true" />
+            Lectures
+          </NavLink>
+        )}
+        {staff && (
+          <NavLink to={`${base}/roster`}>
+            <span className="tab-icon tab-icon-roster" aria-hidden="true" />
+            Roster
+          </NavLink>
+        )}
         {staff && <NavLink to={`${base}/staff`}>Instructors & TAs</NavLink>}
-        {staff && <NavLink to={`${base}/grades`}>Grades</NavLink>}
-        {staff && <NavLink to={`${base}/activity`}>Activity</NavLink>}
-        {staff && <NavLink to={`${base}/settings`}>Settings</NavLink>}
+        {staff && (
+          <NavLink to={`${base}/grades`}>
+            <span className="tab-icon tab-icon-grades" aria-hidden="true" />
+            Grades
+          </NavLink>
+        )}
+        {staff && (
+          <NavLink to={`${base}/activity`}>
+            <span className="tab-icon tab-icon-activity" aria-hidden="true" />
+            Activity
+          </NavLink>
+        )}
+        {staff && (
+          <NavLink to={`${base}/settings`}>
+            <span className="tab-icon tab-icon-settings" aria-hidden="true" />
+            Settings
+          </NavLink>
+        )}
       </nav>
 
       <Outlet context={{ course: c, reloadCourse: course.reload, setCourse: course.setData }} />
