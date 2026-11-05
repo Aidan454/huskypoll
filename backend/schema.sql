@@ -162,12 +162,16 @@ CREATE TABLE polls (
 	opened_by INTEGER, 
 	opened_at DATETIME, 
 	closed_at DATETIME, 
+	duration_seconds INTEGER, 
+	closes_at DATETIME, 
 	created_at DATETIME NOT NULL, 
 	CONSTRAINT pk_polls PRIMARY KEY (id), 
 	CONSTRAINT ck_polls_status CHECK (status IN ('draft', 'open', 'closed')), 
 	CONSTRAINT ck_polls_opened_has_time CHECK (status = 'draft' OR opened_at IS NOT NULL), 
 	CONSTRAINT ck_polls_closed_has_time CHECK (status <> 'closed' OR closed_at IS NOT NULL), 
 	CONSTRAINT ck_polls_close_after_open CHECK (closed_at IS NULL OR closed_at >= opened_at), 
+	CONSTRAINT ck_polls_duration_positive CHECK (duration_seconds IS NULL OR duration_seconds > 0), 
+	CONSTRAINT ck_polls_closes_needs_open CHECK (closes_at IS NULL OR opened_at IS NOT NULL), 
 	CONSTRAINT fk_polls_session_id_lecture_sessions FOREIGN KEY(session_id) REFERENCES lecture_sessions (id) ON DELETE CASCADE, 
 	CONSTRAINT fk_polls_question_id_questions FOREIGN KEY(question_id) REFERENCES questions (id) ON DELETE RESTRICT, 
 	CONSTRAINT ck_polls_show_results CHECK (show_results IN (0, 1)), 
@@ -230,6 +234,8 @@ CREATE INDEX ix_questions_bank_id ON questions (bank_id);
 CREATE INDEX ix_polls_session_id ON polls (session_id);
 
 CREATE INDEX ix_polls_question_id ON polls (question_id);
+
+CREATE INDEX ix_polls_open_closes_at ON polls (closes_at) WHERE status = 'open';
 
 CREATE UNIQUE INDEX uq_polls_open_access_code ON polls (access_code) WHERE status = 'open';
 

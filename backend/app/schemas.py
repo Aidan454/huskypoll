@@ -256,6 +256,8 @@ class PollOpen(BaseModel):
     question_id: int
     session_id: int | None = Field(None, description="Default: today's session, created if needed")
     show_results: bool = False
+    duration_seconds: int | None = Field(
+        None, ge=5, le=4 * 3600, description="Time limit in seconds; null = no time limit")
 
 
 class PollSetCreate(BaseModel):
@@ -265,17 +267,25 @@ class PollSetCreate(BaseModel):
     session_id: int | None = Field(None, description="Default: today's session, created if needed")
     show_results: bool = False
     open_first: bool = True
+    duration_seconds: int | None = Field(
+        None, ge=5, le=4 * 3600, description="Time limit for each question, in seconds; null = no limit")
 
 
 class QuickPoll(QuestionCreate):
     """Create a question in lecture and open it in one step."""
     session_id: int | None = None
     show_results: bool = False
+    duration_seconds: int | None = Field(
+        None, ge=5, le=4 * 3600, description="Time limit in seconds; null = no time limit")
 
 
 class PollUpdate(BaseModel):
     show_results: bool | None = None
     session_id: int | None = Field(None, description="Move the poll to another session of the course")
+
+
+class PollExtend(BaseModel):
+    seconds: int = Field(gt=0, le=4 * 3600, description="How much time to add")
 
 
 class ResponseIn(BaseModel):
@@ -312,6 +322,9 @@ class PollOut(BaseModel):
     show_results: bool
     opened_at: dt.datetime | None
     closed_at: dt.datetime | None
+    duration_seconds: int | None = None
+    closes_at: dt.datetime | None = None
+    seconds_remaining: int | None = None  # computed on the server, so clients never compare clocks
     question: QuestionOut
     my_response: MyResponseOut | None = None
 

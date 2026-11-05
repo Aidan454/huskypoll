@@ -15,6 +15,8 @@ certificates/
 
 # Docker dev data (database + uploaded images)
 backend/data/
+backend/data
+backend/data-store/
 
 # Server settings (see .env.server.example)
 .env

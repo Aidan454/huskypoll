@@ -4,7 +4,9 @@
 //   ...
 //   stop()
 //
-// Messages: {type: 'hello'}, {type: 'poll_opened', poll}, {type: 'poll_closed', poll_id},
+// Messages: {type: 'hello'}, {type: 'poll_opened', poll},
+//           {type: 'poll_closed', poll_id, reason: 'manual' | 'timeout'},
+//           {type: 'poll_extended', poll_id, closes_at, seconds_remaining},
 //           {type: 'results', results}
 import { WS_BASE } from './config.js'
 

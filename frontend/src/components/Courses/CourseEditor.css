@@ -1,0 +1,418 @@
+/* Course editor page. Kept separate from the course list so it can grow
+   without affecting the cards on the instructor home page. */
+.ce-page {
+  min-height: calc(100vh - 60px);
+  padding: 24px 16px 64px;
+  background: #202020;
+  box-sizing: border-box;
+  text-align: left;
+}
+
+.ce-page *,
+.ce-page *::before,
+.ce-page *::after {
+  box-sizing: border-box;
+}
+
+.ce-page button,
+.ce-page input,
+.ce-page textarea {
+  font: inherit;
+}
+
+.ce-main {
+  width: min(100%, 880px);
+  margin: 0 auto;
+  padding: 28px 32px 32px;
+  background: #fff;
+  color: #111;
+}
+
+.ce-back {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #005ac2;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.ce-back:hover {
+  text-decoration: underline;
+}
+
+.ce-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0 24px;
+}
+
+.ce-heading h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -0.3px;
+}
+
+.ce-badge {
+  padding: 3px 8px;
+  border: 1px solid #c9ced6;
+  background: #f2f4f7;
+  color: #3c4654;
+  font-size: 13px;
+}
+
+.ce-form {
+  display: block;
+}
+
+.ce-card {
+  margin-bottom: 24px;
+  padding: 20px 24px 24px;
+  border: 1px solid #d9d9d9;
+  background: #fff;
+}
+
+.ce-card h2 {
+  margin: 0 0 16px;
+  font-size: 18px;
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.ce-field {
+  display: block;
+  margin-top: 14px;
+  font-size: 13px;
+  color: #3c4654;
+}
+
+.ce-field:first-of-type {
+  margin-top: 0;
+}
+
+.ce-field input,
+.ce-field textarea {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px;
+  border: 1px solid #999;
+  background: #fff;
+  color: #111;
+  font-size: 14px;
+  resize: vertical;
+}
+
+.ce-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.ce-section-heading h2 {
+  margin: 0;
+}
+
+.ce-count {
+  color: #5a6472;
+  font-size: 13px;
+}
+
+/* CSV upload */
+.ce-upload {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e3e5e8;
+}
+
+.ce-file {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  cursor: pointer;
+}
+
+.ce-file input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ce-file-button {
+  display: inline-block;
+  padding: 8px 12px;
+  border: 1px solid #087cff;
+  background: #fff;
+  color: #0068df;
+  font-size: 13px;
+}
+
+.ce-file:hover .ce-file-button {
+  background: #eef6ff;
+}
+
+.ce-file:focus-within .ce-file-button {
+  outline: 2px solid #005ac2;
+  outline-offset: 3px;
+}
+
+.ce-hint {
+  margin: 0;
+  color: #5a6472;
+  font-size: 12px;
+  line-height: 17px;
+}
+
+/* Status messages */
+.ce-status {
+  margin: 12px 0 0;
+  padding: 9px 11px;
+  border: 1px solid transparent;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.ce-status-success {
+  border-color: #b7dfc2;
+  background: #eefaf1;
+  color: #1a6b32;
+}
+
+.ce-status-warning {
+  border-color: #f0d9a8;
+  background: #fff8e8;
+  color: #7a5400;
+}
+
+.ce-status-error {
+  border-color: #f0c2bd;
+  background: #fdf0ef;
+  color: #b42318;
+}
+
+/* Roster table */
+.ce-table-wrap {
+  margin-top: 16px;
+  overflow-x: auto;
+}
+
+.ce-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.ce-table th {
+  padding: 8px 10px;
+  border-bottom: 1px solid #999;
+  color: #5a6472;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.ce-table td {
+  padding: 9px 10px;
+  border-bottom: 1px solid #e3e5e8;
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+}
+
+.ce-table tbody tr:hover {
+  background: #fafbfc;
+}
+
+.ce-table-action {
+  width: 44px;
+  text-align: right;
+}
+
+.ce-remove {
+  width: 26px;
+  height: 26px;
+  border: 1px solid #e0b4af;
+  border-radius: 50%;
+  background: #fff;
+  color: #b42318;
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.ce-remove:hover {
+  background: #fdf0ef;
+}
+
+.ce-empty {
+  margin: 16px 0 0;
+  padding: 18px;
+  border: 1px dashed #c9ced6;
+  color: #5a6472;
+  font-size: 13px;
+  text-align: center;
+}
+
+/* Add a single student */
+.ce-add {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #e3e5e8;
+}
+
+.ce-add h3 {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ce-add-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) auto;
+  gap: 8px;
+}
+
+.ce-add-grid input {
+  width: 100%;
+  min-width: 0;
+  padding: 8px 9px;
+  border: 1px solid #999;
+  background: #fff;
+  color: #111;
+  font-size: 13px;
+}
+
+.ce-add .ce-hint {
+  margin-top: 8px;
+}
+
+/* Footer actions */
+.ce-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 8px;
+}
+
+.ce-actions-right {
+  display: flex;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.ce-primary,
+.ce-secondary,
+.ce-cancel,
+.ce-danger {
+  min-height: 34px;
+  padding: 8px 14px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.ce-primary {
+  border: 1px solid #087cff;
+  background: #087cff;
+  color: #fff;
+}
+
+.ce-primary:hover {
+  background: #0068df;
+}
+
+.ce-secondary {
+  border: 1px solid #087cff;
+  background: #fff;
+  color: #0068df;
+  white-space: nowrap;
+}
+
+.ce-secondary:hover {
+  background: #eef6ff;
+}
+
+.ce-cancel {
+  border: 1px solid #aaa;
+  background: #838080;
+  color: #fff;
+}
+
+.ce-cancel:hover {
+  background: #6f6c6c;
+}
+
+.ce-danger {
+  border: 1px solid #b42318;
+  background: #fff;
+  color: #b42318;
+}
+
+.ce-danger:hover {
+  background: #b42318;
+  color: #fff;
+}
+
+/* Visible focus indicator for keyboard navigation */
+.ce-page button:focus-visible,
+.ce-page input:focus-visible,
+.ce-page textarea:focus-visible {
+  outline: 2px solid #005ac2;
+  outline-offset: 2px;
+}
+
+.ce-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 760px) {
+  .ce-main {
+    padding: 22px 18px 24px;
+  }
+
+  .ce-card {
+    padding: 16px;
+  }
+
+  .ce-upload {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .ce-add-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .ce-add-grid .ce-secondary {
+    grid-column: 1 / -1;
+  }
+
+  .ce-actions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+
+  .ce-actions-right {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    margin-left: 0;
+  }
+}

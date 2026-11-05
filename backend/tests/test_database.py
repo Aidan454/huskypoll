@@ -29,6 +29,7 @@ from app.database.roster import (
     import_studentadmin_xlsx,
     read_studentadmin_csv,
 )
+from app.timers import close_expired_polls
 
 SAMPLE_ROSTER = Path(__file__).parent.parent / "samples" / "studentadmin-template.xlsx"
 
@@ -233,6 +234,83 @@ def test_reopen_closed_poll(db, course_setup):
     svc.close_poll(db, poll, prof)
     with pytest.raises(svc.HuskyPollError, match="archived"):
         svc.reopen_poll(db, poll, prof)
+
+
+def test_timed_poll_has_a_deadline_and_refuses_late_answers(db, course_setup):
+    prof, course, s1, _s2, q = course_setup
+    poll = svc.open_poll(db, course, q, prof, duration_seconds=60)
+    assert poll.duration_seconds == 60
+    assert poll.closes_at - poll.opened_at == dt.timedelta(seconds=60)
+
+    right = next(o for o in q.options if o.is_correct)
+    svc.submit_response(db, poll, s1, option_ids=[right.id])
+
+    poll.closes_at = svc.utcnow() - dt.timedelta(seconds=1)
+    db.flush()
+    with pytest.raises(svc.HuskyPollError, match="time is up"):
+        svc.submit_response(db, poll, s1, option_ids=[right.id])
+
+    # No duration means no timer, and nothing changes for existing polls.
+    plain = svc.open_poll(db, course, q, prof)
+    assert plain.duration_seconds is None and plain.closes_at is None
+
+
+def test_extend_poll_adds_time_and_reopens_a_closed_poll(db, course_setup):
+    prof, course, s1, _s2, q = course_setup
+    poll = svc.open_poll(db, course, q, prof, duration_seconds=60)
+    svc.close_poll(db, poll, prof)
+
+    svc.extend_poll(db, poll, prof, 120)
+    assert poll.status == "open" and poll.closed_at is None
+    remaining = (poll.closes_at - svc.utcnow()).total_seconds()
+    assert 118 <= remaining <= 121
+    svc.submit_response(db, poll, s1, option_ids=[q.options[0].id])  # late students can answer now
+    assert "poll_extended" in {e.event_type for e in db.query(EventLog)}
+
+    with pytest.raises(svc.NotAllowed):
+        svc.extend_poll(db, poll, s1, 60)
+
+    plain = svc.open_poll(db, course, q, prof)
+    with pytest.raises(svc.HuskyPollError, match="no timer"):
+        svc.extend_poll(db, plain, prof, 60)
+
+
+def test_poll_duration_must_be_positive(db, course_setup):
+    prof, course, *_rest, q = course_setup
+    poll = svc.open_poll(db, course, q, prof, duration_seconds=60)
+    _fails(db, "UPDATE polls SET duration_seconds = 0 WHERE id = :id", {"id": poll.id},
+           match="duration_positive")
+
+    draft = Poll(session_id=poll.session_id, question_id=q.id, status="draft", position=99)
+    db.add(draft)
+    db.flush()
+    _fails(db, "UPDATE polls SET closes_at = '2027-01-01' WHERE id = :id", {"id": draft.id},
+           match="closes_needs_open")  # a deadline only makes sense once the poll was opened
+
+
+def test_timer_loop_closes_expired_polls(tmp_path):
+    engine = make_engine(tmp_path / "timer.db")
+    init_db(engine)
+    Session = make_session_factory(engine)
+    with Session() as db:
+        prof, _ = svc.find_or_create_user(db, net_id="prf00001", first_name="Pat", last_name="Prof")
+        svc.set_role(db, prof, "instructor")
+        course = svc.create_course(db, prof, term="Spring 2027", subject="cse", catalog="2050",
+                                   title="Data Structures", points_correct=1)
+        q = svc.create_question(db, prof, type="mc_single", body_md="2+2?",
+                                options=[("3", False), ("4", True)])
+        poll = svc.open_poll(db, course, q, prof, duration_seconds=60)
+        poll.closes_at = svc.utcnow() - dt.timedelta(seconds=1)
+        db.commit()
+        course_id, poll_id = course.id, poll.id
+
+    assert close_expired_polls(Session) == [(course_id, poll_id)]
+
+    with Session() as db:
+        poll = db.get(Poll, poll_id)
+        assert poll.status == "closed" and poll.closed_at is not None
+        assert "poll_timeout" in {e.event_type for e in db.query(EventLog)}
+    engine.dispose()
 
 
 def test_not_enrolled_cannot_answer(db, course_setup):

@@ -20,7 +20,7 @@ services:
       HUSKYPOLL_SECRET_KEY: dev-only-not-a-secret      # fixed so logins survive reloads (dev only!)
       WATCHFILES_FORCE_POLLING: "true"                 # code reload works with Windows/Mac file mounts
     volumes:
-      - ./backend/data:/data                           # database + uploaded images (kept between runs)
+      - ./backend/data-store:/data                     # database + uploaded images (kept between runs)
       - ./backend:/code                                # live code: edits reload the server
     ports:
       - "8000:8000"

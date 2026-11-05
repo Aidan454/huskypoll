@@ -3,7 +3,10 @@
 One connection per open page: /ws/courses/{course_id}. Messages are JSON:
 
   {"type": "poll_opened",  "poll": {...}}          everyone in the course
-  {"type": "poll_closed",  "poll_id": 7}           everyone in the course
+  {"type": "poll_closed",  "poll_id": 7, "reason": "manual" | "timeout"}
+                                                   everyone in the course
+  {"type": "poll_extended", "poll_id": 7, "closes_at": ..., "seconds_remaining": 120}
+                                                   everyone in the course
   {"type": "results",      "results": {...}}       instructors (students too if show_results)
 
 Everything lives in this one process, which matches the deployment plan
