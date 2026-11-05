@@ -26,7 +26,12 @@ def get_settings(request: Request) -> Settings:
 
 def get_db(request: Request) -> Iterator[Session]:
     """One request = one transaction. Commits at the end (rolls back on any error),
-    then runs after-commit callbacks such as live-update broadcasts."""
+    then runs after-commit callbacks such as live-update broadcasts.
+
+    Always depend on this with ``Depends(get_db, scope="function")``. FastAPI
+    otherwise runs the exit code after the response is sent, and a client that
+    immediately fetches a row it just created can get a 404 before the commit.
+    """
     db: Session = request.app.state.session_factory()
     request.state.after_commit = []
     try:
@@ -46,7 +51,7 @@ def after_commit(request: Request, fn: Callable[[], None]) -> None:
     request.state.after_commit.append(fn)
 
 
-def optional_user(request: Request, db: Annotated[Session, Depends(get_db)]) -> User | None:
+def optional_user(request: Request, db: Annotated[Session, Depends(get_db, scope="function")]) -> User | None:
     user_id = request.session.get("user_id")
     if user_id is None:
         return None
