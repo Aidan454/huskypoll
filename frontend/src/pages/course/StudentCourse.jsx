@@ -51,7 +51,7 @@ export default function StudentCourse({ course }) {
                   key={p.id}
                   poll={p}
                   expired={Boolean(expired[p.id])}
-                  onSaved={() => reloadHistory()}
+                  onSaved={reloadOpen}
                 />
                 {p.show_results && results[p.id] && (
                   <div style={{ marginTop: 20 }}>
