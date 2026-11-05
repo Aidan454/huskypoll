@@ -107,7 +107,7 @@ def login(request: Request, settings: Annotated[Settings, Depends(get_settings)]
 
 
 @router.get("/auth/cas/callback", include_in_schema=False)
-def cas_callback(request: Request, ticket: str, db: Annotated[Session, Depends(get_db)],
+def cas_callback(request: Request, ticket: str, db: Annotated[Session, Depends(get_db, scope="function")],
                  settings: Annotated[Settings, Depends(get_settings)]):
     next_ = request.session.get("login_next", "/")
     info = request.app.state.cas_validator(settings, ticket)
@@ -117,7 +117,7 @@ def cas_callback(request: Request, ticket: str, db: Annotated[Session, Depends(g
 
 @router.post("/auth/dev-login", response_model=s.UserOut,
              summary="Developer login (only when HUSKYPOLL_DEV_LOGIN=1)")
-def dev_login(body: s.DevLogin, request: Request, db: Annotated[Session, Depends(get_db)],
+def dev_login(body: s.DevLogin, request: Request, db: Annotated[Session, Depends(get_db, scope="function")],
               settings: Annotated[Settings, Depends(get_settings)]):
     if not settings.dev_login:
         raise HTTPException(404, "Not found")
