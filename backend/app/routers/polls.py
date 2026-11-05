@@ -86,7 +86,7 @@ def _announce_results(request: Request, db: Session, poll: Poll) -> None:
 
 @router.post("/courses/{course_id}/polls", response_model=s.PollOut, status_code=201,
              summary="Open a poll on an existing question")
-def open_poll(course_id: int, body: s.PollOpen, request: Request, db: Annotated[Session, Depends(get_db)],
+def open_poll(course_id: int, body: s.PollOpen, request: Request, db: Annotated[Session, Depends(get_db, scope="function")],
               user: Annotated[User, Depends(current_user)], settings: Annotated[Settings, Depends(get_settings)]):
     course = course_or_404(db, course_id)
     require_instructor(db, course, user)
@@ -101,7 +101,7 @@ def open_poll(course_id: int, body: s.PollOpen, request: Request, db: Annotated[
 
 @router.post("/courses/{course_id}/polls/set", response_model=list[s.PollOut], status_code=201,
              summary="Queue several questions to ask one at a time (opens the first)")
-def create_poll_set(course_id: int, body: s.PollSetCreate, request: Request, db: Annotated[Session, Depends(get_db)],
+def create_poll_set(course_id: int, body: s.PollSetCreate, request: Request, db: Annotated[Session, Depends(get_db, scope="function")],
                     user: Annotated[User, Depends(current_user)],
                     settings: Annotated[Settings, Depends(get_settings)]):
     course = course_or_404(db, course_id)
@@ -121,7 +121,7 @@ def create_poll_set(course_id: int, body: s.PollSetCreate, request: Request, db:
 
 
 @router.post("/polls/{poll_id}/open", response_model=s.PollOut, summary="Open the next question of a poll set")
-def open_draft(poll_id: int, request: Request, db: Annotated[Session, Depends(get_db)],
+def open_draft(poll_id: int, request: Request, db: Annotated[Session, Depends(get_db, scope="function")],
                user: Annotated[User, Depends(current_user)], settings: Annotated[Settings, Depends(get_settings)]):
     poll = poll_or_404(db, poll_id)
     require_instructor(db, poll.session.course, user)
@@ -131,7 +131,7 @@ def open_draft(poll_id: int, request: Request, db: Annotated[Session, Depends(ge
 
 
 @router.delete("/polls/{poll_id}", status_code=204, summary="Remove a question that hasn't been opened yet")
-def delete_draft(poll_id: int, db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)]):
+def delete_draft(poll_id: int, db: Annotated[Session, Depends(get_db, scope="function")], user: Annotated[User, Depends(current_user)]):
     poll = poll_or_404(db, poll_id)
     require_instructor(db, poll.session.course, user)
     svc.delete_draft_poll(db, poll, user)
@@ -139,7 +139,7 @@ def delete_draft(poll_id: int, db: Annotated[Session, Depends(get_db)], user: An
 
 @router.post("/courses/{course_id}/polls/quick", response_model=s.PollOut, status_code=201,
              summary="Write a question in lecture and open it immediately")
-def quick_poll(course_id: int, body: s.QuickPoll, request: Request, db: Annotated[Session, Depends(get_db)],
+def quick_poll(course_id: int, body: s.QuickPoll, request: Request, db: Annotated[Session, Depends(get_db, scope="function")],
                user: Annotated[User, Depends(current_user)], settings: Annotated[Settings, Depends(get_settings)]):
     course = course_or_404(db, course_id)
     require_instructor(db, course, user)
@@ -154,7 +154,7 @@ def quick_poll(course_id: int, body: s.QuickPoll, request: Request, db: Annotate
 
 @router.get("/courses/{course_id}/polls", response_model=list[s.PollOut],
             summary="Polls in a course (students: includes their own answers)")
-def list_polls(request: Request, course_id: int, db: Annotated[Session, Depends(get_db)],
+def list_polls(request: Request, course_id: int, db: Annotated[Session, Depends(get_db, scope="function")],
                user: Annotated[User, Depends(current_user)], settings: Annotated[Settings, Depends(get_settings)],
                status: Literal["open", "closed"] | None = None, session_id: int | None = None):
     course = course_or_404(db, course_id)
@@ -179,7 +179,7 @@ def list_polls(request: Request, course_id: int, db: Annotated[Session, Depends(
 
 @router.get("/polls/by-code/{access_code}", response_model=s.PollOut,
             summary="Find an open poll from the code a student typed or scanned")
-def poll_by_code(access_code: str, request: Request, db: Annotated[Session, Depends(get_db)],
+def poll_by_code(access_code: str, request: Request, db: Annotated[Session, Depends(get_db, scope="function")],
                  user: Annotated[User, Depends(current_user)], settings: Annotated[Settings, Depends(get_settings)]):
     poll = svc.find_open_poll_by_code(db, access_code) or svc.find_poll_set_by_code(db, access_code)
     if poll is None:
@@ -192,7 +192,7 @@ def poll_by_code(access_code: str, request: Request, db: Annotated[Session, Depe
 
 
 @router.get("/polls/{poll_id}", response_model=s.PollOut)
-def get_poll(poll_id: int, request: Request, db: Annotated[Session, Depends(get_db)],
+def get_poll(poll_id: int, request: Request, db: Annotated[Session, Depends(get_db, scope="function")],
              user: Annotated[User, Depends(current_user)], settings: Annotated[Settings, Depends(get_settings)]):
     poll = poll_or_404(db, poll_id)
     instructor = _poll_role(db, request, poll, user) in INSTRUCTOR_ROLES
@@ -202,7 +202,7 @@ def get_poll(poll_id: int, request: Request, db: Annotated[Session, Depends(get_
 
 
 @router.patch("/polls/{poll_id}", response_model=s.PollOut, summary="Show/hide results, or move to another session")
-def update_poll(poll_id: int, body: s.PollUpdate, request: Request, db: Annotated[Session, Depends(get_db)],
+def update_poll(poll_id: int, body: s.PollUpdate, request: Request, db: Annotated[Session, Depends(get_db, scope="function")],
                 user: Annotated[User, Depends(current_user)], settings: Annotated[Settings, Depends(get_settings)]):
     poll = poll_or_404(db, poll_id)
     require_instructor(db, poll.session.course, user)
@@ -216,7 +216,7 @@ def update_poll(poll_id: int, body: s.PollUpdate, request: Request, db: Annotate
 
 
 @router.post("/polls/{poll_id}/close", response_model=s.PollOut)
-def close_poll(poll_id: int, request: Request, db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)],
+def close_poll(poll_id: int, request: Request, db: Annotated[Session, Depends(get_db, scope="function")], user: Annotated[User, Depends(current_user)],
                settings: Annotated[Settings, Depends(get_settings)]):
     poll = poll_or_404(db, poll_id)
     require_instructor(db, poll.session.course, user)
@@ -229,7 +229,7 @@ def close_poll(poll_id: int, request: Request, db: Annotated[Session, Depends(ge
 
 @router.post("/polls/{poll_id}/reopen", response_model=s.PollOut,
              summary="Open a closed poll again (earlier answers are kept)")
-def reopen_poll(poll_id: int, request: Request, db: Annotated[Session, Depends(get_db)],
+def reopen_poll(poll_id: int, request: Request, db: Annotated[Session, Depends(get_db, scope="function")],
                 user: Annotated[User, Depends(current_user)], settings: Annotated[Settings, Depends(get_settings)]):
     poll = poll_or_404(db, poll_id)
     require_instructor(db, poll.session.course, user)
@@ -240,7 +240,7 @@ def reopen_poll(poll_id: int, request: Request, db: Annotated[Session, Depends(g
 
 @router.post("/polls/{poll_id}/extend", response_model=s.PollOut,
              summary="Add time to a timed poll (reopens it if it already closed)")
-def extend_poll(poll_id: int, body: s.PollExtend, request: Request, db: Annotated[Session, Depends(get_db)],
+def extend_poll(poll_id: int, body: s.PollExtend, request: Request, db: Annotated[Session, Depends(get_db, scope="function")],
                 user: Annotated[User, Depends(current_user)], settings: Annotated[Settings, Depends(get_settings)]):
     poll = poll_or_404(db, poll_id)
     require_instructor(db, poll.session.course, user)
@@ -259,7 +259,7 @@ def extend_poll(poll_id: int, body: s.PollExtend, request: Request, db: Annotate
 
 @router.post("/polls/{poll_id}/regrade", response_model=s.RegradeOut,
              summary="Re-mark all answers (after fixing the answer key)")
-def regrade(poll_id: int, db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)]):
+def regrade(poll_id: int, db: Annotated[Session, Depends(get_db, scope="function")], user: Annotated[User, Depends(current_user)]):
     poll = poll_or_404(db, poll_id)
     require_instructor(db, poll.session.course, user)
     return s.RegradeOut(responses_regraded=svc.regrade_poll(db, poll))
@@ -267,7 +267,7 @@ def regrade(poll_id: int, db: Annotated[Session, Depends(get_db)], user: Annotat
 
 @router.get("/polls/{poll_id}/results", response_model=s.PollResults,
             summary="Vote counts (students only when the instructor shows results)")
-def results(poll_id: int, request: Request, db: Annotated[Session, Depends(get_db)],
+def results(poll_id: int, request: Request, db: Annotated[Session, Depends(get_db, scope="function")],
             user: Annotated[User, Depends(current_user)]):
     poll = poll_or_404(db, poll_id)
     role = _poll_role(db, request, poll, user)
@@ -277,7 +277,7 @@ def results(poll_id: int, request: Request, db: Annotated[Session, Depends(get_d
 
 
 @router.get("/polls/{poll_id}/responses", summary="Every student's answer (instructors)")
-def list_responses(poll_id: int, db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)]):
+def list_responses(poll_id: int, db: Annotated[Session, Depends(get_db, scope="function")], user: Annotated[User, Depends(current_user)]):
     poll = poll_or_404(db, poll_id)
     require_instructor(db, poll.session.course, user)
     rows = db.scalars(select(Response).where(Response.poll_id == poll.id).order_by(Response.submitted_at)).all()
@@ -290,7 +290,7 @@ def list_responses(poll_id: int, db: Annotated[Session, Depends(get_db)], user: 
 @router.get("/polls/{poll_id}/qr.{fmt}", response_class=RawResponse,
             summary="QR code for students to join (svg or png)",
             responses={200: {"content": {"image/svg+xml": {}, "image/png": {}}}})
-def poll_qr(poll_id: int, fmt: Literal["svg", "png"], db: Annotated[Session, Depends(get_db)],
+def poll_qr(poll_id: int, fmt: Literal["svg", "png"], db: Annotated[Session, Depends(get_db, scope="function")],
             user: Annotated[User, Depends(current_user)], settings: Annotated[Settings, Depends(get_settings)],
             scale: int = 10):
     poll = poll_or_404(db, poll_id)
@@ -308,7 +308,7 @@ def poll_qr(poll_id: int, fmt: Literal["svg", "png"], db: Annotated[Session, Dep
 
 @router.post("/polls/{poll_id}/responses", response_model=s.MyResponseOut,
              summary="Submit or change my answer; the reply is the student's confirmation")
-def submit(poll_id: int, body: s.ResponseIn, request: Request, db: Annotated[Session, Depends(get_db)],
+def submit(poll_id: int, body: s.ResponseIn, request: Request, db: Annotated[Session, Depends(get_db, scope="function")],
            user: Annotated[User, Depends(current_user)]):
     poll = poll_or_404(db, poll_id)
     role = _poll_role(db, request, poll, user)
@@ -323,7 +323,7 @@ def submit(poll_id: int, body: s.ResponseIn, request: Request, db: Annotated[Ses
 
 @router.get("/courses/{course_id}/history", response_model=list[s.HistoryItem],
             summary="My polls in this course with my answers (answers revealed after each poll closes)")
-def history(course_id: int, db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)],
+def history(course_id: int, db: Annotated[Session, Depends(get_db, scope="function")], user: Annotated[User, Depends(current_user)],
             settings: Annotated[Settings, Depends(get_settings)]):
     course = course_or_404(db, course_id)
     require_member(db, course, user)
@@ -337,7 +337,7 @@ def history(course_id: int, db: Annotated[Session, Depends(get_db)], user: Annot
 
 
 @router.get("/courses/{course_id}/my-participation", response_model=s.ParticipationOut)
-def my_participation(course_id: int, db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(current_user)]):
+def my_participation(course_id: int, db: Annotated[Session, Depends(get_db, scope="function")], user: Annotated[User, Depends(current_user)]):
     from app.database.export import participation_totals
     course = course_or_404(db, course_id)
     require_member(db, course, user)
