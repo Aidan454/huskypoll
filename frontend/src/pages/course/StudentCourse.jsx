@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { AnswerForm, AnswerKey, Mark, PollCountdown, QuestionBody, ResultsView } from '../../components/PollParts.jsx'
+import { AnswerForm, PollCountdown, ResultsView } from '../../components/PollParts.jsx'
 import { Loaded } from '../../components/ui.jsx'
 import { useApi } from '../../hooks.js'
 import { connectCourse } from '../../live.js'
@@ -8,7 +8,6 @@ export default function StudentCourse({ course }) {
   const openPolls = useApi(`/courses/${course.id}/polls?status=open`)
   const [results, setResults] = useState({}) // poll_id -> results, when the instructor shares them
   const [expired, setExpired] = useState({}) // poll_id -> the local countdown hit zero before the server closed it
-  const [version, setVersion] = useState(0)
   const { reload: reloadOpen } = openPolls
 
   useEffect(
@@ -18,8 +17,6 @@ export default function StudentCourse({ course }) {
           // A reopened poll starts a fresh timer, so drop any local "time is up" flag.
           if (msg.type === 'poll_opened') setExpired((e) => ({ ...e, [msg.poll.id]: false }))
           reloadOpen()
-          reloadHistory()
-          setVersion((v) => v + 1)
         } else if (msg.type === 'poll_extended') {
           setExpired((e) => ({ ...e, [msg.poll_id]: false }))
           reloadOpen()
@@ -31,7 +28,6 @@ export default function StudentCourse({ course }) {
   )
 
   return (
-    <>
       <Loaded state={openPolls}>
         {(list) =>
           list.length === 0 ? (
@@ -64,14 +60,6 @@ export default function StudentCourse({ course }) {
                   </div>
                 )}
               </div>
-              <AnswerForm key={p.id} poll={p} />
-              {p.show_results && results[p.id] && (
-                <div style={{ marginTop: 20 }}>
-                  <h3>Class results</h3>
-                  <ResultsView question={p.question} results={results[p.id]} revealCorrect={false} />
-                </div>
-              )}
-            </div>
           ))
         )
       }
