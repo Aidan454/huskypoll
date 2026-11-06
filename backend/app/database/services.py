@@ -265,8 +265,6 @@ def create_course(
     subject: str,
     catalog: str,
     title: str,
-    section: str | None = None,
-    points_correct: float = 0.0,
 ) -> Course:
     if not creator.has_role_at_least("instructor"):
         raise NotAllowed("only instructors and admins can create courses")
@@ -274,11 +272,9 @@ def create_course(
         term=term.strip(),
         subject=subject.strip().upper(),
         catalog=catalog.strip().upper(),
-        section=_clean(section),
         title=title.strip(),
         join_code=_unique_join_code(db),
         points_participation=1.0,
-        points_correct=points_correct,
         created_by=creator.id,
     )
     course.instructors.append(CourseInstructor(user_id=creator.id, role="owner"))
@@ -803,12 +799,15 @@ def regrade_poll(db: Session, poll: Poll) -> int:
 # ---------------------------------------------------------------------------
 
 def update_course(db: Session, course: Course, by: User, **changes) -> Course:
-    """Change title / section / correctness points. Only keys that are passed are changed."""
+    """Change term / subject / catalog / title. Only keys that are passed are changed."""
     if not is_instructor(db, course, by):
         raise NotAllowed("only an instructor of this course can change it")
-    for key in ("title", "section", "points_correct"):
+    for key in ("term", "subject", "catalog", "title"):
         if key in changes and changes[key] is not None:
-            setattr(course, key, changes[key])
+            value = changes[key].strip()
+            if not value:
+                raise HuskyPollError(f"{key} cannot be empty")
+            setattr(course, key, value.upper() if key in ("subject", "catalog") else value)
     db.flush()
     log_event(db, "course_update", user=by, course=course, changes=sorted(changes))
     return course

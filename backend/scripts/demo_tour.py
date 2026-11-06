@@ -109,10 +109,10 @@ for email in ("pat.q.prof@uconn.edu", "abc12345@uconn.edu", "pat.prof@gmail.com"
 say(f"New accounts start as '{prof.role}'. An admin makes professors instructors (once):")
 svc.set_role(db, prof, "instructor")  # in the app: PATCH /users/{id}/role, or `python -m app.database set-role`
 say(f"  {prof.net_id} is now '{prof.role}' and can create courses")
-course = svc.create_course(db, prof, term="Spring 2027", subject="cse", catalog="2050", section="001",
-                           title="Data Structures", points_correct=1)
+course = svc.create_course(db, prof, term="Spring 2027", subject="cse", catalog="2050",
+                           title="Data Structures")
 say(f"Created {course.code} - join code {course.join_code}")
-say(f"Grading: {course.points_participation:g} pt for answering + {course.points_correct:g} pt if correct")
+say(f"Grading: {course.points_participation:g} pt for answering a poll")
 ta = svc.record_login(db, net_id="tas00001", email="terry.assistant@uconn.edu", first_name="Terry", last_name="Assistant")
 svc.add_instructor(db, course, ta, role="ta")
 say("Added a second instructor (TA):")

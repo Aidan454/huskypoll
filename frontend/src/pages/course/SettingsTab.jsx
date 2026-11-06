@@ -18,9 +18,10 @@ export default function SettingsTab() {
 
   const [save, saving, saveError] = useAction(async (body) => {
     const updated = await api.patch(`/courses/${course.id}`, {
+      term: body.term,
+      subject: body.subject,
+      catalog: body.catalog,
       title: body.title,
-      section: body.section,
-      points_correct: body.points_correct,
     })
     setCourse(updated)
     setSaved(true)
@@ -41,10 +42,8 @@ export default function SettingsTab() {
         {saved && <div className="alert alert-success">Saved.</div>}
         <CourseForm
           key={course.id}
-          isEdit
           initial={{
             ...course,
-            section: course.section ?? '',
           }}
           onSubmit={(b) => {
             setSaved(false)
