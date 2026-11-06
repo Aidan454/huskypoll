@@ -357,3 +357,17 @@ course) and `tas00001` (TA), so for example: `python -m app.database delete-cour
   (`npm ci`, `npm run build`, migrating, serving the built app at a sub-path in
   a real browser), but the image itself hasn't been built yet. Build it once on
   a machine with Docker.
+
+### Course Q&A
+
+All endpoints require login and current course membership (or course staff/admin access).
+Posts are named, plain text, 1–2,000 characters after trimming; archived courses are read-only.
+Questions and replies are independent of polls, retained in SQLite, and cascade when their course is deleted.
+`qa_changed` is broadcast after a successful commit so clients can reload discussions.
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| GET | `/courses/{id}/qa?before_id=…` | Latest 30 questions with reply counts; cursor for older posts |
+| POST | `/courses/{id}/qa` | Ask a question (`body`) |
+| GET | `/courses/{id}/qa/{question_id}/replies` | Read a question’s replies in posting order |
+| POST | `/courses/{id}/qa/{question_id}/replies` | Answer or comment (`body`) |

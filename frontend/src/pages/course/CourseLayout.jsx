@@ -53,6 +53,7 @@ export default function CourseLayout() {
             <NavLink to={`${base}/history`}>History</NavLink>
           </>
         )}
+        <NavLink to={`${base}/qa`}>Q&A</NavLink>
         {staff && <NavLink to={`${base}/lectures`}><span className="tab-icon tab-icon-lectures" aria-hidden="true" />Lectures</NavLink>}
         {staff && <NavLink to={`${base}/roster`}><span className="tab-icon tab-icon-roster" aria-hidden="true" />Roster</NavLink>}
         {staff && <NavLink to={`${base}/staff`}>Instructors & TAs</NavLink>}

@@ -86,7 +86,8 @@ npm run lint
 npm run build
 ```
 
-There are no frontend tests yet. Backend tests use a temporary SQLite file and
+Frontend preview data tests: `cd frontend && node --test tests/studentPreview.test.js`.
+Backend tests use a temporary SQLite file and
 the dev login, so they need no services.
 
 ## The server
@@ -228,3 +229,15 @@ agent work and the next agent can pick up where the last one stopped.
 - **Known lint:** ruff flags `DTZ011` (`date.today()`) in `services.py` and
   `scripts/demo_tour.py` on `main`. It isn't from new code; leave it unless you're
   fixing it on purpose.
+
+## Instructor poll frontend organization
+
+`components/polls/` contains `OpenFromBank`, `QuickPoll`, `SessionSelect`,
+`ActivePolls` and `LecturePollGroups`. Both the course and lecture pages reuse
+these components. `QuestionEditor` provides Student preview using a whitelisted
+question projection: do not pass answer keys, explanations or correctness into
+`StudentQuestionPreview`, and keep its inputs free of API submissions.
+
+Course Q&A is available to every current course member at the course’s **Q&A** tab.
+Questions and replies persist independently of polls, update live, and use plain text
+(up to 2,000 characters). Archived courses retain read-only discussions.

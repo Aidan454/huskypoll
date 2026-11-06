@@ -77,7 +77,7 @@ def test_db_dependency_commits_before_the_response():
     """A client may fetch a row right after creating it, so get_db must commit
     before the response is sent (scope="function", not the FastAPI default)."""
     from app.deps import get_db
-    from app.routers import auth, courses, polls, questions, users
+    from app.routers import auth, courses, polls, qa, questions, users
 
     def walk(dependant):
         for sub in dependant.dependencies:
@@ -85,7 +85,7 @@ def test_db_dependency_commits_before_the_response():
                 assert sub.scope == "function", "use Depends(get_db, scope='function')"
             walk(sub)
 
-    for module in (auth, courses, polls, questions, users):
+    for module in (auth, courses, polls, qa, questions, users):
         for route in module.router.routes:
             dependant = getattr(route, "dependant", None)
             if dependant is not None:
@@ -769,3 +769,62 @@ def test_anyone_with_the_code_can_answer(app, lecture):
     assert "vis12345" not in [t["net_id"] for t in totals] and len(totals) == 2
     ann_row = next(t for t in totals if t["net_id"] == "aab11111")
     assert ann_row["answered"] == 0
+
+
+# --- Course Q&A ---------------------------------------------------------------
+def test_course_qa_without_poll(lecture):
+    prof, ann, bob, cid = (lecture[k] for k in ("prof", "ann", "bob", "cid"))
+    path = f"/courses/{cid}/qa"
+    assert ann.get(path).json() == []
+    result = ann.post(path, json={"body": "  Can someone explain recursion?  "})
+    assert result.status_code == 201, result.text
+    question = result.json()
+    assert question["body"] == "Can someone explain recursion?"
+    assert question["author_name"] == "Ann Able"
+    assert question["reply_count"] == 0
+    assert question["created_at"].endswith("Z")
+    replies = f"{path}/{question['id']}/replies"
+    assert bob.post(replies, json={"body": "A function calling itself."}).status_code == 201
+    assert prof.post(replies, json={"body": "Remember the base case!"}).status_code == 201
+    assert [r["body"] for r in ann.get(replies).json()] == ["A function calling itself.", "Remember the base case!"]
+    assert prof.get(path).json()[0]["reply_count"] == 2
+    assert "email" not in str(ann.get(path).json())
+
+
+def test_course_qa_permissions_and_validation(lecture, app):
+    prof, ann, cid = (lecture[k] for k in ("prof", "ann", "cid"))
+    outsider = login(app, "out.side@uconn.edu", "out12345")
+    path = f"/courses/{cid}/qa"
+    qid = ann.post(path, json={"body": "Question"}).json()["id"]
+    replies = f"{path}/{qid}/replies"
+    assert TestClient(app).get(path).status_code == 401
+    for url in (path, replies):
+        assert outsider.get(url).status_code == 404
+        assert outsider.post(url, json={"body": "No access"}).status_code == 404
+        assert ann.post(url, json={"body": " \n \t"}).status_code == 400
+        assert ann.post(url, json={"body": "a" * 2001}).status_code == 422
+    other = prof.post("/courses", json={"term": "Spring 2027", "subject": "CSE", "catalog": "9999", "title": "Other"}).json()["id"]
+    assert prof.get(f"/courses/{other}/qa/{qid}/replies").status_code == 404
+    assert prof.post(f"/courses/{other}/qa/{qid}/replies", json={"body": "Wrong course"}).status_code == 404
+    assert prof.post(f"/courses/{cid}/archive").status_code == 200
+    for url in (path, replies):
+        assert ann.get(url).status_code == 200
+        assert ann.post(url, json={"body": "Archived"}).status_code == 400
+
+
+def test_course_qa_pagination_and_live_updates(lecture):
+    prof, ann, cid = (lecture[k] for k in ("prof", "ann", "cid"))
+    path = f"/courses/{cid}/qa"
+    with prof.websocket_connect(f"/ws/courses/{cid}") as ws:
+        assert ws.receive_json()["type"] == "hello"
+        qid = ann.post(path, json={"body": "Live question"}).json()["id"]
+        assert ws.receive_json()["type"] == "qa_changed"
+        prof.post(f"{path}/{qid}/replies", json={"body": "Live reply"})
+        assert ws.receive_json()["type"] == "qa_changed"
+    for i in range(30):
+        assert ann.post(path, json={"body": f"Question {i}"}).status_code == 201
+    page = prof.get(path).json()
+    assert len(page) == 30
+    older = prof.get(path, params={"before_id": page[-1]["id"]}).json()
+    assert [q["id"] for q in older] == [qid]
+    assert not {q["id"] for q in page} & {q["id"] for q in older}
