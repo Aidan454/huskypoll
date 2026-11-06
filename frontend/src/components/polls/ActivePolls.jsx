@@ -1,3 +1,4 @@
+import { PollCountdown } from '../PollParts.jsx'
 import { Link } from 'react-router'
 import { StatusBadge } from '../ui.jsx'
 import { formatTime, snippet } from '../../format.js'
@@ -36,6 +37,7 @@ export default function ActivePolls({ course, polls, running, live, closePoll })
                   <Link to={`/polls/${p.id}`}>{snippet(p.question.body_md)}</Link>
                   <span className="small muted"> · code {p.access_code} · opened {formatTime(p.opened_at)}</span>
                 </span>
+                <PollCountdown poll={p} />
                 <Link to={`/polls/${p.id}`} className="btn btn-sm btn-primary">
                   Present
                 </Link>

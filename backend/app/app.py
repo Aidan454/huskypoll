@@ -1,7 +1,9 @@
 """Builds the FastAPI application (create_app). The runnable app is in main.py."""
 from __future__ import annotations
 
+import asyncio
 import logging
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -17,6 +19,7 @@ from .config import Settings
 from .routers import auth, courses, polls, qa, questions, users
 from .routers.auth import validate_cas_ticket
 from .site import HuskyPollSite
+from .timers import poll_timer_loop
 
 log = logging.getLogger("huskypoll")
 
@@ -52,6 +55,17 @@ def create_app(settings: Settings | None = None) -> HuskyPollSite:
     """The API at SITE_URL/api, plus the built frontend at SITE_URL/ when HUSKYPOLL_FRONTEND_DIST is set."""
     settings = settings or Settings()
 
+    @asynccontextmanager
+    async def lifespan(app: FastAPI):
+        # Close polls whose time limit ran out, once per second.
+        task = asyncio.create_task(poll_timer_loop(app.state.session_factory))
+        try:
+            yield
+        finally:
+            task.cancel()
+            with suppress(asyncio.CancelledError):
+                await task
+
     app = FastAPI(
         title="HuskyPoll API",
         version="0.1.0",
@@ -59,6 +73,7 @@ def create_app(settings: Settings | None = None) -> HuskyPollSite:
         # Serve under a path prefix (e.g. /cse1010). Requests work whether or not the
         # reverse proxy strips the prefix, and /docs points at the right openapi.json.
         root_path=settings.base_path,
+        lifespan=lifespan,
     )
     settings.db_path.parent.mkdir(parents=True, exist_ok=True)
     engine = make_engine(settings.db_path)

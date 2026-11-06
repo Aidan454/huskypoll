@@ -237,6 +237,41 @@ def test_full_lecture_flow(lecture):
     assert {"poll_open", "response_submit", "response_update", "poll_close", "export_participation"} <= events
 
 
+def test_timed_poll_countdown_and_add_time(lecture):
+    prof, ann, cid, q = lecture["prof"], lecture["ann"], lecture["cid"], lecture["q"]
+
+    poll = prof.post(f"/courses/{cid}/polls", json={"question_id": q["id"], "duration_seconds": 120}).json()
+    assert poll["duration_seconds"] == 120 and poll["closes_at"]
+    assert 118 <= poll["seconds_remaining"] <= 120
+
+    # Students see the same deadline, without comparing clocks themselves.
+    seen = ann.get(f"/polls/{poll['id']}").json()
+    assert 118 <= seen["seconds_remaining"] <= 120
+    option = seen["question"]["options"][0]["id"]
+    assert ann.post(f"/polls/{poll['id']}/responses", json={"option_ids": [option]}).status_code == 200
+
+    # Only an instructor can add time.
+    assert ann.post(f"/polls/{poll['id']}/extend", json={"seconds": 60}).status_code == 403
+    extended = prof.post(f"/polls/{poll['id']}/extend", json={"seconds": 60}).json()
+    assert 178 <= extended["seconds_remaining"] <= 180
+
+    # Adding time to a closed poll opens it again, so late students can answer.
+    prof.post(f"/polls/{poll['id']}/close")
+    reopened = prof.post(f"/polls/{poll['id']}/extend", json={"seconds": 30}).json()
+    assert reopened["status"] == "open" and reopened["closed_at"] is None
+    assert 28 <= reopened["seconds_remaining"] <= 30
+
+    # A poll without a timer stays exactly as before and cannot be extended.
+    plain = prof.post(f"/courses/{cid}/polls", json={"question_id": q["id"]}).json()
+    assert plain["duration_seconds"] is None and plain["seconds_remaining"] is None
+    r = prof.post(f"/polls/{plain['id']}/extend", json={"seconds": 60})
+    assert r.status_code == 400 and "no timer" in r.json()["detail"]
+
+    # The duration box is in minutes, so silly values are rejected up front.
+    assert prof.post(f"/courses/{cid}/polls", json={"question_id": q["id"], "duration_seconds": 0}).status_code == 422
+    assert prof.post(f"/courses/{cid}/polls", json={"question_id": q["id"], "duration_seconds": 1}).status_code == 422
+
+
 def test_quick_poll_then_add_answer_and_regrade(lecture):
     prof, ann, bob, cid = lecture["prof"], lecture["ann"], lecture["bob"], lecture["cid"]
     poll = prof.post(f"/courses/{cid}/polls/quick", json={
@@ -391,9 +426,9 @@ def test_websocket_live_updates(lecture):
         assert msg["type"] == "results" and msg["results"]["responses"] == 1
 
         prof.post(f"/polls/{poll['id']}/close")
-        assert prof_ws.receive_json() == {"type": "poll_closed", "poll_id": poll["id"]}
+        assert prof_ws.receive_json() == {"type": "poll_closed", "poll_id": poll["id"], "reason": "manual"}
         # The student got no results message (results hidden), so the next one is the close:
-        assert ann_ws.receive_json() == {"type": "poll_closed", "poll_id": poll["id"]}
+        assert ann_ws.receive_json() == {"type": "poll_closed", "poll_id": poll["id"], "reason": "manual"}
 
 
 def test_websocket_requires_login_and_membership(app, lecture):

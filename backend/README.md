@@ -182,10 +182,10 @@ try-it-out page are at `SITE_URL/api/docs`.
 | Lectures | `GET/POST /courses/{id}/sessions`, `PATCH/DELETE /sessions/{id}` |
 | Questions | `GET/POST /banks`, `GET/PATCH/DELETE /banks/{id}`, `POST /banks/{id}/copy`, `POST /questions`, `GET/PATCH/DELETE /questions/{id}`, `POST /questions/{id}/copy` |
 | Images | `POST /media` (upload or paste), `GET /media/{sha256}` |
-| Polls | `POST /courses/{id}/polls`, `POST /courses/{id}/polls/quick`, `POST /courses/{id}/polls/set` (several questions asked one at a time), `POST /polls/{id}/open` (next question, same code), `DELETE /polls/{id}` (unopened only), `GET /courses/{id}/polls`, `GET /polls/by-code/{code}`, `GET/PATCH /polls/{id}`, `POST /polls/{id}/close`, `POST /polls/{id}/reopen` (closed poll; earlier answers kept), `POST /polls/{id}/regrade`, `GET /polls/{id}/results`, `GET /polls/{id}/responses`, `GET /polls/{id}/qr.svg` / `qr.png` |
+| Polls | `POST /courses/{id}/polls`, `POST /courses/{id}/polls/quick`, `POST /courses/{id}/polls/set` (several questions asked one at a time), `POST /polls/{id}/open` (next question, same code), `DELETE /polls/{id}` (unopened only), `GET /courses/{id}/polls`, `GET /polls/by-code/{code}`, `GET/PATCH /polls/{id}`, `POST /polls/{id}/close`, `POST /polls/{id}/reopen` (closed poll; earlier answers kept), `POST /polls/{id}/extend` (add time; reopens a closed poll), `POST /polls/{id}/regrade`, `GET /polls/{id}/results`, `GET /polls/{id}/responses`, `GET /polls/{id}/qr.svg` / `qr.png` |
 | Students | `POST /polls/{id}/responses` (answer; the reply is the confirmation), `GET /courses/{id}/history`, `GET /courses/{id}/my-participation` |
 | Grades and logs | `GET /courses/{id}/export/participation.csv` (optional repeatable `?dates=YYYY-MM-DD`), `GET /courses/{id}/participation/sessions` (each date's `exported_at`, from the export log), `GET /courses/{id}/participation`, `GET /courses/{id}/events` |
-| Live updates | WebSocket `/ws/courses/{id}`: `poll_opened`, `poll_closed`, `results` (results go to students only when shown) |
+| Live updates | WebSocket `/ws/courses/{id}`: `poll_opened`, `poll_closed` (with `reason`: `manual` or `timeout`), `poll_extended`, `results` (results go to students only when shown) |
 
 Students never see the answer key, the explanation, or whether they were
 right until a poll closes.

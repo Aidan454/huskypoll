@@ -1,3 +1,5 @@
+import { DurationField } from './DurationField.jsx'
+import { minutesToSeconds } from './pollDuration.js'
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { api } from '../../api.js'
@@ -14,6 +16,7 @@ export default function OpenFromBank({ course, sessions, onOpened, onCancel, ini
   const [questionIds, setQuestionIds] = useState([]) // in the order they were ticked
   const [sessionId, setSessionId] = useState(String(initialSessionId))
   const [showResults, setShowResults] = useState(false)
+  const [minutes, setMinutes] = useState('')
 
   function toggle(id) {
     setQuestionIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]))
@@ -32,11 +35,13 @@ export default function OpenFromBank({ course, sessions, onOpened, onCancel, ini
 
   const [open, busy, error] = useAction(async () => {
     const session_id = sessionId ? Number(sessionId) : null
+    const duration_seconds = minutesToSeconds(minutes)
     if (questionIds.length === 1) {
       const poll = await api.post(`/courses/${course.id}/polls`, {
         question_id: questionIds[0],
         session_id,
         show_results: showResults,
+        duration_seconds,
       })
       onOpened([poll])
     } else {
@@ -45,6 +50,7 @@ export default function OpenFromBank({ course, sessions, onOpened, onCancel, ini
         question_ids: questionIds,
         session_id,
         show_results: showResults,
+        duration_seconds,
       })
       onOpened(polls)
     }
@@ -134,6 +140,7 @@ export default function OpenFromBank({ course, sessions, onOpened, onCancel, ini
         </div>
       )}
       <SessionSelect sessions={sessions} value={sessionId} onChange={setSessionId} />
+      <DurationField value={minutes} onChange={setMinutes} />
       <label className="check">
         <input type="checkbox" checked={showResults} onChange={(e) => setShowResults(e.target.checked)} />
         Show live results to students
@@ -150,3 +157,4 @@ export default function OpenFromBank({ course, sessions, onOpened, onCancel, ini
     </>
   )
 }
+

@@ -512,6 +512,7 @@ def open_poll(
     *,
     lecture_session: LectureSession | None = None,
     show_results: bool = False,
+    duration_seconds: int | None = None,
 ) -> Poll:
     """Open a poll on a question (from a bank, or just created in lecture)."""
     if not is_instructor(db, course, opened_by):
@@ -521,6 +522,7 @@ def open_poll(
     sess = lecture_session or get_or_create_session(db, course)
     if sess.course_id != course.id:
         raise HuskyPollError("lecture session belongs to another course")
+    now = utcnow()
     poll = Poll(
         question_id=question.id,
         access_code=_unique_open_access_code(db),
@@ -528,7 +530,9 @@ def open_poll(
         position=_count(db, Poll, Poll.session_id == sess.id),
         show_results=show_results,
         opened_by=opened_by.id,
-        opened_at=utcnow(),
+        opened_at=now,
+        duration_seconds=duration_seconds,
+        closes_at=now + dt.timedelta(seconds=duration_seconds) if duration_seconds else None,
     )
     sess.polls.append(poll)
     db.flush()  # trigger locks the question here
@@ -545,6 +549,7 @@ def create_poll_set(
     *,
     lecture_session: LectureSession | None = None,
     show_results: bool = False,
+    duration_seconds: int | None = None,
 ) -> list[Poll]:
     """Queue several questions in one lecture as draft polls, in the given order.
 
@@ -561,7 +566,8 @@ def create_poll_set(
     if sess.course_id != course.id:
         raise HuskyPollError("lecture session belongs to another course")
     start = _count(db, Poll, Poll.session_id == sess.id)
-    polls = [Poll(question_id=q.id, status="draft", position=start + i, show_results=show_results)
+    polls = [Poll(question_id=q.id, status="draft", position=start + i, show_results=show_results,
+                  duration_seconds=duration_seconds)
              for i, q in enumerate(questions)]
     sess.polls.extend(polls)
     db.flush()
@@ -593,6 +599,7 @@ def open_draft_poll(db: Session, poll: Poll, opened_by: User) -> Poll:
     poll.status = "open"
     poll.opened_by = opened_by.id
     poll.opened_at = utcnow()
+    poll.closes_at = (poll.opened_at + dt.timedelta(seconds=poll.duration_seconds) if poll.duration_seconds else None)
     db.flush()  # trigger locks the question here
     db.refresh(poll.question)
     log_event(db, "poll_open", user=opened_by, course=course, poll=poll, question_id=poll.question_id)
@@ -616,7 +623,7 @@ def _unique_open_access_code(db: Session) -> str:
             return code
 
 
-def close_poll(db: Session, poll: Poll, closed_by: User) -> Poll:
+def close_poll(db: Session, poll: Poll, closed_by: User | None) -> Poll:
     if poll.status != "open":
         raise HuskyPollError("poll is not open")
     poll.status = "closed"
@@ -646,10 +653,28 @@ def reopen_poll(db: Session, poll: Poll, reopened_by: User) -> Poll:
         code = _unique_open_access_code(db)
     poll.access_code = code
     poll.status = "open"
+    poll.closes_at = (utcnow() + dt.timedelta(seconds=poll.duration_seconds) if poll.duration_seconds else None)
     poll.closed_at = None
     db.flush()
     log_event(db, "poll_reopen", user=reopened_by, course=course, poll=poll,
               responses=_count(db, Response, Response.poll_id == poll.id))
+    return poll
+
+
+def extend_poll(db: Session, poll: Poll, user: User, seconds: int) -> Poll:
+    """Add time to a timed poll. If it already closed, open it again first."""
+    course = poll.session.course
+    if not is_instructor(db, course, user):
+        raise NotAllowed("only an instructor of this course can add time")
+    if poll.duration_seconds is None and poll.closes_at is None:
+        raise HuskyPollError("this poll has no timer")
+    if poll.status == "closed":
+        reopen_poll(db, poll, user)
+        poll.closes_at = None  # add time from now instead of restarting the full limit
+    base = max(utcnow(), poll.closes_at or utcnow())
+    poll.closes_at = base + dt.timedelta(seconds=seconds)
+    db.flush()
+    log_event(db, "poll_extended", user=user, course=course, poll=poll, seconds=seconds)
     return poll
 
 
@@ -720,6 +745,8 @@ def submit_response(
     course = poll.session.course
     if poll.status != "open":
         raise HuskyPollError("this poll is closed")
+    if poll.closes_at is not None and utcnow() >= poll.closes_at:
+        raise HuskyPollError("time is up for this poll")
     if require_enrollment and not is_enrolled(db, course, student):
         raise NotAllowed("you are not on the roster for this course")
 

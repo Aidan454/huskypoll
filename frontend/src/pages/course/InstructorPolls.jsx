@@ -5,15 +5,18 @@ import OpenFromBank from '../../components/polls/OpenFromBank.jsx'
 import QuickPoll from '../../components/polls/QuickPoll.jsx'
 import LecturePollGroups from '../../components/polls/LecturePollGroups.jsx'
 import ActivePolls from '../../components/polls/ActivePolls.jsx'
+import { TimeUpModal } from '../../components/PollParts.jsx'
 import { ErrorBox, Loading, Modal } from '../../components/ui.jsx'
 import { useAction, useApi } from '../../hooks.js'
 import { connectCourse } from '../../live.js'
+
 
 export default function InstructorPolls({ course }) {
   const navigate = useNavigate()
   const polls = useApi(`/courses/${course.id}/polls`)
   const sessions = useApi(`/courses/${course.id}/sessions`)
   const [modal, setModal] = useState(null) // 'bank' | 'quick'
+  const [timeUpPoll, setTimeUpPoll] = useState(null) // poll id whose timer just ran out
   const { reload: reloadPolls } = polls
   const { reload: reloadSessions } = sessions
 
@@ -21,8 +24,13 @@ export default function InstructorPolls({ course }) {
     () =>
       connectCourse(course.id, (msg) => {
         if (msg.type === 'poll_opened' || msg.type === 'poll_closed') {
+          if (msg.type === 'poll_closed' && msg.reason === 'timeout') setTimeUpPoll(msg.poll_id)
           reloadPolls()
           reloadSessions()
+        }
+        if (msg.type === 'poll_extended') {
+          setTimeUpPoll(null)
+          reloadPolls()
         }
       }),
     [course.id, reloadPolls, reloadSessions],
@@ -36,10 +44,21 @@ export default function InstructorPolls({ course }) {
     await api.post(`/polls/${poll.id}/reopen`)
     navigate(`/polls/${poll.id}`)
   })
+  const [extendPoll, extending, extendError] = useAction(async (pollId, seconds) => {
+    await api.post(`/polls/${pollId}/extend`, { seconds })
+    setTimeUpPoll(null)
+    reloadPolls()
+  })
 
   function opened(list) {
     setModal(null)
     navigate(list.length === 1 ? `/polls/${list[0].id}` : `/courses/${course.id}/live?session=${list[0].session_id}&from=${list[0].position}`)
+  }
+
+  function closeFromTimeout() {
+    const poll = polls.data?.find((p) => p.id === timeUpPoll)
+    setTimeUpPoll(null)
+    if (poll?.status === 'open') closePoll(poll)
   }
 
   if (polls.error || sessions.error) return <ErrorBox error={polls.error || sessions.error} />
@@ -68,7 +87,8 @@ export default function InstructorPolls({ course }) {
         </div>
         {course.archived_at && <p className="small muted">This course is archived. Unarchive it in Settings to run polls.</p>}
         <ActivePolls course={course} polls={polls.data} running={running} live={live} closePoll={closePoll} />
-        <ErrorBox error={closeError || reopenError} />
+        <ErrorBox error={closeError || reopenError || extendError} />
+
       </div>
 
       <h2>All polls</h2>
@@ -81,6 +101,14 @@ export default function InstructorPolls({ course }) {
       <Modal open={modal === 'quick'} onClose={() => setModal(null)} title="Quick poll" wide>
         <QuickPoll course={course} sessions={sessions.data} onOpened={opened} onCancel={() => setModal(null)} />
       </Modal>
+
+      <TimeUpModal
+        open={timeUpPoll !== null}
+        busy={extending}
+        error={extendError}
+        onClose={closeFromTimeout}
+        onAddTime={(seconds) => extendPoll(timeUpPoll, seconds)}
+      />
     </>
   )
 }
