@@ -55,3 +55,26 @@ src/
 ```
 ## Icons
 https://www.svgrepo.com/
+## Instructor poll components and student preview
+
+Poll setup and display are separated into `src/components/polls/`: bank question
+selection, quick poll creation, lecture selection, active polls, and lecture groups.
+The course page coordinates loading, live updates and actions; the Lectures tab
+reuses the same setup components.
+
+Choose **Student preview** in the question editor to try the current question's
+choices or answer field without saving, submitting an answer or opening a poll.
+Question pictures and simple Markdown are rendered with the shared student UI.
+Answer keys, correctness, solutions and explanations are excluded. Closing the
+preview returns to the unchanged editor.
+
+Run preview data tests with `node --test tests/studentPreview.test.js` from this
+folder, alongside `npm run lint` and `npm run build`.
+
+Course Q&A is available to every current course member at the course’s **Q&A** tab.
+Questions and replies persist independently of polls, update live, and use plain text
+(up to 2,000 characters). Archived courses retain read-only discussions.
+
+Appearance defaults to **Automatic**, using the device’s local time: light from 07:00 to 19:00, dark overnight. Choose Automatic, Light, or Dark in the account menu. Manual choices persist in the browser; automatic mode refreshes while open and after waking. Existing saved Light/Dark choices remain manual until Automatic is selected. Run theme checks with `cd frontend && node --test tests/theme.test.js`.
+
+The login page always uses light mode. Signing in restores the saved Automatic, Light, or Dark preference; signing out does not change that preference.

@@ -57,3 +57,17 @@ docker compose -f compose.server.yml exec huskypoll python -m app.database set-r
 Then open http://huskypoll.cse.uconn.edu and log in with your NetID. Make instructors on the
 Users page or with `set-role <netid> instructor`. After pulling new code, run the `up -d --build`
 line again (migrations run on start). Logs: `docker compose -f compose.server.yml logs -f`.
+
+## Student preview
+
+Instructors can preview a question before publishing from the shared question
+editor. Preview inputs are local only and never submit responses or open polls.
+See `frontend/README.md` for component organization and verification.
+
+Course Q&A is available to every current course member at the course’s **Q&A** tab.
+Questions and replies persist independently of polls, update live, and use plain text
+(up to 2,000 characters). Archived courses retain read-only discussions.
+
+Appearance defaults to **Automatic**, using the device’s local time: light from 07:00 to 19:00, dark overnight. Choose Automatic, Light, or Dark in the account menu. Manual choices persist in the browser; automatic mode refreshes while open and after waking. Existing saved Light/Dark choices remain manual until Automatic is selected. Run theme checks with `cd frontend && node --test tests/theme.test.js`.
+
+The login page always uses light mode. Signing in restores the saved Automatic, Light, or Dark preference; signing out does not change that preference.

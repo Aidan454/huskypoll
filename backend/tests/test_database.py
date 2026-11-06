@@ -684,3 +684,20 @@ def test_double_tapped_submit_records_one_answer(tmp_path):
     with Session() as db:
         rows = db.query(Response).filter_by(poll_id=poll_id).all()
         assert len(rows) == 1 and [c.option_id for c in rows[0].choices] == [opt]
+
+
+def test_course_qa_retention_and_cascade(db, course_setup):
+    from app.database.models import CourseQuestion, CourseReply
+    prof, course, student, _, _ = course_setup
+    q = svc.post_course_message(db, course, student, " Question ")
+    reply = svc.post_course_message(db, course, prof, "Answer", question=q)
+    qid, rid = q.id, reply.id
+    db.commit()
+    db.expire_all()
+    assert db.get(CourseQuestion, qid).body == "Question"
+    assert db.get(CourseReply, rid).body == "Answer"
+    svc.delete_course(db, course, prof)
+    db.flush()
+    db.expunge_all()
+    assert db.get(CourseQuestion, qid) is None
+    assert db.get(CourseReply, rid) is None

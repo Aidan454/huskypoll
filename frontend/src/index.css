@@ -1201,3 +1201,102 @@ textarea {
 .image-dropzone.is-dragging { outline: 2px solid var(--blue); outline-offset: 2px; background: var(--blue-soft); }
 .image-dropzone[aria-busy='true'] { opacity: .7; }
 .image-dropzone button:disabled { cursor: wait; }
+
+/* Preview choices remain accessible to keyboard and screen-reader users. */
+.student-question-preview .choice input {
+  display: block;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--blue);
+}
+
+/* The login split is the page itself, edge to edge at every screen size. */
+.login-shell {
+  flex: 1;
+  min-height: 100svh;
+  display: grid;
+  padding: 0;
+  background: var(--bg);
+}
+.login-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) clamp(380px, 32vw, 480px);
+  width: 100%;
+  min-height: 100svh;
+  gap: 0;
+  overflow: hidden;
+  border-radius: 0;
+  background: var(--surface);
+}
+.login-photo-panel {
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+  background: var(--navy);
+  color: var(--color-white);
+}
+.login-classroom-photo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 55% center;
+  transform: scale(1.17);
+}
+.login-photo-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, var(--navy), transparent 28%, transparent 40%, var(--navy));
+  opacity: .92;
+}
+.login-photo-brand {
+  position: relative;
+  padding: 38px 44px;
+  font-size: 24px;
+  font-weight: 750;
+  letter-spacing: .03em;
+}
+.login-photo-brand span {
+  display: inline-block;
+  margin-left: 20px;
+  padding-left: 20px;
+  border-left: 1px solid currentColor;
+  font-size: 19px;
+  font-weight: 500;
+}
+.login-photo-caption { position: absolute; bottom: 0; padding: 48px 44px; max-width: 640px; }
+.login-photo-eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .18em; margin-bottom: 14px; }
+.login-photo-caption h2 { color: inherit; font-size: clamp(36px, 4vw, 60px); letter-spacing: -.04em; line-height: 1.05; margin-bottom: 18px; }
+.login-photo-caption > p:last-child { font-size: 18px; max-width: 400px; }
+.login-form-panel { display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 40px 28px; background: var(--surface); min-width: 0; }
+.login-form-footer { color: var(--muted); font-size: 13px; margin: 24px 0 0; text-align: center; }
+@media (max-width: 800px) {
+  .login-split { grid-template-columns: 1fr; grid-template-rows: minmax(280px, 35svh) 1fr; }
+  .login-photo-panel { min-height: 300px; }
+  .login-photo-brand { padding: 22px 24px; font-size: 20px; }
+  .login-photo-brand span { font-size: 16px; }
+  .login-photo-caption { padding: 24px; }
+  .login-photo-caption h2 { font-size: 36px; margin-bottom: 10px; }
+  .login-photo-caption > p:last-child { font-size: 15px; }
+  .login-photo-eyebrow { display: none; }
+  .login-form-panel { padding: 28px 16px; }
+}
+
+
+/* Course discussion stays independent of poll state. */
+.qa-page { max-width: 900px; }
+.qa-meta { display: flex; flex-wrap: wrap; gap: 8px 16px; color: var(--muted); font-size: 0.875rem; }
+.qa-meta strong { color: var(--text); }
+.qa-body { white-space: pre-wrap; overflow-wrap: anywhere; }
+.qa-form-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.qa-form-actions h3 { margin: 0; }
+.qa-replies { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); }
+.qa-reply { padding: 4px 0 12px 16px; margin-bottom: 16px; border-left: 3px solid var(--border); }
+.qa-page textarea { width: 100%; resize: vertical; }
+
+.theme-preference { display: grid; gap: 8px; padding: 10px 12px; }
+.theme-preference-label { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.theme-preference select { width: 100%; min-width: 0; }
+.theme-preference small { color: var(--muted); font-size: 12px; line-height: 1.5; }

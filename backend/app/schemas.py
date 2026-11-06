@@ -372,3 +372,18 @@ class DeleteCourseOut(BaseModel):
     sessions: int
     polls: int
     responses: int
+
+
+class CourseMessageCreate(BaseModel):
+    body: str = Field(min_length=1, max_length=2000)
+
+
+class CourseMessageOut(BaseModel):
+    id: int
+    body: str
+    author_name: str
+    created_at: dt.datetime
+
+
+class CourseQuestionOut(CourseMessageOut):
+    reply_count: int

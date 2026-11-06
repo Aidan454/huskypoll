@@ -2,9 +2,12 @@
 // Once a question has been polled it is locked: only the answer key and explanation
 // can change, and the form shows just those.
 import { useState } from 'react'
+import { createPortal } from 'react-dom'
 import { QUESTION_TYPES } from '../format.js'
 import ImagePicker from './ImagePicker.jsx'
-import { ErrorBox, Field } from './ui.jsx'
+import { ErrorBox, Field, Modal } from './ui.jsx'
+import StudentQuestionPreview from './polls/StudentQuestionPreview.jsx'
+import { studentPreviewQuestion } from './polls/studentPreview.js'
 
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
@@ -52,6 +55,7 @@ export default function QuestionEditor({ question, onSubmit, submitLabel = 'Save
   const [explMedia, setExplMedia] = useState({ id: undefined, url: question?.explanation_media_url ?? null })
   const [bodyUploading, setBodyUploading] = useState(false)
   const [explanationUploading, setExplanationUploading] = useState(false)
+  const [previewOpen, setPreviewOpen] = useState(false)
   const [formError, setFormError] = useState(null)
 
   const isMc = form.type === 'mc_single' || form.type === 'mc_multi'
@@ -114,6 +118,7 @@ export default function QuestionEditor({ question, onSubmit, submitLabel = 'Save
   }
 
   return (
+    <>
     <form onSubmit={submit}>
       {locked && (
         <div className="alert alert-info small">
@@ -227,6 +232,9 @@ export default function QuestionEditor({ question, onSubmit, submitLabel = 'Save
       {extra}
       <ErrorBox error={formError || error} />
       <div className="form-actions">
+        <button type="button" className="btn" onClick={() => setPreviewOpen(true)} disabled={busy || bodyUploading || explanationUploading}>
+          Student preview
+        </button>
         {onCancel && (
           <button type="button" className="btn" onClick={onCancel}>
             Cancel
@@ -237,5 +245,9 @@ export default function QuestionEditor({ question, onSubmit, submitLabel = 'Save
         </button>
       </div>
     </form>
+    {createPortal(<Modal open={previewOpen} onClose={() => setPreviewOpen(false)} title="Student preview" wide>
+      <StudentQuestionPreview question={studentPreviewQuestion(form, bodyMedia.url)} onBack={() => setPreviewOpen(false)} />
+    </Modal>, document.body)}
+    </>
   )
 }
