@@ -47,15 +47,14 @@ class CourseCreate(BaseModel):
     term: str = Field(examples=["Spring 2027"])
     subject: str = Field(examples=["CSE"])
     catalog: str = Field(examples=["2050"])
-    section: str | None = Field(None, examples=["001"])
     title: str = Field(examples=["Data Structures"])
-    points_correct: float = Field(0.0, ge=0)
 
 
 class CourseUpdate(BaseModel):
+    term: str | None = Field(None, min_length=1, max_length=32)
+    subject: str | None = Field(None, min_length=1, max_length=16)
+    catalog: str | None = Field(None, min_length=1, max_length=16)
     title: str | None = None
-    section: str | None = None
-    points_correct: float | None = Field(None, ge=0)
 
 
 class CourseOut(BaseModel):
@@ -63,11 +62,9 @@ class CourseOut(BaseModel):
     term: str
     subject: str
     catalog: str
-    section: str | None
     title: str
     code: str
     points_participation: float
-    points_correct: float
     archived_at: dt.datetime | None
     my_role: Role | None
     join_code: str | None = None  # instructors only

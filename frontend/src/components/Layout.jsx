@@ -123,7 +123,6 @@ export default function Layout() {
               >
                 <span className="drawer-course-code">
                   {course.subject} {course.catalog}
-                  {course.section ? `-${course.section}` : ''}
                 </span>
                 <span className="drawer-course-title">{course.title}</span>
               </NavLink>

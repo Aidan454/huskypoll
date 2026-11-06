@@ -34,9 +34,8 @@ def user_out(u: User) -> s.UserOut:
 
 def course_out(c: Course, role: str | None) -> s.CourseOut:
     return s.CourseOut(
-        id=c.id, term=c.term, subject=c.subject, catalog=c.catalog, section=c.section, title=c.title,
-        code=c.code, points_participation=c.points_participation, points_correct=c.points_correct,
-        archived_at=c.archived_at, my_role=role,
+        id=c.id, term=c.term, subject=c.subject, catalog=c.catalog, title=c.title,
+        code=c.code, points_participation=c.points_participation, archived_at=c.archived_at, my_role=role,
         join_code=c.join_code if role in ("owner", "instructor", "ta") else None,
     )
 
