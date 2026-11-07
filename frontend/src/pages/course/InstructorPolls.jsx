@@ -359,13 +359,6 @@ export default function InstructorPolls({ course }) {
                 </span>
                 <span className="badge">{QUESTION_TYPE_SHORT[p.question.type]}</span>
                 <StatusBadge status={p.status} />
-                {p.status === 'closed' && !course.archived_at && p.duration_seconds !== null && (
-                  <AddTimeButton
-                    onClick={() => extendPoll(p.id, 30)}
-                    busy={extending}
-                    title="Reopen with 30 more seconds"
-                  />
-                )}
                 {p.status === 'closed' && !course.archived_at && (
                   <button type="button" className="btn btn-sm" onClick={() => reopenPoll(p)} title="Let students answer again">
                     Reopen
