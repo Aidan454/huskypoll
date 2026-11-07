@@ -261,8 +261,13 @@ def test_timed_poll_countdown_and_add_time(lecture):
     assert reopened["status"] == "open" and reopened["closed_at"] is None
     assert 28 <= reopened["seconds_remaining"] <= 30
 
-    # A poll without a timer stays exactly as before and cannot be extended.
-    plain = prof.post(f"/courses/{cid}/polls", json={"question_id": q["id"]}).json()
+    # Omitting the duration uses the one-minute default.
+    default = prof.post(f"/courses/{cid}/polls", json={"question_id": q["id"]}).json()
+    assert default["duration_seconds"] == 60
+    assert 58 <= default["seconds_remaining"] <= 60
+
+    # An explicit null still means no timer, and that poll cannot be extended.
+    plain = prof.post(f"/courses/{cid}/polls", json={"question_id": q["id"], "duration_seconds": None}).json()
     assert plain["duration_seconds"] is None and plain["seconds_remaining"] is None
     r = prof.post(f"/polls/{plain['id']}/extend", json={"seconds": 60})
     assert r.status_code == 400 and "no timer" in r.json()["detail"]
@@ -276,6 +281,7 @@ def test_quick_poll_then_add_answer_and_regrade(lecture):
     prof, ann, bob, cid = lecture["prof"], lecture["ann"], lecture["bob"], lecture["cid"]
     poll = prof.post(f"/courses/{cid}/polls/quick", json={
         "type": "mc_single", "body_md": "Typed in lecture", "options": [{"text_md": "A"}, {"text_md": "B"}]}).json()
+    assert poll["duration_seconds"] == 60  # quick polls get the one-minute default too
     a, b = [o["id"] for o in poll["question"]["options"]]
     ann.post(f"/polls/{poll['id']}/responses", json={"option_ids": [b]})
     bob.post(f"/polls/{poll['id']}/responses", json={"option_ids": [a]})
@@ -691,6 +697,7 @@ def test_poll_set_asks_questions_one_at_a_time(lecture):
     assert r.status_code == 201, r.text
     first, second, third = r.json()
     assert [p["status"] for p in (first, second, third)] == ["open", "draft", "draft"]
+    assert [p["duration_seconds"] for p in (first, second, third)] == [60, 60, 60]  # one-minute default
     assert first["question"]["id"] == q2["id"]  # the order the instructor chose
     assert first["position"] < second["position"] < third["position"]
     code = first["access_code"]

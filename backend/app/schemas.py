@@ -257,7 +257,8 @@ class PollOpen(BaseModel):
     session_id: int | None = Field(None, description="Default: today's session, created if needed")
     show_results: bool = False
     duration_seconds: int | None = Field(
-        None, ge=5, le=4 * 3600, description="Time limit in seconds; null = no time limit")
+        60, ge=5, le=4 * 3600,
+        description="Time limit in seconds; defaults to 60 (one minute); null = no time limit")
 
 
 class PollSetCreate(BaseModel):
@@ -268,7 +269,8 @@ class PollSetCreate(BaseModel):
     show_results: bool = False
     open_first: bool = True
     duration_seconds: int | None = Field(
-        None, ge=5, le=4 * 3600, description="Time limit for each question, in seconds; null = no limit")
+        60, ge=5, le=4 * 3600,
+        description="Time limit for each question, in seconds; defaults to 60 (one minute); null = no limit")
 
 
 class QuickPoll(QuestionCreate):
@@ -276,7 +278,8 @@ class QuickPoll(QuestionCreate):
     session_id: int | None = None
     show_results: bool = False
     duration_seconds: int | None = Field(
-        None, ge=5, le=4 * 3600, description="Time limit in seconds; null = no time limit")
+        60, ge=5, le=4 * 3600,
+        description="Time limit in seconds; defaults to 60 (one minute); null = no time limit")
 
 
 class PollUpdate(BaseModel):
