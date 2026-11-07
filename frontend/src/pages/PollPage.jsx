@@ -138,7 +138,7 @@ function InstructorPoll({ poll, setPoll, reloadPoll }) {
           )}
         </div>
 
-        <div className={open && poll.access_code ? 'card code-box' : 'card'}>
+        <div className="card code-box">
           {open && poll.access_code && (
             <>
               <PollCountdown seconds={poll.seconds_remaining} onExpire={() => setTimeUp(true)} />
