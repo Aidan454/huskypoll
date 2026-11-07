@@ -340,18 +340,7 @@ textarea {
   padding: 18px 20px;
   margin-bottom: 16px;
 }
-.card-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-}
-.card-head h2,
-.card-head h3 {
-  margin: 0;
-}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -784,7 +773,7 @@ textarea {
 
 /* ---------- polls ---------- */
 .question-body {
-  font-size: 18px;
+  font-size: 32px;
   color: var(--heading);
   margin-bottom: 14px;
 }
@@ -897,17 +886,19 @@ textarea {
 }
 .code-box {
   text-align: center;
+  background-color: #000e2f;
+
 }
 .code-big {
   font-family: var(--mono);
   font-size: 40px;
   font-weight: 700;
   letter-spacing: 6px;
-  color: var(--heading);
+  color: var(--color-white);
 }
 .qr {
   width: 100%;
-  max-width: 240px;
+  max-width: 200px;
   background: #ffffff;
   padding: 12px;
   border-radius: 8px;
@@ -919,7 +910,7 @@ textarea {
 .stat {
   font-size: 32px;
   font-weight: 700;
-  color: var(--heading);
+  color: var(--color-white);
   font-variant-numeric: tabular-nums;
 }
 .stats {

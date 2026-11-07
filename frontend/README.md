@@ -35,7 +35,7 @@ Instructor / TA / Admin / Student buttons on the login page.
 | `/courses/:id/grades` | staff | Points per student and participation CSV download with lecture-date selection |
 | `/courses/:id/activity` | staff | Course event log |
 | `/courses/:id/settings` | staff | Title, section, points; archive; delete (owner/admin) |
-| `/polls/:id` | staff | Classroom view: code, QR, live result bars, show results, close, answer key and re-mark |
+| `/polls/:id` | staff | Classroom view: code, QR, live result bars (hidden until shown with the eye toggle), close, answer key and re-mark |
 | `/polls/:id` | students | Answer it, or see the mark once closed |
 | `/join`, `/join/:code` | everyone | Enter a poll code (the QR code opens `/join/CODE`); follows a multi-question poll question by question |
 | `/banks`, `/banks/:id` | instructors, TAs | Question banks; write, edit, copy and delete questions, with pictures |

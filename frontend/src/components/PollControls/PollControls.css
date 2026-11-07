@@ -1,0 +1,33 @@
+.poll-controls {
+    display: flex;
+    gap: 0.25em;
+    background: white;
+    border-radius: 100px;
+    padding: 0.3em;
+    width: fit-content;
+    margin: auto;
+}
+
+#hidden-btn-on, #hidden-btn-off, #open-btn-on, #open-btn-off {
+    background-color: #e9e8ee;
+}
+
+#play-btn-off {
+    background-color: var(--color-blue-accent);
+}
+
+#play-btn-on {
+    background-color: rgb(204, 42, 13);
+}
+
+#play-btn-img {
+    filter: invert(1);
+}
+
+#play-btn-on:hover, #play-btn-off:hover {
+    filter: saturate(0.6);
+}
+
+#hidden-btn-off:hover, #open-btn-off:hover {
+    background-color: #f2f1f7;
+}
