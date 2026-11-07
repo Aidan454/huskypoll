@@ -510,9 +510,12 @@ def open_poll(
     *,
     lecture_session: LectureSession | None = None,
     show_results: bool = False,
-    duration_seconds: int | None = None,
+    duration_seconds: int | None = 60,
 ) -> Poll:
-    """Open a poll on a question (from a bank, or just created in lecture)."""
+    """Open a poll on a question (from a bank, or just created in lecture).
+
+    The time limit defaults to one minute; pass duration_seconds=None for no timer.
+    """
     if not is_instructor(db, course, opened_by):
         raise NotAllowed("only an instructor of this course can open polls")
     if course.archived_at is not None:
@@ -547,12 +550,13 @@ def create_poll_set(
     *,
     lecture_session: LectureSession | None = None,
     show_results: bool = False,
-    duration_seconds: int | None = None,
+    duration_seconds: int | None = 60,
 ) -> list[Poll]:
     """Queue several questions in one lecture as draft polls, in the given order.
 
     The instructor then opens them one at a time with open_draft_poll(); each
-    question is still its own poll, so grading and history work as usual.
+    question is still its own poll, so grading and history work as usual. The
+    time limit defaults to one minute; pass duration_seconds=None for no timer.
     """
     if not is_instructor(db, course, created_by):
         raise NotAllowed("only an instructor of this course can create polls")
