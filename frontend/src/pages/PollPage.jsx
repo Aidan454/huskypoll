@@ -4,62 +4,15 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { api } from '../api.js'
 import { AnswerForm, AnswerKey, Mark, PollCountdown, QuestionBody, ResultsView, TimeUpModal } from '../components/PollParts.jsx'
-import QuestionEditor from '../components/QuestionEditor.jsx'
-import { ErrorBox, Loaded, Loading, Modal, StatusBadge } from '../components/ui.jsx'
-import { answerText, formatDateTime, QUESTION_TYPE_SHORT } from '../format.js'
+import { ErrorBox, Loading, StatusBadge } from '../components/ui.jsx'
+import { answerText, QUESTION_TYPE_SHORT } from '../format.js'
 import { useAction, useApi } from '../hooks.js'
 import { connectCourse } from '../live.js'
 import PollControls from '../components/PollControls/PollControls.jsx'
 
-function ResponsesTable({ poll }) {
-  const rows = useApi(`/polls/${poll.id}/responses`)
-  return (
-    <Loaded state={rows}>
-      {(list) =>
-        list.length === 0 ? (
-          <p className="muted">No answers yet.</p>
-        ) : (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Student</th>
-                  <th>Answer</th>
-                  <th>Mark</th>
-                  <th>Time</th>
-                </tr>
-              </thead>
-              <tbody>
-                {list.map((r) => (
-                  <tr key={r.user.id}>
-                    <td>
-                      {r.user.display_name} <span className="muted small">{r.user.net_id}</span>{' '}
-                      {!r.on_roster && (
-                        <span className="badge badge-amber" title="Joined with the code; not counted in grades">
-                          Not on roster
-                        </span>
-                      )}
-                    </td>
-                    <td>{String(answerText(poll.question, r))}</td>
-                    <td>{r.is_correct === null ? <span className="muted">—</span> : r.is_correct ? '✓' : '✗'}</td>
-                    <td className="small">{formatDateTime(r.updated_at)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )
-      }
-    </Loaded>
-  )
-}
-
 function InstructorPoll({ poll, setPoll, reloadPoll }) {
   const results = useApi(`/polls/${poll.id}/results`)
   const { setData: setResults } = results
-  const [showResponses, setShowResponses] = useState(false)
-  const [editingKey, setEditingKey] = useState(false)
-  const [notice, setNotice] = useState(null)
   const [timeUp, setTimeUp] = useState(false)
   const [showResults, setShowResults] = useState(false)
   const q = poll.question
@@ -90,19 +43,11 @@ function InstructorPoll({ poll, setPoll, reloadPoll }) {
     if (poll.status === 'open') action = 'close'
     else if (poll.status === 'draft') action = 'open'
     setPoll(await api.post(`/polls/${poll.id}/${action}`))
-    if (action !== 'close') setNotice(null)
     results.reload()
   })
   const [addTime, addingTime, addTimeError] = useAction(async (seconds) => {
     setPoll(await api.post(`/polls/${poll.id}/extend`, { seconds }))
     setTimeUp(false)
-    results.reload()
-  })
-  const [saveKey, savingKey, keyError] = useAction(async (body) => {
-    const r = await api.patch(`/questions/${q.id}`, body)
-    setEditingKey(false)
-    setNotice(`Answer key saved. ${r.responses_regraded} answers re-marked.`)
-    reloadPoll()
     results.reload()
   })
 
@@ -117,23 +62,21 @@ function InstructorPoll({ poll, setPoll, reloadPoll }) {
   return (
     <>
       <div className="present">
-        <div className="card">
-          <span className="badge">{QUESTION_TYPE_SHORT[q.type]}</span>            
-          <QuestionBody question={q} />
+        <div className="poll-content">
+          <span className="badge">{QUESTION_TYPE_SHORT[q.type]}</span>
+          <div className={showResults ? 'poll-question has-results' : 'poll-question'}>
+            <QuestionBody question={q} />
+          </div>
           <ErrorBox error={closeError || toggleOpenError || addTimeError} />
-          <h3 style={{ marginTop: 8 }}>Results</h3>
-          {showResults ? (
-            results.error ? <ErrorBox error={results.error} /> : <ResultsView question={q} results={r} />
-          ) : (
-            <p className="muted">Results hidden — use the eye button to show them.</p>
+          {showResults && (
+            <>
+              <h3 style={{ marginTop: 8 }}>Results</h3>
+              {results.error ? <ErrorBox error={results.error} /> : <ResultsView question={q} results={r} />}
+            </>
           )}
           {!open && (
             <div style={{ marginTop: 16 }}>
-              {notice && <div className="alert alert-success">{notice}</div>}
               <AnswerKey question={q} />
-              <button type="button" className="btn btn-sm" onClick={() => setEditingKey(true)}>
-                Edit answer key / explanation
-              </button>
             </div>
           )}
         </div>
@@ -158,27 +101,6 @@ function InstructorPoll({ poll, setPoll, reloadPoll }) {
           />
         </div>
       </div>
-
-      <div className="card">
-        <div className="card-head">
-          <h2>Individual answers</h2>
-          <button type="button" className="btn btn-sm" onClick={() => setShowResponses(!showResponses)}>
-            {showResponses ? 'Hide' : 'Show'}
-          </button>
-        </div>
-        {showResponses && <ResponsesTable key={`${r?.responses}-${poll.status}`} poll={poll} />}
-      </div>
-
-      <Modal open={editingKey} onClose={() => setEditingKey(false)} title="Answer key" wide>
-        <QuestionEditor
-          question={q}
-          onSubmit={saveKey}
-          busy={savingKey}
-          error={keyError}
-          submitLabel="Save and re-mark"
-          onCancel={() => setEditingKey(false)}
-        />
-      </Modal>
 
       <TimeUpModal
         open={timeUp}

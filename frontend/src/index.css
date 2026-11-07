@@ -784,6 +784,24 @@ textarea {
   border: 1px solid var(--border);
   margin-bottom: 14px;
 }
+/* When results are visible, move the question image to the top right and shrink it. */
+.poll-question.has-results {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+.poll-question.has-results .question-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.poll-question.has-results .question-img {
+  order: 2;
+  flex: none;
+  max-width: 180px;
+  max-height: 120px;
+  object-fit: contain;
+  margin: 0 0 0 auto;
+}
 .choice {
   display: flex;
   align-items: center;
@@ -876,7 +894,7 @@ textarea {
 @media (min-width: 861px) {
   .page:has(.present) {
     max-width: none;
-    padding-right: calc(300px + 48px);
+    padding: 40px 64px 64px calc(300px + 64px);
   }
   .page:has(.present) .present {
     grid-template-columns: minmax(0, 1fr);
@@ -884,7 +902,7 @@ textarea {
   .page:has(.present) .present > :last-child {
     position: fixed;
     top: 0;
-    right: 0;
+    left: 0;
     bottom: 0;
     width: 300px;
     margin: 0;
