@@ -189,13 +189,10 @@ class Course(Base):
     term: Mapped[str] = mapped_column(String(32), nullable=False)  # e.g. "Spring 2027"
     subject: Mapped[str] = mapped_column(String(16), nullable=False)  # e.g. "CSE"
     catalog: Mapped[str] = mapped_column(String(16), nullable=False)  # e.g. "4939W"
-    section: Mapped[str | None] = mapped_column(String(16))
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     join_code: Mapped[str | None] = mapped_column(String(16), unique=True)
-    # Grading: each poll is worth a fixed 1 point for answering plus
-    # points_correct for a correct answer.
+    # Every poll is worth a fixed 1 point for answering.
     points_participation: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
-    points_correct: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     created_at: Mapped[dt.datetime] = _created_at()
     archived_at: Mapped[dt.datetime | None] = mapped_column(UTCDateTime)
@@ -207,14 +204,13 @@ class Course(Base):
     )
 
     __table_args__ = (
-        UniqueConstraint("term", "subject", "catalog", "section"),
-        CheckConstraint("points_participation >= 0 AND points_correct >= 0", name="points_nonneg"),
+        UniqueConstraint("term", "subject", "catalog"),
+        CheckConstraint("points_participation >= 0", name="points_nonneg"),
     )
 
     @property
     def code(self) -> str:
-        sec = f"-{self.section}" if self.section else ""
-        return f"{self.subject} {self.catalog}{sec} ({self.term})"
+        return f"{self.subject} {self.catalog} ({self.term})"
 
 
 class CourseInstructor(Base):

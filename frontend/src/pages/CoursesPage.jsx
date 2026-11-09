@@ -11,7 +11,6 @@ function CourseCard({ course }) {
       <div className="row" style={{ justifyContent: 'space-between' }}>
         <span className="course-code">
           {course.subject} {course.catalog}
-          {course.section ? `-${course.section}` : ''}
         </span>
         <RoleBadge role={course.my_role} />
       </div>
@@ -30,15 +29,13 @@ function guessTerm() {
   return d.getMonth() >= 6 ? `Fall ${y}` : `Spring ${y}`
 }
 
-export function CourseForm({ initial, onSubmit, busy, error, submitLabel, onCancel, isEdit = false }) {
+export function CourseForm({ initial, onSubmit, busy, error, submitLabel, onCancel }) {
   const [form, setForm] = useState(
     initial ?? {
       term: guessTerm(),
       subject: '',
       catalog: '',
-      section: '',
       title: '',
-      points_correct: 0,
     },
   )
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
@@ -47,38 +44,28 @@ export function CourseForm({ initial, onSubmit, busy, error, submitLabel, onCanc
     e.preventDefault()
     const body = {
       ...form,
+      term: form.term.trim(),
       subject: form.subject.trim().toUpperCase(),
-      section: form.section?.trim() || null,
-      points_correct: Number(form.points_correct),
+      catalog: form.catalog.trim().toUpperCase(),
     }
     onSubmit(body)
   }
 
   return (
     <form onSubmit={submit}>
-      {!isEdit && (
-        <div className="form-row">
-          <Field label="Term">
-            <input value={form.term} onChange={set('term')} required placeholder="Spring 2027" />
-          </Field>
-          <Field label="Subject">
-            <input value={form.subject} onChange={set('subject')} required placeholder="CSE" maxLength={16} />
-          </Field>
-          <Field label="Catalog #">
-            <input value={form.catalog} onChange={set('catalog')} required placeholder="2050" maxLength={16} />
-          </Field>
-        </div>
-      )}
       <div className="form-row">
-        <Field label="Section" hint="Optional">
-          <input value={form.section ?? ''} onChange={set('section')} placeholder="001" maxLength={16} />
+        <Field label="Term">
+          <input value={form.term} onChange={set('term')} required placeholder="Spring 2027" />
+        </Field>
+        <Field label="Subject">
+          <input value={form.subject} onChange={set('subject')} required placeholder="CSE" maxLength={4} type="text" />
+        </Field>
+        <Field label="Catalog #">
+          <input value={form.catalog} onChange={set('catalog')} required placeholder="2050" maxLength={5} />
         </Field>
       </div>
       <Field label="Course title">
         <input value={form.title} onChange={set('title')} required placeholder="Data Structures" maxLength={200} />
-      </Field>
-      <Field label="Extra points if correct" hint="Only polls with an answer key">
-        <input type="number" min="0" step="0.5" value={form.points_correct} onChange={set('points_correct')} />
       </Field>
       <ErrorBox error={error} />
       <div className="form-actions">
