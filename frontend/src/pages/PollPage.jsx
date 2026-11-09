@@ -4,9 +4,8 @@ import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { api } from '../api.js'
 import { AddTimeButton, AnswerForm, AnswerKey, Mark, PollCountdown, QuestionBody, ResultsView } from '../components/PollParts.jsx'
-import QuestionEditor from '../components/QuestionEditor.jsx'
-import { ErrorBox, Loaded, Loading, Modal, StatusBadge } from '../components/ui.jsx'
-import { answerText, formatDateTime, pct, QUESTION_TYPE_SHORT } from '../format.js'
+import { ErrorBox, Loading, StatusBadge } from '../components/ui.jsx'
+import { answerText, QUESTION_TYPE_SHORT } from '../format.js'
 import { useAction, useApi } from '../hooks.js'
 import { connectCourse } from '../live.js'
 import PollControls from '../components/PollControls/PollControls.jsx'
@@ -14,9 +13,7 @@ import PollControls from '../components/PollControls/PollControls.jsx'
 function InstructorPoll({ poll, setPoll, reloadPoll }) {
   const results = useApi(`/polls/${poll.id}/results`)
   const { setData: setResults } = results
-  const [showResponses, setShowResponses] = useState(false)
-  const [editingKey, setEditingKey] = useState(false)
-  const [notice, setNotice] = useState(null)
+  const [showResults, setShowResults] = useState(false)
   const q = poll.question
 
   useEffect(
@@ -30,10 +27,6 @@ function InstructorPoll({ poll, setPoll, reloadPoll }) {
     [poll.course_id, poll.id, setResults, reloadPoll],
   )
 
-  const [close, , closeError] = useAction(async () => {
-    setPoll(await api.post(`/polls/${poll.id}/close`))
-    results.reload()
-  })
   const [toggleOpen, togglingOpen, toggleOpenError] = useAction(async () => {
     let action = 'reopen'
     if (poll.status === 'open') action = 'close'
@@ -50,100 +43,55 @@ function InstructorPoll({ poll, setPoll, reloadPoll }) {
   const open = poll.status === 'open'
 
   return (
-    <>
-      <div className="present">
-        <div className="card">
-          <div className="card-head">
-            <div className="row">
-              <StatusBadge status={poll.status} />
-              <span className="badge">{QUESTION_TYPE_SHORT[q.type]}</span>
-              <PollCountdown seconds={poll.seconds_remaining} />
-              {poll.duration_seconds !== null && (
-                <AddTimeButton
-                  onClick={() => addTime(30)}
-                  busy={addingTime}
-                  title={poll.status === 'closed' ? 'Reopen with 30 more seconds' : 'Add 30 seconds'}
-                />
-              )}
-            </div>
-            <div className="row">
-              <button type="button" className="btn btn-sm" onClick={() => toggleShare()} disabled={sharing}>
-                {poll.show_results ? 'Hide results from students' : 'Show results to students'}
-              </button>
-              {open && (
-                <button type="button" className="btn btn-sm btn-solid-danger" onClick={() => close()} disabled={closing}>
-                  {closing ? 'Closing…' : 'Close poll'}
-                </button>
-              )}
-              {poll.status === 'closed' && (
-                <button
-                  type="button"
-                  className="btn btn-sm btn-primary"
-                  onClick={() => reopen()}
-                  disabled={reopening}
-                  title="Let students answer again. Earlier answers are kept and can be changed."
-                >
-                  {reopening ? 'Reopening…' : 'Reopen poll'}
-                </button>
-              )}
-            </div>
+    <div className="present">
+      <div className="poll-content">
+        <div className="row">
+          <span className="badge">{QUESTION_TYPE_SHORT[q.type]}</span>
+          <PollCountdown seconds={poll.seconds_remaining} />
+          {poll.duration_seconds !== null && (
+            <AddTimeButton
+              onClick={() => addTime(30)}
+              busy={addingTime}
+              title={poll.status === 'closed' ? 'Reopen with 30 more seconds' : 'Add 30 seconds'}
+            />
+          )}
+        </div>
+        <div className={showResults ? 'poll-question has-results' : 'poll-question'}>
+          <QuestionBody question={q} />
+        </div>
+        <ErrorBox error={toggleOpenError || addTimeError} />
+        {showResults && (
+          <>
+            <h3 style={{ marginTop: 8 }}>Results</h3>
+            {results.error ? <ErrorBox error={results.error} /> : <ResultsView question={q} results={r} />}
+          </>
+        )}
+        {!open && (
+          <div style={{ marginTop: 16 }}>
+            <AnswerKey question={q} />
           </div>
-          <ErrorBox error={closeError || toggleOpenError || addTimeError} />
-          {showResults && (
-            <>
-              <h3 style={{ marginTop: 8 }}>Results</h3>
-              {results.error ? <ErrorBox error={results.error} /> : <ResultsView question={q} results={r} />}
-            </>
-          )}
-          {!open && (
-            <div style={{ marginTop: 16 }}>
-              <AnswerKey question={q} />
-            </div>
-          )}
-        </div>
-
-        <div className="card code-box">
-          {open && poll.access_code && (
-            <>
-              <PollCountdown seconds={poll.seconds_remaining} onExpire={() => setTimeUp(true)} />
-              <img className="qr" src={api.qrUrl(poll.id)} alt={`QR code for ${poll.join_url}`} />
-              <div className="stat-label">Join Code</div>
-              <div className="code-big">{poll.access_code}</div>
-              <div className="stat">{r?.responses ?? '–'}</div>
-              <div className="stat-label">Answers</div>
-            </>
-          )}
-          <PollControls
-            showResults={showResults}
-            onToggleResults={() => setShowResults((shown) => !shown)}
-            isOpen={open}
-            onToggleOpen={() => toggleOpen()}
-            busy={togglingOpen}
-          />
-        </div>
+        )}
       </div>
 
-      <div className="card">
-        <div className="card-head">
-          <h2>Individual answers</h2>
-          <button type="button" className="btn btn-sm" onClick={() => setShowResponses(!showResponses)}>
-            {showResponses ? 'Hide' : 'Show'}
-          </button>
-        </div>
-        {showResponses && <ResponsesTable key={`${r?.responses}-${poll.status}`} poll={poll} />}
-      </div>
-
-      <Modal open={editingKey} onClose={() => setEditingKey(false)} title="Answer key" wide>
-        <QuestionEditor
-          question={q}
-          onSubmit={saveKey}
-          busy={savingKey}
-          error={keyError}
-          submitLabel="Save and re-mark"
-          onCancel={() => setEditingKey(false)}
+      <div className="card code-box">
+        {open && poll.access_code && (
+          <>
+            <img className="qr" src={api.qrUrl(poll.id)} alt={`QR code for ${poll.join_url}`} />
+            <div className="stat-label">Join Code</div>
+            <div className="code-big">{poll.access_code}</div>
+            <div className="stat">{r?.responses ?? '–'}</div>
+            <div className="stat-label">Answers</div>
+          </>
+        )}
+        <PollControls
+          showResults={showResults}
+          onToggleResults={() => setShowResults((shown) => !shown)}
+          isOpen={open}
+          onToggleOpen={() => toggleOpen()}
+          busy={togglingOpen}
         />
-      </Modal>
-    </>
+      </div>
+    </div>
   )
 }
 
