@@ -3,9 +3,9 @@ import { Link, useNavigate } from 'react-router'
 import { api } from '../../api.js'
 import QuestionEditor from '../../components/QuestionEditor.jsx'
 import { AddTimeButton, PollCountdown } from '../../components/PollParts.jsx'
-import { ErrorBox, Field, Loaded, Loading, Modal, StatusBadge } from '../../components/ui.jsx'
+import { ErrorBox, Field, Loaded, Loading, Modal, SortSelect, StatusBadge } from '../../components/ui.jsx'
 import { formatDate, formatTime, QUESTION_TYPE_SHORT, snippet } from '../../format.js'
-import { useAction, useApi } from '../../hooks.js'
+import { useAction, useApi, useSortOrder } from '../../hooks.js'
 import { connectCourse } from '../../live.js'
 
 function SessionSelect({ sessions, value, onChange }) {
@@ -230,6 +230,7 @@ export default function InstructorPolls({ course }) {
   const polls = useApi(`/courses/${course.id}/polls`)
   const sessions = useApi(`/courses/${course.id}/sessions`)
   const [modal, setModal] = useState(null) // 'bank' | 'quick'
+  const [order, setOrder] = useSortOrder('polls')
   const { reload: reloadPolls } = polls
   const { reload: reloadSessions } = sessions
 
@@ -271,7 +272,10 @@ export default function InstructorPolls({ course }) {
   const live = polls.data.filter((p) => p.status === 'open' && !running.includes(p.session_id))
   const bySession = new Map(sessions.data.map((s) => [s.id, { session: s, polls: [] }]))
   for (const p of polls.data) bySession.get(p.session_id)?.polls.push(p)
+  // sessions arrive newest lecture first; "oldest" flips both the lectures and the polls inside each
   const groups = [...bySession.values()].filter((g) => g.polls.length)
+  if (order === 'oldest') groups.reverse()
+  const byPosition = order === 'oldest' ? (a, b) => a.position - b.position : (a, b) => b.position - a.position
 
   return (
     <>
@@ -337,7 +341,10 @@ export default function InstructorPolls({ course }) {
         <ErrorBox error={closeError || reopenError || extendError} />
       </div>
 
-      <h2>All polls</h2>
+      <div className="card-head">
+        <h2>All polls</h2>
+        {groups.length > 0 && <SortSelect value={order} onChange={setOrder} />}
+      </div>
       {groups.length === 0 && <div className="card empty">No polls yet.</div>}
       {groups.map(({ session, polls: list }) => (
         <div className="card" key={session.id}>
@@ -349,7 +356,7 @@ export default function InstructorPolls({ course }) {
             <span className="small muted">{list.length} {list.length === 1 ? 'poll' : 'polls'}</span>
           </div>
           <ul className="list">
-            {[...list].sort((a, b) => a.position - b.position).map((p) => (
+            {[...list].sort(byPosition).map((p) => (
               <li key={p.id}>
                 <span className="muted small" style={{ width: 22 }}>
                   {p.position + 1}.

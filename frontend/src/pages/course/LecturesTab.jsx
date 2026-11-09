@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useNavigate, useOutletContext } from 'react-router'
 import { api } from '../../api.js'
-import { ErrorBox, Field, Loaded, Modal } from '../../components/ui.jsx'
+import { ErrorBox, Field, Loaded, Modal, SortSelect } from '../../components/ui.jsx'
 import { formatDate, todayIso } from '../../format.js'
-import { useAction, useApi } from '../../hooks.js'
+import { useAction, useApi, useSortOrder } from '../../hooks.js'
 import { OpenFromBank, QuickPoll } from './InstructorPolls.jsx'
 
 /** Open a poll in one particular lecture: from a question bank, or written on the spot. */
@@ -79,6 +79,7 @@ export default function LecturesTab() {
   const sessions = useApi(`/courses/${course.id}/sessions`)
   const [editing, setEditing] = useState(null) // null | 'new' | session
   const [opening, setOpening] = useState(null) // session to open a poll in
+  const [order, setOrder] = useSortOrder('lectures')
 
   const [save, busy, error] = useAction(async (body) => {
     if (editing === 'new') await api.post(`/courses/${course.id}/sessions`, body)
@@ -100,9 +101,12 @@ export default function LecturesTab() {
             Polls are grouped by lecture. Opening a poll without choosing one uses today&apos;s lecture.
           </p>
         </div>
-        <button type="button" className="btn btn-primary" onClick={() => setEditing('new')}>
-          + Add lecture
-        </button>
+        <div className="row">
+          <SortSelect value={order} onChange={setOrder} />
+          <button type="button" className="btn btn-primary" onClick={() => setEditing('new')}>
+            + Add lecture
+          </button>
+        </div>
       </div>
       <ErrorBox error={removeError} />
       <Loaded state={sessions}>
@@ -111,7 +115,8 @@ export default function LecturesTab() {
             <p className="empty">No lectures yet.</p>
           ) : (
             <ul className="list">
-              {list.map((s) => (
+              {/* the API sends lectures newest first */}
+              {(order === 'oldest' ? [...list].reverse() : list).map((s) => (
                 <li key={s.id}>
                   <span className="grow">
                     <strong>{formatDate(s.session_date)}</strong>

@@ -92,3 +92,16 @@ export function Field({ label, hint, children }) {
     </label>
   )
 }
+
+/** "Sort: Newest first / Oldest first" dropdown for a list. Pair with useSortOrder(). */
+export function SortSelect({ value, onChange }) {
+  return (
+    <label className="sort-select small">
+      <span className="muted">Sort</span>
+      <select value={value} onChange={(e) => onChange(e.target.value)}>
+        <option value="newest">Newest first</option>
+        <option value="oldest">Oldest first</option>
+      </select>
+    </label>
+  )
+}
