@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { api } from '../api.js'
-import { AnswerForm, AnswerKey, Mark, PollCountdown, QuestionBody, ResultsView, TimeUpModal } from '../components/PollParts.jsx'
+import { AddTimeButton, AnswerForm, AnswerKey, Mark, PollCountdown, QuestionBody, ResultsView } from '../components/PollParts.jsx'
 import QuestionEditor from '../components/QuestionEditor.jsx'
 import { ErrorBox, Loaded, Loading, Modal, StatusBadge } from '../components/ui.jsx'
 import { answerText, formatDateTime, pct, QUESTION_TYPE_SHORT } from '../format.js'
@@ -59,21 +59,14 @@ function InstructorPoll({ poll, setPoll, reloadPoll }) {
   const [showResponses, setShowResponses] = useState(false)
   const [editingKey, setEditingKey] = useState(false)
   const [notice, setNotice] = useState(null)
-  const [timeUp, setTimeUp] = useState(false)
   const q = poll.question
 
   useEffect(
     () =>
       connectCourse(poll.course_id, (msg) => {
         if (msg.type === 'results' && msg.results.poll_id === poll.id) setResults(msg.results)
-        if (msg.type === 'poll_closed' && msg.poll_id === poll.id) {
-          if (msg.reason === 'timeout') setTimeUp(true)
-          reloadPoll()
-        }
-        if (msg.type === 'poll_extended' && msg.poll_id === poll.id) {
-          setTimeUp(false)
-          reloadPoll()
-        }
+        if (msg.type === 'poll_closed' && msg.poll_id === poll.id) reloadPoll()
+        if (msg.type === 'poll_extended' && msg.poll_id === poll.id) reloadPoll()
         if (msg.type === 'poll_opened' && msg.poll.id === poll.id) reloadPoll()
       }),
     [poll.course_id, poll.id, setResults, reloadPoll],
@@ -93,7 +86,6 @@ function InstructorPoll({ poll, setPoll, reloadPoll }) {
   })
   const [addTime, addingTime, addTimeError] = useAction(async (seconds) => {
     setPoll(await api.post(`/polls/${poll.id}/extend`, { seconds }))
-    setTimeUp(false)
     results.reload()
   })
   const [saveKey, savingKey, keyError] = useAction(async (body) => {
@@ -111,11 +103,6 @@ function InstructorPoll({ poll, setPoll, reloadPoll }) {
     (q.type === 'free_text' && Boolean(q.text_answer)) ||
     (q.type === 'numeric' && q.numeric_answer !== null && q.numeric_answer !== undefined)
 
-  function dismissTimeUp() {
-    setTimeUp(false)
-    if (open) close()
-  }
-
   return (
     <>
       <div className="present">
@@ -124,7 +111,14 @@ function InstructorPoll({ poll, setPoll, reloadPoll }) {
             <div className="row">
               <StatusBadge status={poll.status} />
               <span className="badge">{QUESTION_TYPE_SHORT[q.type]}</span>
-              <PollCountdown seconds={poll.seconds_remaining} onExpire={() => setTimeUp(true)} />
+              <PollCountdown seconds={poll.seconds_remaining} />
+              {poll.duration_seconds !== null && (
+                <AddTimeButton
+                  onClick={() => addTime(30)}
+                  busy={addingTime}
+                  title={poll.status === 'closed' ? 'Reopen with 30 more seconds' : 'Add 30 seconds'}
+                />
+              )}
             </div>
             <div className="row">
               <button type="button" className="btn btn-sm" onClick={() => toggleShare()} disabled={sharing}>
@@ -213,14 +207,6 @@ function InstructorPoll({ poll, setPoll, reloadPoll }) {
           onCancel={() => setEditingKey(false)}
         />
       </Modal>
-
-      <TimeUpModal
-        open={timeUp}
-        busy={addingTime}
-        error={addTimeError}
-        onClose={dismissTimeUp}
-        onAddTime={addTime}
-      />
     </>
   )
 }
