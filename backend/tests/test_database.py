@@ -50,7 +50,7 @@ def course_setup(db):
     prof, _ = svc.find_or_create_user(db, net_id="prf00001", first_name="Pat", last_name="Prof")
     svc.set_role(db, prof, "instructor")
     course = svc.create_course(db, prof, term="Spring 2027", subject="cse", catalog="2050",
-                               title="Data Structures", points_correct=2)
+                               title="Data Structures")
     s1, _ = svc.find_or_create_user(db, net_id="abc12345", first_name="Ann", last_name="Able")
     s2, _ = svc.find_or_create_user(db, net_id="xyz67890", first_name="Bob", last_name="Baker")
     svc.enroll(db, course, s1)
@@ -250,8 +250,13 @@ def test_timed_poll_has_a_deadline_and_refuses_late_answers(db, course_setup):
     with pytest.raises(svc.HuskyPollError, match="time is up"):
         svc.submit_response(db, poll, s1, option_ids=[right.id])
 
-    # No duration means no timer, and nothing changes for existing polls.
-    plain = svc.open_poll(db, course, q, prof)
+    # Omitting the duration uses the one-minute default.
+    default = svc.open_poll(db, course, q, prof)
+    assert default.duration_seconds == 60
+    assert default.closes_at - default.opened_at == dt.timedelta(seconds=60)
+
+    # An explicit None still means no timer, and nothing changes for existing polls.
+    plain = svc.open_poll(db, course, q, prof, duration_seconds=None)
     assert plain.duration_seconds is None and plain.closes_at is None
 
 
@@ -270,7 +275,7 @@ def test_extend_poll_adds_time_and_reopens_a_closed_poll(db, course_setup):
     with pytest.raises(svc.NotAllowed):
         svc.extend_poll(db, poll, s1, 60)
 
-    plain = svc.open_poll(db, course, q, prof)
+    plain = svc.open_poll(db, course, q, prof, duration_seconds=None)
     with pytest.raises(svc.HuskyPollError, match="no timer"):
         svc.extend_poll(db, plain, prof, 60)
 
@@ -296,7 +301,7 @@ def test_timer_loop_closes_expired_polls(tmp_path):
         prof, _ = svc.find_or_create_user(db, net_id="prf00001", first_name="Pat", last_name="Prof")
         svc.set_role(db, prof, "instructor")
         course = svc.create_course(db, prof, term="Spring 2027", subject="cse", catalog="2050",
-                                   title="Data Structures", points_correct=1)
+                                    title="Data Structures")
         q = svc.create_question(db, prof, type="mc_single", body_md="2+2?",
                                 options=[("3", False), ("4", True)])
         poll = svc.open_poll(db, course, q, prof, duration_seconds=60)

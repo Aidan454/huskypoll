@@ -35,8 +35,7 @@ export default function CourseLayout() {
       <div className="page-head">
         <div>
           <h1>
-            {c.subject} {c.catalog}
-            {c.section ? `-${c.section}` : ''}: {c.title}
+            {c.subject} {c.catalog}: {c.title}
           </h1>
           <p className="subtitle">
             {c.term} <RoleBadge role={c.my_role} /> {c.archived_at && <span className="badge">Archived</span>}

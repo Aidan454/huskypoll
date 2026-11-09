@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { api } from '../../api.js'
 import QuestionEditor from '../../components/QuestionEditor.jsx'
-import { PollCountdown, TimeUpModal } from '../../components/PollParts.jsx'
+import { AddTimeButton, PollCountdown } from '../../components/PollParts.jsx'
 import { ErrorBox, Field, Loaded, Loading, Modal, StatusBadge } from '../../components/ui.jsx'
 import { formatDate, formatTime, QUESTION_TYPE_SHORT, snippet } from '../../format.js'
 import { useAction, useApi } from '../../hooks.js'
@@ -31,7 +31,10 @@ function minutesToSeconds(minutes) {
 
 function DurationField({ value, onChange }) {
   return (
-    <Field label="Time limit (minutes)" hint="Leave empty for no timer. The poll closes by itself when time runs out.">
+    <Field
+      label="Time limit (minutes)"
+      hint="Defaults to 1 minute. Clear it for no timer; the poll closes by itself when time runs out."
+    >
       <input type="number" min="1" step="1" placeholder="No limit" value={value} onChange={(e) => onChange(e.target.value)} />
     </Field>
   )
@@ -45,7 +48,7 @@ export function OpenFromBank({ course, sessions, onOpened, onCancel, initialSess
   const [questionIds, setQuestionIds] = useState([]) // in the order they were ticked
   const [sessionId, setSessionId] = useState(String(initialSessionId))
   const [showResults, setShowResults] = useState(false)
-  const [minutes, setMinutes] = useState('')
+  const [minutes, setMinutes] = useState('1')
 
   function toggle(id) {
     setQuestionIds((ids) => (ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]))
@@ -191,7 +194,7 @@ export function OpenFromBank({ course, sessions, onOpened, onCancel, initialSess
 export function QuickPoll({ course, sessions, onOpened, onCancel, initialSessionId = '' }) {
   const [sessionId, setSessionId] = useState(String(initialSessionId))
   const [showResults, setShowResults] = useState(false)
-  const [minutes, setMinutes] = useState('')
+  const [minutes, setMinutes] = useState('1')
   const [open, busy, error] = useAction(async (body) => {
     const poll = await api.post(`/courses/${course.id}/polls/quick`, {
       ...body,
@@ -227,7 +230,6 @@ export default function InstructorPolls({ course }) {
   const polls = useApi(`/courses/${course.id}/polls`)
   const sessions = useApi(`/courses/${course.id}/sessions`)
   const [modal, setModal] = useState(null) // 'bank' | 'quick'
-  const [timeUpPoll, setTimeUpPoll] = useState(null) // poll id whose timer just ran out
   const { reload: reloadPolls } = polls
   const { reload: reloadSessions } = sessions
 
@@ -235,14 +237,10 @@ export default function InstructorPolls({ course }) {
     () =>
       connectCourse(course.id, (msg) => {
         if (msg.type === 'poll_opened' || msg.type === 'poll_closed') {
-          if (msg.type === 'poll_closed' && msg.reason === 'timeout') setTimeUpPoll(msg.poll_id)
           reloadPolls()
           reloadSessions()
         }
-        if (msg.type === 'poll_extended') {
-          setTimeUpPoll(null)
-          reloadPolls()
-        }
+        if (msg.type === 'poll_extended') reloadPolls()
       }),
     [course.id, reloadPolls, reloadSessions],
   )
@@ -257,19 +255,12 @@ export default function InstructorPolls({ course }) {
   })
   const [extendPoll, extending, extendError] = useAction(async (pollId, seconds) => {
     await api.post(`/polls/${pollId}/extend`, { seconds })
-    setTimeUpPoll(null)
     reloadPolls()
   })
 
   function opened(list) {
     setModal(null)
     navigate(list.length === 1 ? `/polls/${list[0].id}` : `/courses/${course.id}/live?session=${list[0].session_id}&from=${list[0].position}`)
-  }
-
-  function closeFromTimeout() {
-    const poll = polls.data?.find((p) => p.id === timeUpPoll)
-    setTimeUpPoll(null)
-    if (poll?.status === 'open') closePoll(poll)
   }
 
   if (polls.error || sessions.error) return <ErrorBox error={polls.error || sessions.error} />
@@ -329,6 +320,9 @@ export default function InstructorPolls({ course }) {
                   <span className="small muted"> · code {p.access_code} · opened {formatTime(p.opened_at)}</span>
                 </span>
                 <PollCountdown seconds={p.seconds_remaining} />
+                {p.duration_seconds !== null && (
+                  <AddTimeButton onClick={() => extendPoll(p.id, 30)} busy={extending} />
+                )}
                 <Link to={`/polls/${p.id}`} className="btn btn-sm btn-primary">
                   Present
                 </Link>
@@ -382,14 +376,6 @@ export default function InstructorPolls({ course }) {
       <Modal open={modal === 'quick'} onClose={() => setModal(null)} title="Quick poll" wide>
         <QuickPoll course={course} sessions={sessions.data} onOpened={opened} onCancel={() => setModal(null)} />
       </Modal>
-
-      <TimeUpModal
-        open={timeUpPoll !== null}
-        busy={extending}
-        error={extendError}
-        onClose={closeFromTimeout}
-        onAddTime={(seconds) => extendPoll(timeUpPoll, seconds)}
-      />
     </>
   )
 }

@@ -706,6 +706,10 @@ textarea {
   color: var(--red);
 }
 .countdown {
+  padding: 6px 12px;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
   font-variant-numeric: tabular-nums;
 }
 .badge-role-student {

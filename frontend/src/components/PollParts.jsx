@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../api.js'
 import { answerText, formatTime, pct } from '../format.js'
 import { useAction } from '../hooks.js'
-import { ErrorBox, Field, Modal } from './ui.jsx'
+import { ErrorBox } from './ui.jsx'
 import Markdown from './Markdown.jsx'
 
 export function QuestionBody({ question }) {
@@ -143,31 +143,12 @@ function Countdown({ seconds, onExpire }) {
   )
 }
 
-/** The instructor's prompt when a timed poll reaches zero. */
-export function TimeUpModal({ open, busy, error, onClose, onAddTime }) {
-  const [minutes, setMinutes] = useState('2')
-  const seconds = Math.round(Number(minutes) * 60)
+/** "+30 sec" for instructors, shown next to a timed poll's countdown. */
+export function AddTimeButton({ onClick, busy = false, title = 'Add 30 seconds' }) {
   return (
-    <Modal open={open} onClose={onClose} title="Time's up">
-      <p>The timer for this poll has ended.</p>
-      <Field label="Add time (minutes)">
-        <input type="number" min="1" step="1" value={minutes} onChange={(e) => setMinutes(e.target.value)} />
-      </Field>
-      <ErrorBox error={error} />
-      <div className="form-actions">
-        <button type="button" className="btn" onClick={onClose} disabled={busy}>
-          Close poll
-        </button>
-        <button
-          type="button"
-          className="btn btn-primary"
-          disabled={busy || !Number.isFinite(seconds) || seconds <= 0}
-          onClick={() => onAddTime(seconds)}
-        >
-          {busy ? 'Adding…' : 'Add time'}
-        </button>
-      </div>
-    </Modal>
+    <button type="button" className="btn btn-sm" onClick={onClick} disabled={busy} title={title}>
+      {busy ? 'Adding…' : '+30 sec'}
+    </button>
   )
 }
 

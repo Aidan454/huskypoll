@@ -49,8 +49,7 @@ def lecture(app):
     """A course with an owner, a TA, two students and one multiple-choice question."""
     prof = login(app, "pat.prof@uconn.edu", "prf00001", "Pat", "Prof", role="instructor")
     course = prof.post("/courses", json={"term": "Spring 2027", "subject": "cse", "catalog": "2050",
-                                         "title": "Data Structures",
-                                         "points_correct": 1}).json()
+                                         "title": "Data Structures"}).json()
     cid = course["id"]
     assert prof.post(f"/courses/{cid}/instructors", json={"identifier": "tas00001", "role": "ta"}).status_code == 201
     r = prof.post(f"/courses/{cid}/roster/paste", json={"text": "ann.able@uconn.edu\nbob.baker@uconn.edu"})
@@ -113,10 +112,37 @@ def test_participation_points_are_fixed_at_one(app):
     course = prof.post("/courses", json={**body, "points_participation": 9}).json()
     assert course["points_participation"] == 1
 
-    updated = prof.patch(f"/courses/{course['id']}",
-                         json={"points_participation": 9, "points_correct": 2}).json()
+    updated = prof.patch(f"/courses/{course['id']}", json={"points_participation": 9}).json()
     assert updated["points_participation"] == 1
-    assert updated["points_correct"] == 2
+
+
+def test_course_term_subject_and_catalog_can_be_changed(app):
+    prof = login(app, "pat.prof@uconn.edu", "prf00001", "Pat", "Prof", role="instructor")
+    course = prof.post("/courses", json={"term": "Spring 2027", "subject": "cse", "catalog": "2050",
+                                         "title": "Data Structures"}).json()
+
+    updated = prof.patch(f"/courses/{course['id']}",
+                         json={"term": "Fall 2027", "subject": "opim", "catalog": "3101"}).json()
+    assert updated["term"] == "Fall 2027"
+    assert updated["subject"] == "OPIM"
+    assert updated["catalog"] == "3101"
+    assert updated["code"] == "OPIM 3101 (Fall 2027)"
+
+
+def test_course_identity_change_cannot_duplicate_another_course(app):
+    prof = login(app, "pat.prof@uconn.edu", "prf00001", "Pat", "Prof", role="instructor")
+    common = {"term": "Spring 2027", "subject": "CSE", "title": "Data Structures"}
+    prof.post("/courses", json={**common, "catalog": "2050"})
+    second = prof.post("/courses", json={**common, "catalog": "2100"}).json()
+
+    r = prof.patch(f"/courses/{second['id']}", json={"catalog": "2050"})
+    assert r.status_code == 409
+
+
+def test_only_instructors_can_change_course_identity(app, lecture):
+    ann = lecture["ann"]
+    r = ann.patch(f"/courses/{lecture['cid']}", json={"subject": "HACK"})
+    assert r.status_code == 403
 
 
 def test_cas_login_flow(app):
@@ -261,8 +287,13 @@ def test_timed_poll_countdown_and_add_time(lecture):
     assert reopened["status"] == "open" and reopened["closed_at"] is None
     assert 28 <= reopened["seconds_remaining"] <= 30
 
-    # A poll without a timer stays exactly as before and cannot be extended.
-    plain = prof.post(f"/courses/{cid}/polls", json={"question_id": q["id"]}).json()
+    # Omitting the duration uses the one-minute default.
+    default = prof.post(f"/courses/{cid}/polls", json={"question_id": q["id"]}).json()
+    assert default["duration_seconds"] == 60
+    assert 58 <= default["seconds_remaining"] <= 60
+
+    # An explicit null still means no timer, and that poll cannot be extended.
+    plain = prof.post(f"/courses/{cid}/polls", json={"question_id": q["id"], "duration_seconds": None}).json()
     assert plain["duration_seconds"] is None and plain["seconds_remaining"] is None
     r = prof.post(f"/polls/{plain['id']}/extend", json={"seconds": 60})
     assert r.status_code == 400 and "no timer" in r.json()["detail"]
@@ -276,6 +307,7 @@ def test_quick_poll_then_add_answer_and_regrade(lecture):
     prof, ann, bob, cid = lecture["prof"], lecture["ann"], lecture["bob"], lecture["cid"]
     poll = prof.post(f"/courses/{cid}/polls/quick", json={
         "type": "mc_single", "body_md": "Typed in lecture", "options": [{"text_md": "A"}, {"text_md": "B"}]}).json()
+    assert poll["duration_seconds"] == 60  # quick polls get the one-minute default too
     a, b = [o["id"] for o in poll["question"]["options"]]
     ann.post(f"/polls/{poll['id']}/responses", json={"option_ids": [b]})
     bob.post(f"/polls/{poll['id']}/responses", json={"option_ids": [a]})
@@ -691,6 +723,7 @@ def test_poll_set_asks_questions_one_at_a_time(lecture):
     assert r.status_code == 201, r.text
     first, second, third = r.json()
     assert [p["status"] for p in (first, second, third)] == ["open", "draft", "draft"]
+    assert [p["duration_seconds"] for p in (first, second, third)] == [60, 60, 60]  # one-minute default
     assert first["question"]["id"] == q2["id"]  # the order the instructor chose
     assert first["position"] < second["position"] < third["position"]
     code = first["access_code"]
