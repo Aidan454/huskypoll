@@ -45,6 +45,42 @@ Copy this block to the top of the log and fill it in:
 
 ## Log
 
+### 2026-11-10: Add lecture-specific questions and replies
+
+- **Agent:** OpenAI Codex
+- **Requested by:** Wolf, splitting PR #27 for focused review
+- **Branch / PR:** `WolfLectureQA`, replacement PR pending
+- **Files:**
+  - `AGENTS.md` (added or changed)
+  - `AGENT_CHANGES.md` (added or changed)
+  - `README.md` (added or changed)
+  - `backend/README.md` (added or changed)
+  - `backend/app/app.py` (added or changed)
+  - `backend/app/database/models.py` (added or changed)
+  - `backend/app/database/services.py` (added or changed)
+  - `backend/app/routers/courses.py` (added or changed)
+  - `backend/app/routers/qa.py` (added or changed)
+  - `backend/app/schemas.py` (added or changed)
+  - `backend/app/serializers.py` (added or changed)
+  - `backend/migrations/versions/d5e6f7a8b9c0_course_qa.py` (added or changed)
+  - `backend/migrations/versions/e6f7a8b9c0d1_merge_qa_and_timers.py` (added or changed)
+  - `backend/migrations/versions/f7a8b9c0d1e2_lecture_qa.py` (added or changed)
+  - `backend/schema.sql` (added or changed)
+  - `backend/tests/test_api.py` (added or changed)
+  - `backend/tests/test_database.py` (added or changed)
+  - `backend/tests/test_qa_migration.py` (added or changed)
+  - `frontend/README.md` (added or changed)
+  - `frontend/src/App.jsx` (added or changed)
+  - `frontend/src/pages/course/CourseLayout.jsx` (added or changed)
+  - `frontend/src/pages/course/LectureQA.css` (added or changed)
+  - `frontend/src/pages/course/LectureQA.jsx` (added or changed)
+  - `frontend/src/pages/course/LecturesTab.jsx` (added or changed)
+  - `frontend/src/pages/course/StudentCourse.jsx` (added or changed)
+- **Summary:** Students and instructors can open a discussion for a specific lecture without an active poll. Discussions update live, respect course membership and archive status, and retain earlier course posts/replies in a labeled legacy lecture. No preview, refactor, photo, or theme changes are included.
+- **Checks:** 123 backend tests and Ruff passed in an isolated copy; frontend ESLint and production build passed.
+- **Follow-up:** Apply `alembic upgrade head` when deploying to an existing database. Includes the earlier Q&A revisions for compatibility with local prototype databases; no deployment is performed.
+
+
 ### 2026-11-05: Add the agent change log
 
 - **Agent:** Claude Code (project thread "Add agent change log file")

@@ -130,6 +130,20 @@ CREATE TABLE questions (
 	CONSTRAINT ck_questions_is_locked CHECK (is_locked IN (0, 1))
 );
 
+CREATE TABLE course_questions (
+	session_id INTEGER NOT NULL, 
+	id INTEGER NOT NULL, 
+	course_id INTEGER NOT NULL, 
+	author_id INTEGER, 
+	body TEXT NOT NULL, 
+	created_at DATETIME NOT NULL, 
+	CONSTRAINT pk_course_questions PRIMARY KEY (id), 
+	CONSTRAINT ck_course_questions_body_length CHECK (length(trim(body)) BETWEEN 1 AND 2000), 
+	CONSTRAINT fk_course_questions_session_id_lecture_sessions FOREIGN KEY(session_id) REFERENCES lecture_sessions (id) ON DELETE CASCADE, 
+	CONSTRAINT fk_course_questions_course_id_courses FOREIGN KEY(course_id) REFERENCES courses (id) ON DELETE CASCADE, 
+	CONSTRAINT fk_course_questions_author_id_users FOREIGN KEY(author_id) REFERENCES users (id) ON DELETE SET NULL
+);
+
 CREATE TABLE question_options (
 	id INTEGER NOT NULL, 
 	question_id INTEGER NOT NULL, 
@@ -170,6 +184,18 @@ CREATE TABLE polls (
 	CONSTRAINT fk_polls_question_id_questions FOREIGN KEY(question_id) REFERENCES questions (id) ON DELETE RESTRICT, 
 	CONSTRAINT ck_polls_show_results CHECK (show_results IN (0, 1)), 
 	CONSTRAINT fk_polls_opened_by_users FOREIGN KEY(opened_by) REFERENCES users (id) ON DELETE SET NULL
+);
+
+CREATE TABLE course_replies (
+	id INTEGER NOT NULL, 
+	question_id INTEGER NOT NULL, 
+	author_id INTEGER, 
+	body TEXT NOT NULL, 
+	created_at DATETIME NOT NULL, 
+	CONSTRAINT pk_course_replies PRIMARY KEY (id), 
+	CONSTRAINT ck_course_replies_body_length CHECK (length(trim(body)) BETWEEN 1 AND 2000), 
+	CONSTRAINT fk_course_replies_question_id_course_questions FOREIGN KEY(question_id) REFERENCES course_questions (id) ON DELETE CASCADE, 
+	CONSTRAINT fk_course_replies_author_id_users FOREIGN KEY(author_id) REFERENCES users (id) ON DELETE SET NULL
 );
 
 CREATE TABLE responses (
@@ -215,23 +241,29 @@ CREATE INDEX ix_course_instructors_user_id ON course_instructors (user_id);
 
 CREATE INDEX ix_enrollments_user_id ON enrollments (user_id);
 
-CREATE INDEX ix_question_banks_owner_id ON question_banks (owner_id);
-
 CREATE INDEX ix_question_banks_course_id ON question_banks (course_id);
+
+CREATE INDEX ix_question_banks_owner_id ON question_banks (owner_id);
 
 CREATE INDEX ix_lecture_sessions_course_id ON lecture_sessions (course_id, session_date);
 
+CREATE INDEX ix_questions_author_id ON questions (author_id);
+
 CREATE INDEX ix_questions_bank_id ON questions (bank_id);
 
-CREATE INDEX ix_questions_author_id ON questions (author_id);
+CREATE INDEX ix_course_questions_session_id ON course_questions (session_id);
+
+CREATE INDEX ix_course_questions_course_id ON course_questions (course_id);
+
+CREATE INDEX ix_polls_session_id ON polls (session_id);
+
+CREATE INDEX ix_polls_open_closes_at ON polls (closes_at) WHERE status = 'open';
 
 CREATE UNIQUE INDEX uq_polls_open_access_code ON polls (access_code) WHERE status = 'open';
 
 CREATE INDEX ix_polls_question_id ON polls (question_id);
 
-CREATE INDEX ix_polls_open_closes_at ON polls (closes_at) WHERE status = 'open';
-
-CREATE INDEX ix_polls_session_id ON polls (session_id);
+CREATE INDEX ix_course_replies_question_id ON course_replies (question_id);
 
 CREATE INDEX ix_responses_user_id ON responses (user_id);
 
