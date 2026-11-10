@@ -4,7 +4,8 @@ import { api } from '../../api.js'
 import { ErrorBox, Field, Loaded, Modal } from '../../components/ui.jsx'
 import { formatDate, todayIso } from '../../format.js'
 import { useAction, useApi } from '../../hooks.js'
-import { OpenFromBank, QuickPoll } from './InstructorPolls.jsx'
+import OpenFromBank from '../../components/polls/OpenFromBank.jsx'
+import QuickPoll from '../../components/polls/QuickPoll.jsx'
 
 /** Open a poll in one particular lecture: from a question bank, or written on the spot. */
 function OpenInLecture({ course, sessions, session, onClose }) {

@@ -45,6 +45,29 @@ Copy this block to the top of the log and fill it in:
 
 ## Log
 
+### 2026-11-10: Refactor instructor polling into reusable components
+
+- **Agent:** OpenAI Codex
+- **Requested by:** Wolf, splitting PR #27 for focused review
+- **Branch / PR:** `WolfFrontendRefactor`, replacement PR pending
+- **Files:**
+  - `AGENTS.md` (added or changed)
+  - `AGENT_CHANGES.md` (added or changed)
+  - `frontend/README.md` (added or changed)
+  - `frontend/src/components/polls/ActivePolls.jsx` (added or changed)
+  - `frontend/src/components/polls/DurationField.jsx` (added or changed)
+  - `frontend/src/components/polls/LecturePollGroups.jsx` (added or changed)
+  - `frontend/src/components/polls/OpenFromBank.jsx` (added or changed)
+  - `frontend/src/components/polls/QuickPoll.jsx` (added or changed)
+  - `frontend/src/components/polls/SessionSelect.jsx` (added or changed)
+  - `frontend/src/components/polls/pollDuration.js` (added or changed)
+  - `frontend/src/pages/course/InstructorPolls.jsx` (added or changed)
+  - `frontend/src/pages/course/LecturesTab.jsx` (added or changed)
+- **Summary:** Extracted bank selection, quick polls, lecture selection, active polls, poll groups and duration controls from the instructor page. Course and lecture pages share the modules; the current one-minute default, countdown and time-extension behavior are preserved. No Q&A or preview feature is added.
+- **Checks:** Frontend ESLint and production build passed.
+- **Follow-up:** None.
+
+
 ### 2026-11-05: Add the agent change log
 
 - **Agent:** Claude Code (project thread "Add agent change log file")

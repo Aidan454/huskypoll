@@ -55,3 +55,6 @@ src/
 ```
 ## Icons
 https://www.svgrepo.com/
+## Instructor poll components
+
+`components/polls/` extracts `ActivePolls`, `LecturePollGroups`, `OpenFromBank`, `QuickPoll`, `SessionSelect`, `DurationField` and `pollDuration`. Course and lecture pages reuse them; behavior, one-minute defaults, countdowns and time extension are preserved.

@@ -230,3 +230,5 @@ agent work and the next agent can pick up where the last one stopped.
 - **Known lint:** ruff flags `DTZ011` (`date.today()`) in `services.py` and
   `scripts/demo_tour.py` on `main`. It isn't from new code; leave it unless you're
   fixing it on purpose.
+
+Instructor poll UI lives in reusable `components/polls/` modules. Course and lecture pages import `OpenFromBank` and `QuickPoll` directly; preserve timer controls when editing these modules.
