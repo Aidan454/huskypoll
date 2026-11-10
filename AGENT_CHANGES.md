@@ -45,6 +45,25 @@ Copy this block to the top of the log and fill it in:
 
 ## Log
 
+### 2026-11-10: Add student previews to the question editor
+
+- **Agent:** OpenAI Codex
+- **Requested by:** Wolf, splitting PR #27 for focused review
+- **Branch / PR:** `WolfStudentPreview`, replacement PR pending
+- **Files:**
+  - `AGENTS.md` (added or changed)
+  - `AGENT_CHANGES.md` (added or changed)
+  - `frontend/README.md` (added or changed)
+  - `frontend/src/components/QuestionEditor.jsx` (added or changed)
+  - `frontend/src/components/polls/StudentQuestionPreview.css` (added or changed)
+  - `frontend/src/components/polls/StudentQuestionPreview.jsx` (added or changed)
+  - `frontend/src/components/polls/studentPreview.js` (added or changed)
+  - `frontend/tests/studentPreview.test.js` (added or changed)
+- **Summary:** Instructors can preview question text, images and inputs without publishing, submitting answers, or exposing the answer key/explanation. Returning to edit preserves the draft. The feature works independently of the poll refactor.
+- **Checks:** Frontend ESLint/build and three preview tests passed.
+- **Follow-up:** None.
+
+
 ### 2026-11-05: Add the agent change log
 
 - **Agent:** Claude Code (project thread "Add agent change log file")
