@@ -45,6 +45,24 @@ Copy this block to the top of the log and fill it in:
 
 ## Log
 
+### 2026-11-10: Keep login light while preserving the manual theme choice
+
+- **Agent:** OpenAI Codex
+- **Requested by:** Wolf, splitting PR #27 for focused review
+- **Branch / PR:** `WolfLightLogin`, replacement PR pending
+- **Files:**
+  - `AGENT_CHANGES.md` (added or changed)
+  - `frontend/README.md` (added or changed)
+  - `frontend/src/components/ThemeToggle.jsx` (added or changed)
+  - `frontend/src/main.jsx` (added or changed)
+  - `frontend/src/pages/LoginPage.jsx` (added or changed)
+  - `frontend/src/theme.js` (added or changed)
+  - `frontend/tests/theme.test.js` (added or changed)
+- **Summary:** Login always stays light, and authenticated pages restore the saved manual Light/Dark choice. The original compact switch is retained; no automatic time-based mode or classroom photo is added.
+- **Checks:** Frontend ESLint/build and the manual-theme/login transition test passed.
+- **Follow-up:** None.
+
+
 ### 2026-11-05: Add the agent change log
 
 - **Agent:** Claude Code (project thread "Add agent change log file")

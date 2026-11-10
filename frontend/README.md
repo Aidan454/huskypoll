@@ -55,3 +55,4 @@ src/
 ```
 ## Icons
 https://www.svgrepo.com/
+Login always renders in light mode. Signing in restores the saved manual Light/Dark choice without changing that preference. The existing switch stays compact; no photo or time-based mode is added. Test with `node --test tests/theme.test.js`.
