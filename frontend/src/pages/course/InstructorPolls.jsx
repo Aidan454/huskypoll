@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { api } from '../../api.js'
-import QuestionEditor from '../../components/QuestionEditor.jsx'
-import { AddTimeButton, PollCountdown } from '../../components/PollParts.jsx'
-import { ErrorBox, Field, Loaded, Loading, Modal, SortSelect, StatusBadge } from '../../components/ui.jsx'
-import { formatDate, formatTime, QUESTION_TYPE_SHORT, snippet } from '../../format.js'
+import OpenFromBank from '../../components/polls/OpenFromBank.jsx'
+import QuickPoll from '../../components/polls/QuickPoll.jsx'
+import LecturePollGroups from '../../components/polls/LecturePollGroups.jsx'
+import ActivePolls from '../../components/polls/ActivePolls.jsx'
+import { ErrorBox, Loading, Modal, SortSelect } from '../../components/ui.jsx'
 import { useAction, useApi, useSortOrder } from '../../hooks.js'
 import { connectCourse } from '../../live.js'
 
@@ -60,7 +61,6 @@ export default function InstructorPolls({ course }) {
   // sessions arrive newest lecture first; "oldest" flips both the lectures and the polls inside each
   const groups = [...bySession.values()].filter((g) => g.polls.length)
   if (order === 'oldest') groups.reverse()
-  const byPosition = order === 'oldest' ? (a, b) => a.position - b.position : (a, b) => b.position - a.position
 
   return (
     <>
@@ -88,36 +88,7 @@ export default function InstructorPolls({ course }) {
         {groups.length > 0 && <SortSelect value={order} onChange={setOrder} />}
       </div>
       {groups.length === 0 && <div className="card empty">No polls yet.</div>}
-      {groups.map(({ session, polls: list }) => (
-        <div className="card" key={session.id}>
-          <div className="card-head">
-            <h3>
-              {formatDate(session.session_date)}
-              {session.title && <span className="muted"> · {session.title}</span>}
-            </h3>
-            <span className="small muted">{list.length} {list.length === 1 ? 'poll' : 'polls'}</span>
-          </div>
-          <ul className="list">
-            {[...list].sort(byPosition).map((p) => (
-              <li key={p.id}>
-                <span className="muted small" style={{ width: 22 }}>
-                  {p.position + 1}.
-                </span>
-                <span className="grow">
-                  <Link to={`/polls/${p.id}`}>{snippet(p.question.body_md)}</Link>
-                </span>
-                <span className="badge">{QUESTION_TYPE_SHORT[p.question.type]}</span>
-                <StatusBadge status={p.status} />
-                {p.status === 'closed' && !course.archived_at && (
-                  <button type="button" className="btn btn-sm" onClick={() => reopenPoll(p)} title="Let students answer again">
-                    Reopen
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
+      <LecturePollGroups groups={groups} course={course} reopenPoll={reopenPoll} order={order} />
 
       <Modal open={modal === 'bank'} onClose={() => setModal(null)} title="Open a poll" wide>
         <OpenFromBank course={course} sessions={sessions.data} onOpened={opened} onCancel={() => setModal(null)} />

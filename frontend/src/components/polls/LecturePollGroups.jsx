@@ -2,7 +2,8 @@ import { Link } from 'react-router'
 import { StatusBadge } from '../ui.jsx'
 import { formatDate, QUESTION_TYPE_SHORT, snippet } from '../../format.js'
 
-export default function LecturePollGroups({ groups, course, reopenPoll }) {
+export default function LecturePollGroups({ groups, course, reopenPoll, order = 'oldest' }) {
+  const byPosition = order === 'oldest' ? (a, b) => a.position - b.position : (a, b) => b.position - a.position
   return (
     <>
       {groups.map(({ session, polls: list }) => (
@@ -15,7 +16,7 @@ export default function LecturePollGroups({ groups, course, reopenPoll }) {
             <span className="small muted">{list.length} {list.length === 1 ? 'poll' : 'polls'}</span>
           </div>
           <ul className="list">
-            {[...list].sort((a, b) => a.position - b.position).map((p) => (
+            {[...list].sort(byPosition).map((p) => (
               <li key={p.id}>
                 <span className="muted small" style={{ width: 22 }}>
                   {p.position + 1}.

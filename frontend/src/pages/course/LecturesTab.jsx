@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { Link, useNavigate, useOutletContext } from 'react-router'
 import { api } from '../../api.js'
 import { ErrorBox, Field, Loaded, Modal, SortSelect } from '../../components/ui.jsx'
-import { formatDate, todayIso } from '../../format.js'
+import { formatDate, isStaff, todayIso } from '../../format.js'
 import { useAction, useApi, useSortOrder } from '../../hooks.js'
-import { OpenFromBank, QuickPoll } from './InstructorPolls.jsx'
+import OpenFromBank from '../../components/polls/OpenFromBank.jsx'
+import QuickPoll from '../../components/polls/QuickPoll.jsx'
 
 /** Open a poll in one particular lecture: from a question bank, or written on the spot. */
 function OpenInLecture({ course, sessions, session, onClose }) {
@@ -104,9 +105,9 @@ export default function LecturesTab() {
         </div>
         <div className="row">
           <SortSelect value={order} onChange={setOrder} />
-          <button type="button" className="btn btn-primary" onClick={() => setEditing('new')}>
+          {staff && <button type="button" className="btn btn-primary" onClick={() => setEditing('new')}>
             + Add lecture
-          </button>
+          </button>}
         </div>
       </div>
       <ErrorBox error={removeError} />
