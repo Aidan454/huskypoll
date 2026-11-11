@@ -55,6 +55,6 @@ src/
 ```
 ## Icons
 https://www.svgrepo.com/
-## Student question preview
+## Instructor poll components
 
-The shared question editor offers **Student preview** before publishing. It renders a whitelisted projection without answer keys/explanations, keeps preview answers local, and preserves the draft when returning to edit. Check with `node --test tests/studentPreview.test.js`.
+`components/polls/` extracts `ActivePolls`, `LecturePollGroups`, `OpenFromBank`, `QuickPoll`, `SessionSelect`, `DurationField` and `pollDuration`. Course and lecture pages reuse them; behavior, one-minute defaults, countdowns and time extension are preserved.
