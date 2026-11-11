@@ -1,32 +1,12 @@
-import { useState } from 'react'
-
-import { STORAGE_KEY } from '../theme.js'
+import { useSyncExternalStore } from 'react'
+import { getThemeSnapshot, setThemeMode, subscribeTheme } from '../theme.js'
 
 export default function ThemeToggle() {
-  const [theme, setTheme] = useState(() => document.documentElement.dataset.theme || 'light')
-
-  function toggle() {
-    const next = theme === 'dark' ? 'light' : 'dark'
-    document.documentElement.dataset.theme = next
-    setTheme(next)
-    try { localStorage.setItem(STORAGE_KEY, next) } catch { /* The toggle still works without storage. */ }
-  }
-
-  return (
-    <button
-      type="button"
-      className="theme-toggle"
-      role="switch"
-      aria-checked={theme === 'dark'}
-      aria-label="Dark mode"
-      onClick={toggle}
-    >
-      <span
-        className={`theme-icon ${theme === 'dark' ? 'theme-icon-moon' : 'theme-icon-sun'}`}
-        aria-hidden="true"
-      />
-      {theme === 'dark' ? 'Dark mode' : 'Light mode'}
-      <span className="theme-track" aria-hidden="true"><span /></span>
-    </button>
-  )
+  const [mode] = useSyncExternalStore(subscribeTheme, getThemeSnapshot).split(':')
+  return <button type="button" className="theme-toggle" role="switch" aria-checked={mode === 'dark'}
+    aria-label="Dark mode" onClick={() => setThemeMode(mode === 'dark' ? 'light' : 'dark')}>
+    <span className={`theme-icon theme-icon-${mode === 'dark' ? 'moon' : 'sun'}`} aria-hidden="true" />
+    {mode === 'dark' ? 'Dark mode' : 'Light mode'}
+    <span className="theme-track" aria-hidden="true"><span /></span>
+  </button>
 }
