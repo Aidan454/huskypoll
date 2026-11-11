@@ -45,6 +45,26 @@ Copy this block to the top of the log and fill it in:
 
 ## Log
 
+### 2026-11-11: Show newest polls and lectures first, with a sort control
+
+- **Agent:** Claude Code (project thread "Review 7 open PRs for merge")
+- **Requested by:** Mason
+- **Branch / PR:** `claude/project-thread-fznp8w`, PR #32
+- **Files:**
+  - `frontend/src/components/ui.jsx` (changed: new `SortSelect`)
+  - `frontend/src/hooks.js` (changed: new `useSortOrder`, remembered per list in localStorage)
+  - `frontend/src/index.css` (changed: `.sort-select` styles)
+  - `frontend/src/pages/course/InstructorPolls.jsx` (changed)
+  - `frontend/src/pages/course/LecturesTab.jsx` (changed)
+  - `frontend/src/pages/course/StudentHistory.jsx` (changed)
+  - `AGENT_CHANGES.md` (changed: this entry)
+- **Summary:** The Polls, Lectures and History lists show newest first by default, with a
+  "Newest first / Oldest first" dropdown. The branch was rebased onto `main` to drop an earlier
+  commit that had deleted `AGENT_CHANGES.md` by mistake.
+- **Checks:** Backend pytest (117 passed) and ruff, frontend ESLint and `vite build` passed on the branch.
+- **Follow-up:** Conflicts with PR #36 (instructor polling refactor) in `InstructorPolls.jsx` and
+  `LecturesTab.jsx`; if #36 merges first, move the sort into `components/polls/LecturePollGroups.jsx`.
+
 ### 2026-11-05: Add the agent change log
 
 - **Agent:** Claude Code (project thread "Add agent change log file")
