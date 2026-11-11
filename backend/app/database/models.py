@@ -503,3 +503,29 @@ class EventLog(Base):
 def _create_triggers_and_views(target, connection, **kw) -> None:
     for stmt in DDL_STATEMENTS:
         connection.exec_driver_sql(stmt)
+
+
+class CourseQuestion(Base):
+    """Discussion for one lecture, independent of its polls."""
+    __tablename__ = "course_questions"
+
+    session_id: Mapped[int] = mapped_column(ForeignKey("lecture_sessions.id", ondelete="CASCADE"), index=True)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"), index=True)
+    author_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[dt.datetime] = _created_at()
+    author: Mapped[User | None] = relationship()
+    __table_args__ = (CheckConstraint("length(trim(body)) BETWEEN 1 AND 2000", name="body_length"),)
+
+
+class CourseReply(Base):
+    __tablename__ = "course_replies"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    question_id: Mapped[int] = mapped_column(ForeignKey("course_questions.id", ondelete="CASCADE"), index=True)
+    author_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[dt.datetime] = _created_at()
+    author: Mapped[User | None] = relationship()
+    __table_args__ = (CheckConstraint("length(trim(body)) BETWEEN 1 AND 2000", name="body_length"),)

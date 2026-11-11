@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, useOutletContext } from 'react-router'
+import { Link, useNavigate, useOutletContext } from 'react-router'
 import { api } from '../../api.js'
 import { ErrorBox, Field, Loaded, Modal, SortSelect } from '../../components/ui.jsx'
 import { formatDate, todayIso } from '../../format.js'
@@ -76,6 +76,7 @@ function SessionForm({ initial, onSubmit, busy, error, onCancel, submitLabel }) 
 
 export default function LecturesTab() {
   const { course } = useOutletContext()
+  const staff = isStaff(course)
   const sessions = useApi(`/courses/${course.id}/sessions`)
   const [editing, setEditing] = useState(null) // null | 'new' | session
   const [opening, setOpening] = useState(null) // session to open a poll in
@@ -98,7 +99,7 @@ export default function LecturesTab() {
         <div>
           <h2>Lectures</h2>
           <p className="small muted" style={{ margin: 0 }}>
-            Polls are grouped by lecture. Opening a poll without choosing one uses today&apos;s lecture.
+            Open a lecture’s Q&A to ask questions or join its discussion. Instructors can also run polls in each lecture.
           </p>
         </div>
         <div className="row">
@@ -124,6 +125,8 @@ export default function LecturesTab() {
                     {s.is_auto && <span className="badge" style={{ marginLeft: 8 }}>Automatic</span>}
                   </span>
                   <span className="small muted">{s.poll_count} {s.poll_count === 1 ? 'poll' : 'polls'}</span>
+                  <Link className="btn btn-sm" to={`/courses/${course.id}/lectures/${s.id}/qa`}>Q&A ({s.qa_count})</Link>
+                  {staff && <>
                   <button
                     type="button"
                     className="btn btn-sm btn-primary"
@@ -139,12 +142,13 @@ export default function LecturesTab() {
                   <button
                     type="button"
                     className="btn btn-sm btn-danger"
-                    disabled={s.poll_count > 0}
-                    title={s.poll_count > 0 ? 'Only lectures without polls can be deleted' : undefined}
+                    disabled={s.poll_count > 0 || s.qa_count > 0}
+                    title={s.poll_count > 0 || s.qa_count > 0 ? 'Only lectures without polls or Q&A can be deleted' : undefined}
                     onClick={() => remove(s)}
                   >
                     Delete
                   </button>
+                  </>}
                 </li>
               ))}
             </ul>

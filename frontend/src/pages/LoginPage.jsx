@@ -1,3 +1,5 @@
+import { useLayoutEffect } from 'react'
+import { setLoginPage } from '../theme.js'
 import { Navigate, useSearchParams } from 'react-router'
 import LoginCard2 from '../components/LoginCard/LoginCard.jsx'
 import { useAuth } from '../hooks.js'
@@ -10,6 +12,11 @@ export default function LoginPage() {
   const { user } = useAuth()
   const [params] = useSearchParams()
   const next = safeNext(params.get('next'))
+
+  useLayoutEffect(() => {
+    setLoginPage(true)
+    return () => setLoginPage(false)
+  }, [])
 
   if (user) return <Navigate to={next} replace />
 

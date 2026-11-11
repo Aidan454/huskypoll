@@ -1,3 +1,4 @@
+import { Link } from 'react-router'
 import { useEffect, useState } from 'react'
 import { AnswerForm, PollCountdown, ResultsView } from '../../components/PollParts.jsx'
 import { Loaded } from '../../components/ui.jsx'
@@ -38,7 +39,7 @@ export default function StudentCourse({ course }) {
             list.map((p) => (
               <div className="card" key={p.id} style={{ borderTop: '4px solid var(--green)' }}>
                 <div className="card-head">
-                  <h2>Live poll</h2>
+                  <div><h2>Live poll</h2><Link to={`/courses/${course.id}/lectures/${p.session_id}/qa`}>Lecture Q&A</Link></div>
                   <div className="row">
                     <span className="badge badge-open">● Open</span>
                     <PollCountdown

@@ -55,3 +55,4 @@ src/
 ```
 ## Icons
 https://www.svgrepo.com/
+Lecture discussions: `/courses/:courseId/lectures/:sessionId/qa`, accessed through **Lectures → Q&A** by course members. The legacy `/qa` page redirects to Lectures. Instructor controls remain hidden from students. Discussion CSS is isolated in `pages/course/LectureQA.css`.

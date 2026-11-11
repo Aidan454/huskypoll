@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.database.models import (
     Course,
     CourseInstructor,
+    CourseQuestion,
     Enrollment,
     LectureSession,
     Media,
@@ -98,8 +99,9 @@ def bank_out(db: Session, b: QuestionBank) -> s.BankOut:
 
 def session_out(db: Session, sess: LectureSession) -> s.SessionOut:
     n = db.scalar(select(func.count()).select_from(Poll).where(Poll.session_id == sess.id))
+    qa = db.scalar(select(func.count()).select_from(CourseQuestion).where(CourseQuestion.session_id == sess.id))
     return s.SessionOut(id=sess.id, course_id=sess.course_id, title=sess.title, session_date=sess.session_date,
-                        is_auto=sess.is_auto, poll_count=n or 0)
+                        is_auto=sess.is_auto, poll_count=n or 0, qa_count=qa or 0)
 
 
 def roster_out(e: Enrollment) -> s.RosterEntryOut:

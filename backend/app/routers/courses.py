@@ -20,6 +20,7 @@ from app.database.export import (
 from app.database.models import (
     Course,
     CourseInstructor,
+    CourseQuestion,
     Enrollment,
     EventLog,
     LectureSession,
@@ -291,8 +292,8 @@ def update_session(session_id: int, body: s.SessionUpdate, db: Annotated[Session
 def delete_session(session_id: int, db: Annotated[Session, Depends(get_db, scope="function")], user: Annotated[User, Depends(current_user)]):
     sess = session_or_404(db, session_id)
     require_instructor(db, sess.course, user)
-    if sess.polls:
-        raise HTTPException(400, "Move or keep its polls: only empty sessions can be deleted")
+    if sess.polls or db.scalar(select(CourseQuestion.id).where(CourseQuestion.session_id == sess.id).limit(1)):
+        raise HTTPException(400, "Only lectures without polls or Q&A can be deleted")
     db.delete(sess)
 
 
