@@ -55,4 +55,6 @@ src/
 ```
 ## Icons
 https://www.svgrepo.com/
-Login always renders in light mode. Signing in restores the saved manual Light/Dark choice without changing that preference. The existing switch stays compact; no photo or time-based mode is added. Test with `node --test tests/theme.test.js`.
+## Student question preview
+
+The shared question editor offers **Student preview** before publishing. It renders a whitelisted projection without answer keys/explanations, keeps preview answers local, and preserves the draft when returning to edit. Check with `node --test tests/studentPreview.test.js`.
