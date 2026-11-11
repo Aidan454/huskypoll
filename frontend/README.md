@@ -55,6 +55,4 @@ src/
 ```
 ## Icons
 https://www.svgrepo.com/
-## Instructor poll components
-
-`components/polls/` extracts `ActivePolls`, `LecturePollGroups`, `OpenFromBank`, `QuickPoll`, `SessionSelect`, `DurationField` and `pollDuration`. Course and lecture pages reuse them; behavior, one-minute defaults, countdowns and time extension are preserved.
+Lecture discussions: `/courses/:courseId/lectures/:sessionId/qa`, accessed through **Lectures → Q&A** by course members. The legacy `/qa` page redirects to Lectures. Instructor controls remain hidden from students. Discussion CSS is isolated in `pages/course/LectureQA.css`.

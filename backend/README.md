@@ -357,3 +357,19 @@ course) and `tas00001` (TA), so for example: `python -m app.database delete-cour
   (`npm ci`, `npm run build`, migrating, serving the built app at a sub-path in
   a real browser), but the image itself hasn't been built yet. Build it once on
   a machine with Docker.
+
+### Lecture Q&A
+
+All endpoints require login and current course membership (or course staff/admin access).
+Posts are named, plain text, 1–2,000 characters after trimming; archived courses are read-only.
+Questions and replies belong to individual lectures, independent of polls, and are retained in SQLite. Lectures with Q&A cannot be deleted through the API; deleting an entire course removes its discussions.
+`qa_changed` (including `session_id`) is broadcast after a successful commit so clients can reload discussions.
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| GET | `/sessions/{session_id}/qa?before_id=…` | Latest 30 questions with reply counts; cursor for older posts |
+| POST | `/sessions/{session_id}/qa` | Ask a question (`body`) |
+| GET | `/sessions/{session_id}/qa/{question_id}/replies` | Read a question’s replies in posting order |
+| POST | `/sessions/{session_id}/qa/{question_id}/replies` | Answer or comment (`body`) |
+
+`GET /sessions/{session_id}` returns member-only lecture metadata including `qa_count`. The former course-wide Q&A endpoints are removed. Existing course posts and replies are preserved in a clearly labeled **Earlier course Q&A** lecture because their original lecture cannot be inferred. Run `alembic upgrade head` to apply the migration.

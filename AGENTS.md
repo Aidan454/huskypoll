@@ -231,4 +231,6 @@ agent work and the next agent can pick up where the last one stopped.
   `scripts/demo_tour.py` on `main`. It isn't from new code; leave it unless you're
   fixing it on purpose.
 
-Instructor poll UI lives in reusable `components/polls/` modules. Course and lecture pages import `OpenFromBank` and `QuickPoll` directly; preserve timer controls when editing these modules.
+## Lecture Q&A
+
+Questions require a lecture session and current course membership. Both students and instructors may post/reply. Use `/sessions/{session_id}/qa` and include `session_id` in `qa_changed` events. Archived courses are read-only; block lecture deletion if Q&A exists. Preserve legacy posts/replies during migrations.
