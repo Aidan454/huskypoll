@@ -189,13 +189,10 @@ class Course(Base):
     term: Mapped[str] = mapped_column(String(32), nullable=False)  # e.g. "Spring 2027"
     subject: Mapped[str] = mapped_column(String(16), nullable=False)  # e.g. "CSE"
     catalog: Mapped[str] = mapped_column(String(16), nullable=False)  # e.g. "4939W"
-    section: Mapped[str | None] = mapped_column(String(16))
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     join_code: Mapped[str | None] = mapped_column(String(16), unique=True)
-    # Grading: each poll is worth a fixed 1 point for answering plus
-    # points_correct for a correct answer.
+    # Every poll is worth a fixed 1 point for answering.
     points_participation: Mapped[float] = mapped_column(Float, nullable=False, default=1.0)
-    points_correct: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     created_at: Mapped[dt.datetime] = _created_at()
     archived_at: Mapped[dt.datetime | None] = mapped_column(UTCDateTime)
@@ -207,14 +204,13 @@ class Course(Base):
     )
 
     __table_args__ = (
-        UniqueConstraint("term", "subject", "catalog", "section"),
-        CheckConstraint("points_participation >= 0 AND points_correct >= 0", name="points_nonneg"),
+        UniqueConstraint("term", "subject", "catalog"),
+        CheckConstraint("points_participation >= 0", name="points_nonneg"),
     )
 
     @property
     def code(self) -> str:
-        sec = f"-{self.section}" if self.section else ""
-        return f"{self.subject} {self.catalog}{sec} ({self.term})"
+        return f"{self.subject} {self.catalog} ({self.term})"
 
 
 class CourseInstructor(Base):
@@ -507,3 +503,29 @@ class EventLog(Base):
 def _create_triggers_and_views(target, connection, **kw) -> None:
     for stmt in DDL_STATEMENTS:
         connection.exec_driver_sql(stmt)
+
+
+class CourseQuestion(Base):
+    """Discussion for one lecture, independent of its polls."""
+    __tablename__ = "course_questions"
+
+    session_id: Mapped[int] = mapped_column(ForeignKey("lecture_sessions.id", ondelete="CASCADE"), index=True)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    course_id: Mapped[int] = mapped_column(ForeignKey("courses.id", ondelete="CASCADE"), index=True)
+    author_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[dt.datetime] = _created_at()
+    author: Mapped[User | None] = relationship()
+    __table_args__ = (CheckConstraint("length(trim(body)) BETWEEN 1 AND 2000", name="body_length"),)
+
+
+class CourseReply(Base):
+    __tablename__ = "course_replies"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    question_id: Mapped[int] = mapped_column(ForeignKey("course_questions.id", ondelete="CASCADE"), index=True)
+    author_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[dt.datetime] = _created_at()
+    author: Mapped[User | None] = relationship()
+    __table_args__ = (CheckConstraint("length(trim(body)) BETWEEN 1 AND 2000", name="body_length"),)

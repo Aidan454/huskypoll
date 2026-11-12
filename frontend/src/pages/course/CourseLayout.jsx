@@ -35,8 +35,7 @@ export default function CourseLayout() {
       <div className="page-head">
         <div>
           <h1>
-            {c.subject} {c.catalog}
-            {c.section ? `-${c.section}` : ''}: {c.title}
+            {c.subject} {c.catalog}: {c.title}
           </h1>
           <p className="subtitle">
             {c.term} <RoleBadge role={c.my_role} /> {c.archived_at && <span className="badge">Archived</span>}
@@ -53,7 +52,7 @@ export default function CourseLayout() {
             <NavLink to={`${base}/history`}>History</NavLink>
           </>
         )}
-        {staff && <NavLink to={`${base}/lectures`}><span className="tab-icon tab-icon-lectures" aria-hidden="true" />Lectures</NavLink>}
+        <NavLink to={`${base}/lectures`}><span className="tab-icon tab-icon-lectures" aria-hidden="true" />Lectures</NavLink>
         {staff && <NavLink to={`${base}/roster`}><span className="tab-icon tab-icon-roster" aria-hidden="true" />Roster</NavLink>}
         {staff && <NavLink to={`${base}/staff`}>Instructors & TAs</NavLink>}
         {staff && <NavLink to={`${base}/grades`}><span className="tab-icon tab-icon-grades" aria-hidden="true" />Grades</NavLink>}

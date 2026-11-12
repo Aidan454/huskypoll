@@ -57,3 +57,7 @@ docker compose -f compose.server.yml exec huskypoll python -m app.database set-r
 Then open http://huskypoll.cse.uconn.edu and log in with your NetID. Make instructors on the
 Users page or with `set-role <netid> instructor`. After pulling new code, run the `up -d --build`
 line again (migrations run on start). Logs: `docker compose -f compose.server.yml logs -f`.
+
+## Lecture Q&A
+
+Students and instructors open **Lectures → Q&A** to ask and answer questions in a specific lecture, even without an active poll. Discussions update live and archived courses are read-only. Existing unscoped posts and replies are retained in a labeled **Earlier course Q&A** lecture. Apply `alembic upgrade head` before using this feature.

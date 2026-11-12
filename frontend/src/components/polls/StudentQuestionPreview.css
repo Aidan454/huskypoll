@@ -1,0 +1,9 @@
+/* Preview choices remain accessible to keyboard and screen-reader users. */
+.student-question-preview .choice input {
+  display: block;
+  flex: none;
+  width: 18px;
+  height: 18px;
+  accent-color: var(--blue);
+}
+

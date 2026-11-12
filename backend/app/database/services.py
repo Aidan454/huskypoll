@@ -21,6 +21,8 @@ from .models import (
     USER_ROLES,
     Course,
     CourseInstructor,
+    CourseQuestion,
+    CourseReply,
     Enrollment,
     EventLog,
     LectureSession,
@@ -265,8 +267,6 @@ def create_course(
     subject: str,
     catalog: str,
     title: str,
-    section: str | None = None,
-    points_correct: float = 0.0,
 ) -> Course:
     if not creator.has_role_at_least("instructor"):
         raise NotAllowed("only instructors and admins can create courses")
@@ -274,11 +274,9 @@ def create_course(
         term=term.strip(),
         subject=subject.strip().upper(),
         catalog=catalog.strip().upper(),
-        section=_clean(section),
         title=title.strip(),
         join_code=_unique_join_code(db),
         points_participation=1.0,
-        points_correct=points_correct,
         created_by=creator.id,
     )
     course.instructors.append(CourseInstructor(user_id=creator.id, role="owner"))
@@ -510,9 +508,12 @@ def open_poll(
     *,
     lecture_session: LectureSession | None = None,
     show_results: bool = False,
-    duration_seconds: int | None = None,
+    duration_seconds: int | None = 60,
 ) -> Poll:
-    """Open a poll on a question (from a bank, or just created in lecture)."""
+    """Open a poll on a question (from a bank, or just created in lecture).
+
+    The time limit defaults to one minute; pass duration_seconds=None for no timer.
+    """
     if not is_instructor(db, course, opened_by):
         raise NotAllowed("only an instructor of this course can open polls")
     if course.archived_at is not None:
@@ -547,12 +548,13 @@ def create_poll_set(
     *,
     lecture_session: LectureSession | None = None,
     show_results: bool = False,
-    duration_seconds: int | None = None,
+    duration_seconds: int | None = 60,
 ) -> list[Poll]:
     """Queue several questions in one lecture as draft polls, in the given order.
 
     The instructor then opens them one at a time with open_draft_poll(); each
-    question is still its own poll, so grading and history work as usual.
+    question is still its own poll, so grading and history work as usual. The
+    time limit defaults to one minute; pass duration_seconds=None for no timer.
     """
     if not is_instructor(db, course, created_by):
         raise NotAllowed("only an instructor of this course can create polls")
@@ -803,12 +805,15 @@ def regrade_poll(db: Session, poll: Poll) -> int:
 # ---------------------------------------------------------------------------
 
 def update_course(db: Session, course: Course, by: User, **changes) -> Course:
-    """Change title / section / correctness points. Only keys that are passed are changed."""
+    """Change term / subject / catalog / title. Only keys that are passed are changed."""
     if not is_instructor(db, course, by):
         raise NotAllowed("only an instructor of this course can change it")
-    for key in ("title", "section", "points_correct"):
+    for key in ("term", "subject", "catalog", "title"):
         if key in changes and changes[key] is not None:
-            setattr(course, key, changes[key])
+            value = changes[key].strip()
+            if not value:
+                raise HuskyPollError(f"{key} cannot be empty")
+            setattr(course, key, value.upper() if key in ("subject", "catalog") else value)
     db.flush()
     log_event(db, "course_update", user=by, course=course, changes=sorted(changes))
     return course
@@ -1024,3 +1029,23 @@ def save_media(db: Session, data: bytes, uploaded_by: User, media_dir) -> Media:
                                            size_bytes=len(data), uploaded_by=uploaded_by.id,
                                            created_at=utcnow()).on_conflict_do_nothing())
     return db.scalar(select(Media).where(Media.sha256 == digest))
+
+
+# Lecture Q&A: only current members may read or contribute; archived courses are read-only.
+def post_lecture_message(db: Session, session: LectureSession, by: User, body: str,
+                        *, question: CourseQuestion | None = None) -> CourseQuestion | CourseReply:
+    course = session.course
+    if not (is_instructor(db, course, by) or is_enrolled(db, course, by)):
+        raise NotAllowed("Only course members can post here.")
+    if course.archived_at is not None:
+        raise HuskyPollError("This course is archived. Its Q&A is read-only.")
+    body = body.strip()
+    if not 1 <= len(body) <= 2000:
+        raise HuskyPollError("Enter a question or reply between 1 and 2,000 characters.")
+    if question is not None and question.session_id != session.id:
+        raise NotAllowed("That question does not belong to this lecture.")
+    message = (CourseReply(question_id=question.id, author_id=by.id, body=body)
+               if question is not None else CourseQuestion(course_id=course.id, session_id=session.id, author_id=by.id, body=body))
+    db.add(message)
+    db.flush()
+    return message

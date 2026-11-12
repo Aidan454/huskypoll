@@ -4,13 +4,13 @@
 import { useEffect, useState } from 'react'
 import { Link, useOutletContext, useSearchParams } from 'react-router'
 import { api } from '../../api.js'
-import { AnswerKey, PollCountdown, QuestionBody, ResultsView, TimeUpModal } from '../../components/PollParts.jsx'
+import { AddTimeButton, AnswerKey, PollCountdown, QuestionBody, ResultsView } from '../../components/PollParts.jsx'
 import { ErrorBox, Loading, StatusBadge } from '../../components/ui.jsx'
 import { pct, QUESTION_TYPE_SHORT, snippet } from '../../format.js'
 import { useAction, useApi } from '../../hooks.js'
 import { connectCourse } from '../../live.js'
 
-function CurrentQuestion({ poll, number, total, liveResults, onExpire, children }) {
+function CurrentQuestion({ poll, number, total, liveResults, onAddTime, addingTime, children }) {
   const initial = useApi(`/polls/${poll.id}/results?s=${poll.status}`)
   const results = liveResults ?? initial.data
   return (
@@ -22,7 +22,14 @@ function CurrentQuestion({ poll, number, total, liveResults, onExpire, children 
           </span>
           <span className="badge">{QUESTION_TYPE_SHORT[poll.question.type]}</span>
           <StatusBadge status={poll.status} />
-          <PollCountdown seconds={poll.seconds_remaining} onExpire={onExpire} />
+          <PollCountdown seconds={poll.seconds_remaining} />
+          {poll.duration_seconds !== null && (
+            <AddTimeButton
+              onClick={onAddTime}
+              busy={addingTime}
+              title={poll.status === 'closed' ? 'Reopen with 30 more seconds' : 'Add 30 seconds'}
+            />
+          )}
         </div>
         <span className="small muted">
           {results?.responses ?? 0} answers
@@ -47,15 +54,12 @@ export default function LiveTab() {
   const sessionId = params.get('session')
   const polls = useApi(sessionId ? `/courses/${course.id}/polls?session_id=${sessionId}` : null)
   const [live, setLive] = useState({}) // poll_id -> latest results from the WebSocket
-  const [timeUp, setTimeUp] = useState(false)
   const { reload } = polls
 
   useEffect(
     () =>
       connectCourse(course.id, (msg) => {
         if (msg.type === 'results') setLive((r) => ({ ...r, [msg.results.poll_id]: msg.results }))
-        if (msg.type === 'poll_closed' && msg.reason === 'timeout') setTimeUp(true)
-        if (msg.type === 'poll_extended') setTimeUp(false)
         if (msg.type === 'poll_opened' || msg.type === 'poll_closed' || msg.type === 'poll_extended') reload()
       }),
     [course.id, reload],
@@ -68,7 +72,6 @@ export default function LiveTab() {
 
   const [extend, extending, extendError] = useAction(async (pollId, seconds) => {
     await api.post(`/polls/${pollId}/extend`, { seconds })
-    setTimeUp(false)
     reload()
   })
 
@@ -115,7 +118,8 @@ export default function LiveTab() {
             number={number}
             total={set.length}
             liveResults={live[shown.id]}
-            onExpire={() => setTimeUp(true)}
+            onAddTime={() => extend(shown.id, 30)}
+            addingTime={extending}
           >
             <div className="row" style={{ marginTop: 16 }}>
               {current ? (
@@ -205,17 +209,6 @@ export default function LiveTab() {
           </Link>
         </div>
       </div>
-
-      <TimeUpModal
-        open={timeUp}
-        busy={extending}
-        error={extendError}
-        onClose={() => {
-          setTimeUp(false)
-          if (current) act(() => api.post(`/polls/${current.id}/close`))
-        }}
-        onAddTime={(seconds) => extend(shown?.id, seconds)}
-      />
     </div>
   )
 }

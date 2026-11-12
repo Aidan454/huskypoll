@@ -1,0 +1,11 @@
+/* Course discussion stays independent of poll state. */
+.qa-page { max-width: 900px; }
+.qa-meta { display: flex; flex-wrap: wrap; gap: 8px 16px; color: var(--muted); font-size: 0.875rem; }
+.qa-meta strong { color: var(--text); }
+.qa-body { white-space: pre-wrap; overflow-wrap: anywhere; }
+.qa-form-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.qa-form-actions h3 { margin: 0; }
+.qa-replies { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border); }
+.qa-reply { padding: 4px 0 12px 16px; margin-bottom: 16px; border-left: 3px solid var(--border); }
+.qa-page textarea { width: 100%; resize: vertical; }
+

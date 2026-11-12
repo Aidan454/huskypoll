@@ -47,15 +47,14 @@ class CourseCreate(BaseModel):
     term: str = Field(examples=["Spring 2027"])
     subject: str = Field(examples=["CSE"])
     catalog: str = Field(examples=["2050"])
-    section: str | None = Field(None, examples=["001"])
     title: str = Field(examples=["Data Structures"])
-    points_correct: float = Field(0.0, ge=0)
 
 
 class CourseUpdate(BaseModel):
+    term: str | None = Field(None, min_length=1, max_length=32)
+    subject: str | None = Field(None, min_length=1, max_length=16)
+    catalog: str | None = Field(None, min_length=1, max_length=16)
     title: str | None = None
-    section: str | None = None
-    points_correct: float | None = Field(None, ge=0)
 
 
 class CourseOut(BaseModel):
@@ -63,11 +62,9 @@ class CourseOut(BaseModel):
     term: str
     subject: str
     catalog: str
-    section: str | None
     title: str
     code: str
     points_participation: float
-    points_correct: float
     archived_at: dt.datetime | None
     my_role: Role | None
     join_code: str | None = None  # instructors only
@@ -250,6 +247,7 @@ class SessionOut(BaseModel):
     session_date: dt.date
     is_auto: bool
     poll_count: int
+    qa_count: int = 0
 
 
 class PollOpen(BaseModel):
@@ -257,7 +255,8 @@ class PollOpen(BaseModel):
     session_id: int | None = Field(None, description="Default: today's session, created if needed")
     show_results: bool = False
     duration_seconds: int | None = Field(
-        None, ge=5, le=4 * 3600, description="Time limit in seconds; null = no time limit")
+        60, ge=5, le=4 * 3600,
+        description="Time limit in seconds; defaults to 60 (one minute); null = no time limit")
 
 
 class PollSetCreate(BaseModel):
@@ -268,7 +267,8 @@ class PollSetCreate(BaseModel):
     show_results: bool = False
     open_first: bool = True
     duration_seconds: int | None = Field(
-        None, ge=5, le=4 * 3600, description="Time limit for each question, in seconds; null = no limit")
+        60, ge=5, le=4 * 3600,
+        description="Time limit for each question, in seconds; defaults to 60 (one minute); null = no limit")
 
 
 class QuickPoll(QuestionCreate):
@@ -276,7 +276,8 @@ class QuickPoll(QuestionCreate):
     session_id: int | None = None
     show_results: bool = False
     duration_seconds: int | None = Field(
-        None, ge=5, le=4 * 3600, description="Time limit in seconds; null = no time limit")
+        60, ge=5, le=4 * 3600,
+        description="Time limit in seconds; defaults to 60 (one minute); null = no time limit")
 
 
 class PollUpdate(BaseModel):
@@ -385,3 +386,18 @@ class DeleteCourseOut(BaseModel):
     sessions: int
     polls: int
     responses: int
+
+
+class CourseMessageCreate(BaseModel):
+    body: str = Field(min_length=1, max_length=2000)
+
+
+class CourseMessageOut(BaseModel):
+    id: int
+    body: str
+    author_name: str
+    created_at: dt.datetime
+
+
+class CourseQuestionOut(CourseMessageOut):
+    reply_count: int

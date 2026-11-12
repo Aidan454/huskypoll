@@ -183,13 +183,15 @@ agent work and the next agent can pick up where the last one stopped.
   the answer key is hidden again until it closes. Only closed polls count toward
   grades. Every poll belongs to a lecture (`lecture_sessions`); the Lectures tab
   can open a poll in a chosen lecture, otherwise today's lecture is used.
-- **Timed polls** are optional. A poll can be opened with `duration_seconds`
-  (the UI asks for minutes); `closes_at` is then the deadline. `app/timers.py`
-  closes expired polls once a second and broadcasts `poll_closed` with
-  `reason: "timeout"`; students' answers after that are refused. Adding time
-  (`services.extend_poll`, `POST /polls/{id}/extend`) reopens a poll that already
-  closed and counts the added time from now. `seconds_remaining` is computed on
-  the server and sent with the poll so browsers never compare clocks.
+- **Timed polls** default to one minute (`duration_seconds=60`; the UI asks for
+  minutes and pre-fills 1). Pass `duration_seconds=null` for no timer;
+  `closes_at` is then the deadline. `app/timers.py` closes expired polls once a
+  second and broadcasts `poll_closed` with `reason: "timeout"`; students' answers
+  after that are refused, and instructor views close the poll without a modal.
+  Adding time (`services.extend_poll`, `POST /polls/{id}/extend`) reopens a poll
+  that already closed and counts the added time from now; instructor views show a
+  "+30 sec" button next to the countdown. `seconds_remaining` is computed on the
+  server and sent with the poll so browsers never compare clocks.
 - **Participation export** (`database/export.py`) has one column per lecture date
   with a closed poll (`W1-01-20-PART`), 100 if the student answered any poll that
   day, else 0. Each download is logged in `event_log` with its dates, and
@@ -228,3 +230,7 @@ agent work and the next agent can pick up where the last one stopped.
 - **Known lint:** ruff flags `DTZ011` (`date.today()`) in `services.py` and
   `scripts/demo_tour.py` on `main`. It isn't from new code; leave it unless you're
   fixing it on purpose.
+
+## Lecture Q&A
+
+Questions require a lecture session and current course membership. Both students and instructors may post/reply. Use `/sessions/{session_id}/qa` and include `session_id` in `qa_changed` events. Archived courses are read-only; block lecture deletion if Q&A exists. Preserve legacy posts/replies during migrations.
