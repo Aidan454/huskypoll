@@ -23,7 +23,9 @@ from .services import (
     HuskyPollError,
     enroll,
     find_or_create_user,
+    find_user,
     log_event,
+    normalize_net_id,
 )
 
 # StudentAdmin column headers -> our field names (matched case-insensitively).
@@ -236,3 +238,57 @@ def import_identifiers(
         else:
             records.append({"net_id": token.upper(), "_row": n})  # an invalid NetID is reported in .skipped
     return import_records(db, course, records, by=by)
+
+
+def preview_records(db: Session, course: Course, records: list[dict]) -> dict:
+    """Classify roster rows without creating users, enrollments or events."""
+    rows = []
+    seen = set()
+    present = set()
+    counts = {"added": 0, "reactivated": 0, "unchanged": 0, "invalid": 0, "duplicate": 0}
+    for rec in records:
+        status, reason = "added", None
+        user = None
+        try:
+            net_id = normalize_net_id(rec.get("net_id"))
+            email, sid = rec.get("email"), rec.get("student_id")
+            if not (net_id or email or sid):
+                raise HuskyPollError("Missing NetID, email or student ID")
+            if email and ("@" not in email or " " in email):
+                raise HuskyPollError("Invalid email address")
+            if sid and not STUDENT_ID_RE.fullmatch(sid):
+                raise HuskyPollError("Student ID must contain 7 digits")
+            matches = [find_user(db, **{key: value}) for key, value in
+                       (("net_id", net_id), ("email", email), ("student_id", sid)) if value]
+            ids = {u.id for u in matches if u}
+            if len(ids) > 1:
+                raise HuskyPollError("Identifiers match different accounts; correct this row first")
+            user = next((u for u in matches if u), None)
+            if user and any(getattr(user, key) and getattr(user, key) != value
+                            for key, value in (("net_id", net_id), ("email", email), ("student_id", sid)) if value):
+                raise HuskyPollError("Identifiers conflict with an existing account; correct this row first")
+            keys = {(key, value) for key, value in
+                    (("net_id", net_id), ("email", email), ("student_id", sid)) if value}
+            if user:
+                keys.add(("user", user.id))
+                present.add(user.id)
+            if seen & keys:
+                status, reason = "duplicate", "Duplicate student in this file"
+            else:
+                if user:
+                    enrollment = db.scalar(select(Enrollment).where(
+                        Enrollment.course_id == course.id, Enrollment.user_id == user.id))
+                    if enrollment:
+                        status = "unchanged" if enrollment.status == "active" else "reactivated"
+                seen.update(keys)
+        except HuskyPollError as exc:
+            status, reason = "invalid", str(exc)
+        counts[status] += 1
+        rows.append({"row": rec.get("_row", 0), "net_id": rec.get("net_id"), "email": rec.get("email"),
+                         "name": rec.get("name") or (user.display_name if user else None),
+                         "student_id": rec.get("student_id"), "status": status, "reason": reason})
+    missing = [{"id": e.user.id, "net_id": e.user.net_id, "display_name": e.user.display_name}
+               for e in db.scalars(select(Enrollment).where(
+                   Enrollment.course_id == course.id, Enrollment.status == "active"))
+               if e.user_id not in present]
+    return {"rows": rows, "counts": counts, "missing": missing}

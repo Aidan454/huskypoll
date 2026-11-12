@@ -883,3 +883,59 @@ def test_lecture_qa_isolation_and_lecture_access(lecture):
     assert len(ann.get(f"/sessions/{first}/qa").json()) == 1
     # The former global API is gone; old clients cannot create unscoped posts.
     assert ann.post(f"/courses/{cid}/qa", json={"body": "Unscoped"}).status_code == 404
+
+
+def test_roster_preview_is_read_only_and_confirm_revalidates(app, lecture):
+    from sqlalchemy import func, select
+
+    from app.database.models import EventLog, User
+
+    prof, cid = lecture["prof"], lecture["cid"]
+    path = f"/courses/{cid}/roster/import"
+    with app.state.session_factory() as db:
+        before = (db.scalar(select(func.count()).select_from(User)),
+                  db.scalar(select(func.count()).select_from(EventLog)))
+    original = prof.get(f"/courses/{cid}/roster").json()
+    data = b"NetID,Email,Name\naab11111,ann.able@uconn.edu,Ann Able\nnew12345,new12345@uconn.edu,New Student\nNEW12345,new12345@uconn.edu,New Student\nbad,,Invalid Student\n"
+    upload = {"file": ("roster.csv", data, "text/csv")}
+    response = prof.post(path + "?preview=true", files=upload)
+    assert response.status_code == 200
+    report = response.json()
+    assert report["counts"] == {"added": 1, "unchanged": 1, "reactivated": 0, "invalid": 1, "duplicate": 1}
+    assert len(report["missing"]) == 1
+    assert prof.get(f"/courses/{cid}/roster").json() == original
+    with app.state.session_factory() as db:
+        assert before == (db.scalar(select(func.count()).select_from(User)),
+                          db.scalar(select(func.count()).select_from(EventLog)))
+    assert prof.post(path, files=upload).status_code == 400
+    good = {"file": ("roster.csv", data.split(b"bad,,")[0], "text/csv")}
+    confirmed = prof.post(path, files=good)
+    assert confirmed.status_code == 200
+    assert confirmed.json()["enrolled"] == 1
+    assert len(prof.get(f"/courses/{cid}/roster").json()) == 3
+    assert lecture["ann"].post(path + "?preview=true", files=good).status_code == 403
+
+
+def test_roster_preview_restore_and_conflict(lecture):
+    prof, cid = lecture["prof"], lecture["cid"]
+    path = f"/courses/{cid}/roster/import?preview=true"
+    roster = prof.get(f"/courses/{cid}/roster").json()
+    ann_id = next(e["user"]["id"] for e in roster if e["user"]["net_id"] == "aab11111")
+    prof.delete(f"/courses/{cid}/roster/{ann_id}")
+    data = b"NetID,Email\naab11111,ann.able@uconn.edu\nbba22222,ann.able@uconn.edu\n"
+    response = prof.post(path, files={"file": ("r.csv", data)})
+    assert response.json()["counts"]["reactivated"] == 1
+    assert response.json()["counts"]["invalid"] == 1
+    assert len(prof.get(f"/courses/{cid}/roster").json()) == 1
+
+
+def test_roster_preview_xlsx_empty_and_size(lecture):
+    prof, cid = lecture["prof"], lecture["cid"]
+    path = f"/courses/{cid}/roster/import?preview=true"
+    with open(ROOT / "samples" / "studentadmin-template.xlsx", "rb") as file:
+        result = prof.post(path, files={"file": ("roster.xlsx", file)})
+    assert result.status_code == 200
+    assert result.json()["counts"]["added"] == 1
+    empty = prof.post(path, files={"file": ("empty.csv", b"NetID,Email\n")})
+    assert empty.json()["rows"] == []
+    assert prof.post(path, files={"file": ("large.csv", b"x" * (5 * 1024 * 1024 + 1))}).status_code == 413

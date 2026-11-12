@@ -3,6 +3,7 @@ import { useOutletContext } from 'react-router'
 import { api } from '../../api.js'
 import { ConfirmModal, ErrorBox, Field, Loaded, Modal } from '../../components/ui.jsx'
 import { useAction, useApi } from '../../hooks.js'
+import RosterFileImport from '../../components/RosterFileImport.jsx'
 
 function ImportSummary({ result }) {
   if (!result) return null
@@ -122,7 +123,6 @@ function AddStudents({ course, onDone }) {
   const [mode, setMode] = useState('paste')
   const [text, setText] = useState('')
   const [one, setOne] = useState({ identifier: '', first_name: '', last_name: '', section: '' })
-  const [file, setFile] = useState(null)
   const [result, setResult] = useState(null)
 
   const [submit, busy, error] = useAction(async () => {
@@ -131,7 +131,7 @@ function AddStudents({ course, onDone }) {
     else if (mode === 'one') {
       const body = Object.fromEntries(Object.entries(one).map(([k, v]) => [k, v.trim() || null]))
       r = await api.post(`/courses/${course.id}/roster`, body)
-    } else r = await api.upload(`/courses/${course.id}/roster/import`, file)
+    }
     setResult(r)
     onDone()
   })
@@ -158,7 +158,10 @@ function AddStudents({ course, onDone }) {
           </a>
         ))}
       </div>
-      <form
+      {mode === 'import' ? <>
+        <RosterFileImport course={course} onDone={onDone} onImported={setResult} />
+        {result && <RosterChanges key={result.summary} course={course} result={result} onDone={onDone} />}
+      </> : <form
         onSubmit={(e) => {
           e.preventDefault()
           submit()
@@ -187,31 +190,14 @@ function AddStudents({ course, onDone }) {
             </div>
           </>
         )}
-        {mode === 'import' && (
-          <Field
-            label="Class roster from StudentAdmin (.xlsx or .csv)"
-            hint="Import the full, current class list. New students are added, and you can then review anyone who is no longer on it."
-          >
-            <input
-              type="file"
-              accept=".xlsx,.csv,text/csv"
-              onChange={(e) => {
-                setFile(e.target.files[0] ?? null)
-                setResult(null)
-              }}
-              required
-            />
-          </Field>
-        )}
         <ErrorBox error={error} />
         <ImportSummary result={result} />
-        {result && mode === 'import' && <RosterChanges key={result.summary} course={course} result={result} onDone={onDone} />}
         <div className="form-actions">
           <button type="submit" className="btn btn-primary" disabled={busy}>
             {busy ? 'Adding…' : 'Add to roster'}
           </button>
         </div>
-      </form>
+      </form>}
     </>
   )
 }
