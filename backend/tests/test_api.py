@@ -962,3 +962,53 @@ def test_roster_import_skips_conflicting_identifiers(lecture):
     assert result.status_code == 200
     assert result.json()["enrolled"] == 1
     assert result.json()["skipped"][0]["row"] == 2
+
+
+@pytest.mark.parametrize("spreadsheet", [False, True])
+def test_roster_separate_name_columns_preview_and_import(lecture, spreadsheet):
+    import io
+
+    from openpyxl import Workbook
+
+    rows = [["ID", "First Name", "Last Name"], ["9876543", "Mary Ann", "de la Cruz"]]
+    if spreadsheet:
+        book = Workbook()
+        for row in rows:
+            book.active.append(row)
+        stream = io.BytesIO()
+        book.save(stream)
+        book.close()
+        upload = {"file": ("roster.xlsx", stream.getvalue())}
+    else:
+        upload = {"file": ("roster.csv", b"ID,First Name,Last Name\n9876543,Mary Ann,de la Cruz\n")}
+    prof, cid = lecture["prof"], lecture["cid"]
+    path = f"/courses/{cid}/roster/import"
+    report = prof.post(path + "?preview=true", files=upload)
+    assert report.status_code == 200
+    assert report.json()["rows"][0]["name"] == "Mary Ann de la Cruz"
+    assert report.json()["counts"]["added"] == 1
+    assert len(prof.get(f"/courses/{cid}/roster").json()) == 2
+    assert prof.post(path, files=upload).json()["enrolled"] == 1
+    user = next(e["user"] for e in prof.get(f"/courses/{cid}/roster").json()
+                if e["user"]["student_id"] == "9876543")
+    assert user["first_name"] == "Mary Ann"
+    assert user["last_name"] == "de la Cruz"
+
+
+@pytest.mark.parametrize("columns,values,expected", [
+    ("Name", '\"Smith, Jordan\"', ("Jordan", "Smith")),
+    ("First Name,Last Name", "Jordan,Smith", ("Jordan", "Smith")),
+    ("first_name,last_name", "Jordan,Smith", ("Jordan", "Smith")),
+    ("FirstName,LastName,Name", 'Jordan,Smith,\"Wrong, Person\"', ("Jordan", "Smith")),
+    ("First Name,Last Name,Name", ',Smith,\"Brown, Jordan\"', ("Jordan", "Smith")),
+])
+def test_roster_name_formats(lecture, columns, values, expected):
+    prof, cid = lecture["prof"], lecture["cid"]
+    upload = {"file": ("r.csv", f"NetID,{columns}\nnew12345,{values}\n".encode())}
+    path = f"/courses/{cid}/roster/import"
+    preview = prof.post(path + "?preview=true", files=upload).json()
+    assert preview["rows"][0]["name"] == " ".join(expected)
+    assert prof.post(path, files=upload).json()["enrolled"] == 1
+    user = next(e["user"] for e in prof.get(f"/courses/{cid}/roster").json()
+                if e["user"]["net_id"] == "new12345")
+    assert (user["first_name"], user["last_name"]) == expected
