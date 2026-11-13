@@ -1,14 +1,41 @@
 // One poll. Instructors get the classroom view (code, QR, live results, close);
 // students get the answer form, or their mark once it's closed.
-import { useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Link, useParams } from 'react-router'
 import { api } from '../api.js'
+import PollControls from '../components/PollControls/PollControls.jsx'
 import { AddTimeButton, AnswerForm, AnswerKey, Mark, PollCountdown, QuestionBody, ResultsView } from '../components/PollParts.jsx'
 import QuestionEditor from '../components/QuestionEditor.jsx'
 import { ErrorBox, Loaded, Loading, Modal, StatusBadge } from '../components/ui.jsx'
 import { answerText, formatDateTime, pct, QUESTION_TYPE_SHORT } from '../format.js'
 import { useAction, useApi } from '../hooks.js'
 import { connectCourse } from '../live.js'
+
+// The instructor's sidebar content lives in InstructorPoll (it needs the live
+// results and actions), so it portals into the rail rendered by PollFrame.
+const PollSidebar = createContext(null)
+
+// Fixed navy rail on wide screens; hidden below 900px so phones keep the
+// centered poll card and the top bar's drawer. `nav` (the course breadcrumb)
+// sits at the top of the rail and falls back to the top of the page on phones.
+function PollFrame({ nav, children }) {
+  const [sidebarSlot, setSidebarSlot] = useState(null)
+  return (
+    <PollSidebar.Provider value={sidebarSlot}>
+      <div className="poll-shell">
+        <div className="poll-sidebar">
+          {nav}
+          <div className="poll-sidebar-slot" ref={setSidebarSlot} />
+        </div>
+        <main className="page">
+          {nav && <div className="poll-mobile-nav">{nav}</div>}
+          {children}
+        </main>
+      </div>
+    </PollSidebar.Provider>
+  )
+}
 
 function ResponsesTable({ poll }) {
   const rows = useApi(`/polls/${poll.id}/responses`)
@@ -54,6 +81,7 @@ function ResponsesTable({ poll }) {
 }
 
 function InstructorPoll({ poll, setPoll, reloadPoll }) {
+  const sidebarEl = useContext(PollSidebar)
   const results = useApi(`/polls/${poll.id}/results`)
   const { setData: setResults } = results
   const [showResponses, setShowResponses] = useState(false)
@@ -103,43 +131,57 @@ function InstructorPoll({ poll, setPoll, reloadPoll }) {
     (q.type === 'free_text' && Boolean(q.text_answer)) ||
     (q.type === 'numeric' && q.numeric_answer !== null && q.numeric_answer !== undefined)
 
+  // Timer, join code/QR and the live answer count; PollControls sit at the bottom.
+  const sidebar = (
+    <>
+      <div className="poll-sidebar-info">
+        {(poll.seconds_remaining !== null || poll.duration_seconds !== null) && (
+          <div className="poll-sidebar-timer">
+            <PollCountdown seconds={poll.seconds_remaining} />
+            {poll.duration_seconds !== null && (
+              <AddTimeButton
+                onClick={() => addTime(30)}
+                busy={addingTime}
+                title={poll.status === 'closed' ? 'Reopen with 30 more seconds' : 'Add 30 seconds'}
+              />
+            )}
+          </div>
+        )}
+        {open && poll.access_code && (
+          <div className="poll-sidebar-code">
+            <img className="qr" src={api.qrUrl(poll.id)} alt={`QR code for ${poll.join_url}`} />
+            <div className="code-big">{poll.access_code}</div>
+          </div>
+        )}
+        <div>
+          <div className="stat">{r?.responses ?? '–'}</div>
+          <div className="stat-label">Answers</div>
+        </div>
+      </div>
+      <div className="poll-sidebar-controls">
+        <PollControls
+          isOpen={open}
+          onToggleOpen={() => (open ? close() : reopen())}
+          busy={sharing || closing || reopening}
+        />
+      </div>
+    </>
+  )
+
   return (
     <>
+      {sidebarEl && createPortal(sidebar, sidebarEl)}
       <div className="present">
-        <div className="card">
+        <div>
           <div className="card-head">
             <div className="row">
               <StatusBadge status={poll.status} />
               <span className="badge">{QUESTION_TYPE_SHORT[q.type]}</span>
-              <PollCountdown seconds={poll.seconds_remaining} />
-              {poll.duration_seconds !== null && (
-                <AddTimeButton
-                  onClick={() => addTime(30)}
-                  busy={addingTime}
-                  title={poll.status === 'closed' ? 'Reopen with 30 more seconds' : 'Add 30 seconds'}
-                />
-              )}
             </div>
             <div className="row">
               <button type="button" className="btn btn-sm" onClick={() => toggleShare()} disabled={sharing}>
                 {poll.show_results ? 'Hide results from students' : 'Show results to students'}
               </button>
-              {open && (
-                <button type="button" className="btn btn-sm btn-solid-danger" onClick={() => close()} disabled={closing}>
-                  {closing ? 'Closing…' : 'Close poll'}
-                </button>
-              )}
-              {poll.status === 'closed' && (
-                <button
-                  type="button"
-                  className="btn btn-sm btn-primary"
-                  onClick={() => reopen()}
-                  disabled={reopening}
-                  title="Let students answer again. Earlier answers are kept and can be changed."
-                >
-                  {reopening ? 'Reopening…' : 'Reopen poll'}
-                </button>
-              )}
             </div>
           </div>
           <ErrorBox error={shareError || closeError || reopenError || addTimeError} />
@@ -158,23 +200,7 @@ function InstructorPoll({ poll, setPoll, reloadPoll }) {
         </div>
 
         <div>
-          {open && poll.access_code && (
-            <div className="card code-box">
-              <div className="stat-label">Go to {poll.join_url ? new URL(poll.join_url).host : 'HuskyPoll'} and enter</div>
-              <div className="code-big">{poll.access_code}</div>
-              <img className="qr" src={api.qrUrl(poll.id)} alt={`QR code for ${poll.join_url}`} />
-              {poll.join_url && (
-                <a className="small" href={poll.join_url} target="_blank" rel="noreferrer">
-                  {poll.join_url}
-                </a>
-              )}
-            </div>
-          )}
           <div className="stats">
-            <div className="card">
-              <div className="stat">{r?.responses ?? '–'}</div>
-              <div className="stat-label">Answers</div>
-            </div>
             <div className="card">
               <div className="stat">{r && hasKey ? `${pct(r.correct, r.responses)}%` : '–'}</div>
               <div className="stat-label">{hasKey ? 'Correct' : 'No answer key'}</div>
@@ -234,7 +260,7 @@ function StudentPoll({ poll, reloadPoll }) {
 
   if (poll.status === 'open') {
     return (
-      <div className="card page-narrow" style={{ margin: '0 auto' }}>
+      <div className="page-narrow" style={{ margin: '0 auto' }}>
         <div className="card-head">
           <StatusBadge status={poll.status} />
           <PollCountdown seconds={poll.seconds_remaining} onExpire={() => setExpired(true)} />
@@ -244,7 +270,7 @@ function StudentPoll({ poll, reloadPoll }) {
     )
   }
   return (
-    <div className="card page-narrow" style={{ margin: '0 auto' }}>
+    <div className="page-narrow" style={{ margin: '0 auto' }}>
       <div className="card-head">
         <StatusBadge status={poll.status} />
         <Mark response={poll.my_response} />
@@ -267,31 +293,33 @@ export default function PollPage() {
 
   if (poll.error) {
     return (
-      <main className="page">
+      <PollFrame>
         <ErrorBox error={poll.error} />
-      </main>
+      </PollFrame>
     )
   }
   if (!poll.data || !course.data) {
     return (
-      <main className="page">
+      <PollFrame>
         <ErrorBox error={course.error} />
         {!course.error && <Loading />}
-      </main>
+      </PollFrame>
     )
   }
   const c = course.data
   const staff = ['owner', 'instructor', 'ta'].includes(c.my_role)
+  const nav = (
+    <nav className="crumbs poll-nav" aria-label="Breadcrumb">
+      <Link to="/courses">Courses</Link> / <Link to={`/courses/${c.id}`}>{`${c.subject} ${c.catalog}`}</Link> / Poll
+    </nav>
+  )
   return (
-    <main className="page">
-      <div className="crumbs">
-        <Link to="/courses">Courses</Link> / <Link to={`/courses/${c.id}`}>{`${c.subject} ${c.catalog}`}</Link> / Poll
-      </div>
+    <PollFrame nav={nav}>
       {staff ? (
         <InstructorPoll poll={poll.data} setPoll={poll.setData} reloadPoll={poll.reload} />
       ) : (
         <StudentPoll poll={poll.data} reloadPoll={poll.reload} />
       )}
-    </main>
+    </PollFrame>
   )
 }

@@ -70,7 +70,7 @@ const router = createBrowserRouter(
                 { path: 'settings', element: <SettingsTab /> },
               ],
             },
-            { path: '/polls/:pollId', element: <PollPage /> },
+            { path: '/polls/:pollId', element: <PollPage />, handle: { hideHeader: true } },
             { path: '/join', element: <JoinPage /> },
             { path: '/join/:code', element: <JoinPage /> },
             { path: '/banks', element: <BanksPage /> },
