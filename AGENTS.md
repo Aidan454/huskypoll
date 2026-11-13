@@ -234,3 +234,5 @@ agent work and the next agent can pick up where the last one stopped.
 ## Lecture Q&A
 
 Questions require a lecture session and current course membership. Both students and instructors may post/reply. Use `/sessions/{session_id}/qa` and include `session_id` in `qa_changed` events. Archived courses are read-only; block lecture deletion if Q&A exists. Preserve legacy posts/replies during migrations.
+
+Roster uploads support `preview=true` on the import endpoint. Preview must remain read-only. Confirmation revalidates all rows and skips duplicates; malformed/conflicting identifiers are skipped and reported. Never drop missing students as part of the preview UI.

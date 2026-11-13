@@ -373,3 +373,7 @@ Questions and replies belong to individual lectures, independent of polls, and a
 | POST | `/sessions/{session_id}/qa/{question_id}/replies` | Answer or comment (`body`) |
 
 `GET /sessions/{session_id}` returns member-only lecture metadata including `qa_count`. The former course-wide Q&A endpoints are removed. Existing course posts and replies are preserved in a clearly labeled **Earlier course Q&A** lecture because their original lecture cannot be inferred. Run `alembic upgrade head` to apply the migration.
+
+### Roster file preview
+
+In Roster → Add students → StudentAdmin file, choose or drag in one CSV/XLSX (up to 5 MB). Review row statuses and missing students before confirming. Invalid and duplicate rows are skipped and reported; valid students can still be imported. Preview (`POST /courses/{id}/roster/import?preview=true`, multipart `file`) does not create users, enrollments, or activity events. Confirmation revalidates the same file against the current roster. Missing students remain enrolled; the existing separate post-import drop review is retained.

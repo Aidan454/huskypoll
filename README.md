@@ -61,3 +61,7 @@ line again (migrations run on start). Logs: `docker compose -f compose.server.ym
 ## Lecture Q&A
 
 Students and instructors open **Lectures → Q&A** to ask and answer questions in a specific lecture, even without an active poll. Discussions update live and archived courses are read-only. Existing unscoped posts and replies are retained in a labeled **Earlier course Q&A** lecture. Apply `alembic upgrade head` before using this feature.
+
+### Roster file preview
+
+In Roster → Add students → StudentAdmin file, choose or drag in one CSV/XLSX (up to 5 MB). Review row statuses and missing students before confirming. Invalid and duplicate rows are skipped and reported; valid students can still be imported. Preview (`POST /courses/{id}/roster/import?preview=true`, multipart `file`) does not create users, enrollments, or activity events. Confirmation revalidates the same file against the current roster. Missing students remain enrolled; the existing separate post-import drop review is retained.

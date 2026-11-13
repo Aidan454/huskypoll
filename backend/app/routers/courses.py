@@ -30,8 +30,9 @@ from app.database.roster import (
     drop_students,
     import_identifiers,
     import_records,
-    import_studentadmin_csv,
-    import_studentadmin_xlsx,
+    preview_records,
+    read_studentadmin_csv,
+    read_studentadmin_xlsx,
 )
 
 from .. import schemas as s
@@ -205,35 +206,37 @@ def paste_roster(course_id: int, body: s.RosterPaste, db: Annotated[Session, Dep
     return _import_out(import_identifiers(db, c, body.text, by=user))
 
 
-@router.post("/courses/{course_id}/roster/import", response_model=s.ImportResultOut,
-             summary="Import a StudentAdmin class roster (.xlsx or .csv)",
-             description="Adds new students. Students on the roster but not in the file come back in "
-                         "`missing`; drop them with POST /roster/drop (or pass drop_missing=true).")
+@router.post("/courses/{course_id}/roster/import",
+             summary="Preview or import a StudentAdmin roster (.xlsx or .csv)")
 def import_roster(course_id: int, file: Annotated[UploadFile, File(...)],
                    db: Annotated[Session, Depends(get_db, scope="function")], user: Annotated[User, Depends(current_user)],
-                   drop_missing: bool = False):
+                   drop_missing: bool = False, preview: bool = False):
     c = course_or_404(db, course_id)
     require_instructor(db, c, user)
     data = file.file.read(MAX_ROSTER_BYTES + 1)
     if len(data) > MAX_ROSTER_BYTES:
         raise HTTPException(413, "Roster file is too large (5 MB max)")
-    if not data.startswith(b"PK"):  # not a zip, so not .xlsx: read it as CSV
-        try:
-            return _import_out(import_studentadmin_csv(db, c, data, drop_missing=drop_missing, by=user))
-        except svc.HuskyPollError as exc:
-            raise HTTPException(400, f"Please upload the StudentAdmin roster as .xlsx or .csv: {exc}") from exc
-    with tempfile.TemporaryDirectory() as tmp:
-        path = Path(tmp) / "roster.xlsx"
-        path.write_bytes(data)
-        try:
-            res = import_studentadmin_xlsx(db, c, path, drop_missing=drop_missing, by=user)
-        except svc.HuskyPollError:
-            raise
-        except Exception as exc:
-            raise HTTPException(
-                400, "Could not read that spreadsheet; is it the StudentAdmin roster .xlsx?"
-                ) from exc
-    return _import_out(res)
+    try:
+        if data.startswith(b"PK"):
+            with tempfile.TemporaryDirectory() as tmp:
+                path = Path(tmp) / "roster.xlsx"
+                path.write_bytes(data)
+                records = read_studentadmin_xlsx(path)
+        else:
+            records = read_studentadmin_csv(data)
+    except svc.HuskyPollError as exc:
+        raise HTTPException(400, f"Could not read roster: {exc}") from exc
+    except Exception as exc:
+        raise HTTPException(400, "Could not read roster. Upload a CSV or XLSX with NetID / Email, or ID / Name columns.") from exc
+    report = preview_records(db, c, records)
+    if preview:
+        return report
+    valid = [rec for rec, row in zip(records, report["rows"], strict=True)
+             if row["status"] not in {"duplicate", "invalid"}]
+    skipped = [(row["row"], row["reason"]) for row in report["rows"]
+               if row["status"] in {"duplicate", "invalid"}]
+    return _import_out(import_records(db, c, valid, drop_missing=drop_missing, report_missing=True,
+                                      skipped_rows=skipped, by=user))
 
 
 @router.post("/courses/{course_id}/roster/drop", response_model=s.RosterDropOut,
