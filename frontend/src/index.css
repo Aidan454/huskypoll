@@ -340,18 +340,7 @@ textarea {
   padding: 18px 20px;
   margin-bottom: 16px;
 }
-.card-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-}
-.card-head h2,
-.card-head h3 {
-  margin: 0;
-}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -798,7 +787,7 @@ textarea {
 
 /* ---------- polls ---------- */
 .question-body {
-  font-size: 18px;
+  font-size: 32px;
   color: var(--heading);
   margin-bottom: 14px;
 }
@@ -808,6 +797,24 @@ textarea {
   border-radius: 8px;
   border: 1px solid var(--border);
   margin-bottom: 14px;
+}
+/* When results are visible, move the question image to the top right and shrink it. */
+.poll-question.has-results {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+.poll-question.has-results .question-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.poll-question.has-results .question-img {
+  order: 2;
+  flex: none;
+  max-width: 180px;
+  max-height: 120px;
+  object-fit: contain;
+  margin: 0 0 0 auto;
 }
 .choice {
   display: flex;
@@ -897,11 +904,34 @@ textarea {
   gap: 20px;
   align-items: start;
 }
-/* keep the code and QR in view while scrolling through several questions */
+/* Anchor the code, QR and controls to the right edge as a full-height sidebar. */
 @media (min-width: 861px) {
-  .present > :last-child {
-    position: sticky;
-    top: 64px;
+  .page:has(.present) {
+    max-width: none;
+    padding: 40px 64px 64px calc(300px + 64px);
+  }
+  .page:has(.present) .present {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .page:has(.present) .present > :last-child {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 300px;
+    margin: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    z-index: 30;
+  }
+  /* anchor the controls to the bottom of the sidebar */
+  .page:has(.present) .present > :last-child .poll-controls {
+    margin-top: auto;
+    margin-bottom: 0;
   }
 }
 @media (max-width: 860px) {
@@ -911,17 +941,19 @@ textarea {
 }
 .code-box {
   text-align: center;
+  background-color: #000e2f;
+
 }
 .code-big {
   font-family: var(--mono);
   font-size: 40px;
   font-weight: 700;
   letter-spacing: 6px;
-  color: var(--heading);
+  color: var(--color-white);
 }
 .qr {
   width: 100%;
-  max-width: 240px;
+  max-width: 200px;
   background: #ffffff;
   padding: 12px;
   border-radius: 8px;
@@ -933,7 +965,7 @@ textarea {
 .stat {
   font-size: 32px;
   font-weight: 700;
-  color: var(--heading);
+  color: var(--color-white);
   font-variant-numeric: tabular-nums;
 }
 .stats {

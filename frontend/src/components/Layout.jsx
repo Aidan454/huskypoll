@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link, NavLink, Outlet } from 'react-router'
+import { Link, NavLink, Outlet, useMatch } from 'react-router'
 import menuIcon from '../assets/menu.svg'
 import { canTeach } from '../format.js'
 import { useApi, useAuth } from '../hooks.js'
@@ -21,6 +21,9 @@ function Navigation({ user, onNavigate }) {
 export default function Layout() {
   const { user } = useAuth()
   const courses = useApi('/courses')
+  // The poll page is a presentation view: no top bar, so the controls sidebar can
+  // reach the top of the window.
+  const isPollPage = Boolean(useMatch('/polls/:pollId'))
   const [menuOpen, setMenuOpen] = useState(false)
   const drawerRef = useRef(null)
   const triggerRef = useRef(null)
@@ -66,7 +69,7 @@ export default function Layout() {
 
   return (
     <>
-      <header className="topbar">
+      {!isPollPage && <header className="topbar">
         <div className="topbar-inner">
           <button
             ref={triggerRef}
@@ -129,7 +132,7 @@ export default function Layout() {
             ))}
           </div>
         </nav>
-      </header>
+      </header>}
       <Outlet />
     </>
   )
