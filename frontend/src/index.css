@@ -487,6 +487,10 @@ th.num {
   -webkit-mask-image: url('./assets/bar-chart.svg');
   mask-image: url('./assets/bar-chart.svg');
 }
+.tab-icon-history {
+  -webkit-mask-image: url('./assets/history.svg');
+  mask-image: url('./assets/history.svg');
+}
 .tab-icon-lectures {
   -webkit-mask-image: url('./assets/screen.svg');
   mask-image: url('./assets/screen.svg');
