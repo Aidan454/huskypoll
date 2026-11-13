@@ -206,6 +206,7 @@ export default function RosterTab() {
   const { course } = useOutletContext()
   const [showDropped, setShowDropped] = useState(false)
   const [filter, setFilter] = useState('')
+  const [sort, setSort] = useState('name-asc')
   const roster = useApi(`/courses/${course.id}/roster${showDropped ? '?include_dropped=true' : ''}`)
   const [adding, setAdding] = useState(false)
   const [dropping, setDropping] = useState(null)
@@ -223,6 +224,15 @@ export default function RosterTab() {
         <h2>Roster</h2>
         <div className="row">
           <input type="search" className="inline-input" placeholder="Search" value={filter} onChange={(e) => setFilter(e.target.value)} />
+          <label className="row small">
+            Sort by
+            <select className="inline-input" value={sort} onChange={(e) => setSort(e.target.value)}>
+              <option value="name-asc">Last name: A–Z</option>
+              <option value="name-desc">Last name: Z–A</option>
+              <option value="netid-asc">NetID: A–Z</option>
+              <option value="netid-desc">NetID: Z–A</option>
+            </select>
+          </label>
           <label className="check small">
             <input type="checkbox" checked={showDropped} onChange={(e) => setShowDropped(e.target.checked)} />
             Show dropped
@@ -239,6 +249,17 @@ export default function RosterTab() {
               !f ||
               [r.user.display_name, r.user.net_id, r.user.email, r.user.student_id].some((v) => v?.toLowerCase().includes(f)),
           )
+          const compare = (a, b) => a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true })
+          const name = (u) => [u.last_name, u.first_name].filter(Boolean).join(' ') || u.display_name || ''
+          shown.sort((a, b) => {
+            const left = sort.startsWith('netid') ? a.user.net_id : name(a.user)
+            const right = sort.startsWith('netid') ? b.user.net_id : name(b.user)
+            // Students without a NetID stay at the bottom in either direction.
+            if (!left && right) return 1
+            if (left && !right) return -1
+            const order = compare(left || '', right || '') || compare(name(a.user), name(b.user)) || a.user.id - b.user.id
+            return sort.endsWith('desc') ? -order : order
+          })
           return rows.length === 0 ? (
             <p className="empty">No students yet. Add them from a StudentAdmin roster or a list of NetIDs.</p>
           ) : (
