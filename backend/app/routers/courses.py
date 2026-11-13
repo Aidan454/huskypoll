@@ -231,10 +231,12 @@ def import_roster(course_id: int, file: Annotated[UploadFile, File(...)],
     report = preview_records(db, c, records)
     if preview:
         return report
-    if report["counts"]["invalid"]:
-        raise HTTPException(400, "Correct the invalid rows and preview the file again before importing.")
-    records = [rec for rec, row in zip(records, report["rows"], strict=True) if row["status"] != "duplicate"]
-    return _import_out(import_records(db, c, records, drop_missing=drop_missing, report_missing=True, by=user))
+    valid = [rec for rec, row in zip(records, report["rows"], strict=True)
+             if row["status"] not in {"duplicate", "invalid"}]
+    skipped = [(row["row"], row["reason"]) for row in report["rows"]
+               if row["status"] in {"duplicate", "invalid"}]
+    return _import_out(import_records(db, c, valid, drop_missing=drop_missing, report_missing=True,
+                                      skipped_rows=skipped, by=user))
 
 
 @router.post("/courses/{course_id}/roster/drop", response_model=s.RosterDropOut,

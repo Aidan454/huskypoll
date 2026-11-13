@@ -907,13 +907,12 @@ def test_roster_preview_is_read_only_and_confirm_revalidates(app, lecture):
     with app.state.session_factory() as db:
         assert before == (db.scalar(select(func.count()).select_from(User)),
                           db.scalar(select(func.count()).select_from(EventLog)))
-    assert prof.post(path, files=upload).status_code == 400
-    good = {"file": ("roster.csv", data.split(b"bad,,")[0], "text/csv")}
-    confirmed = prof.post(path, files=good)
+    confirmed = prof.post(path, files=upload)
     assert confirmed.status_code == 200
     assert confirmed.json()["enrolled"] == 1
+    assert [row["row"] for row in confirmed.json()["skipped"]] == [4, 5]
     assert len(prof.get(f"/courses/{cid}/roster").json()) == 3
-    assert lecture["ann"].post(path + "?preview=true", files=good).status_code == 403
+    assert lecture["ann"].post(path + "?preview=true", files=upload).status_code == 403
 
 
 def test_roster_preview_restore_and_conflict(lecture):
@@ -939,3 +938,27 @@ def test_roster_preview_xlsx_empty_and_size(lecture):
     empty = prof.post(path, files={"file": ("empty.csv", b"NetID,Email\n")})
     assert empty.json()["rows"] == []
     assert prof.post(path, files={"file": ("large.csv", b"x" * (5 * 1024 * 1024 + 1))}).status_code == 413
+
+
+def test_roster_import_existing_only_retains_missing_review(lecture):
+    prof, cid = lecture["prof"], lecture["cid"]
+    path = f"/courses/{cid}/roster/import"
+    upload = {"file": ("roster.csv", b"NetID,Email\naab11111,ann.able@uconn.edu\n")}
+    report = prof.post(path + "?preview=true", files=upload).json()
+    assert report["counts"]["added"] == report["counts"]["reactivated"] == 0
+    assert len(report["missing"]) == 1
+    result = prof.post(path, files=upload).json()
+    assert result["enrolled"] == result["reactivated"] == result["dropped"] == 0
+    assert len(result["missing"]) == 1
+    assert len(prof.get(f"/courses/{cid}/roster").json()) == 2
+    assert prof.post(f"/courses/{cid}/roster/drop",
+                     json={"user_ids": [u["id"] for u in result["missing"]]}).json()["dropped"] == 1
+
+
+def test_roster_import_skips_conflicting_identifiers(lecture):
+    prof, cid = lecture["prof"], lecture["cid"]
+    result = prof.post(f"/courses/{cid}/roster/import", files={"file": ("r.csv",
+        b"NetID,Email\nbba22222,ann.able@uconn.edu\nnew12345,new12345@uconn.edu\n")})
+    assert result.status_code == 200
+    assert result.json()["enrolled"] == 1
+    assert result.json()["skipped"][0]["row"] == 2

@@ -140,6 +140,7 @@ def import_records(
     *,
     drop_missing: bool = False,
     report_missing: bool = False,
+    skipped_rows: list[tuple[int, str]] | None = None,
     by: User | None = None,
 ) -> ImportResult:
     """Create/match users and enroll them.
@@ -147,7 +148,7 @@ def import_records(
     With report_missing, `missing` lists active students who are not in `records`.
     With drop_missing, they are also marked dropped (their past responses are kept).
     """
-    result = ImportResult()
+    result = ImportResult(skipped=list(skipped_rows or []))
     seen: set[int] = set()
     for rec in records:
         first, last = _split_name(rec.get("name"))

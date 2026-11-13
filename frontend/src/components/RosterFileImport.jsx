@@ -3,7 +3,7 @@ import { api } from '../api.js'
 import { ErrorBox } from './ui.jsx'
 import './RosterFileImport.css'
 
-const labels = { added: 'New student', reactivated: 'Restore enrollment', unchanged: 'Already enrolled', invalid: 'Needs correction', duplicate: 'Duplicate — skipped' }
+const labels = { added: 'New student', reactivated: 'Restore enrollment', unchanged: 'Already enrolled', invalid: 'Invalid — skipped', duplicate: 'Duplicate — skipped' }
 
 export default function RosterFileImport({ course, onDone, onImported }) {
   const input = useRef(null)
@@ -73,12 +73,16 @@ export default function RosterFileImport({ course, onDone, onImported }) {
         {file && <p className="small">File: <strong>{file.name}</strong></p>}
         {result && <div className="alert alert-success"><strong>Import complete.</strong> {result.summary} No students were removed.</div>}
       </div>
+      {result?.skipped?.length > 0 && <details open>
+        <summary>{result.skipped.length} rows skipped</summary>
+        <ul>{result.skipped.map((row, i) => <li key={i}>Row {row.row}: {row.reason}</li>)}</ul>
+      </details>}
       {preview && <>
         <h3>Review before importing</h3>
         <p className="small">{count.added} new · {count.reactivated} to restore · {count.unchanged} already enrolled · {count.duplicate} duplicates · {count.invalid} need correction</p>
-        {count.invalid > 0 && <div className="alert alert-info">Correct the flagged rows in your file and upload it again. Nothing has been imported.</div>}
-        {preview.rows.length > 0 && !changes && !count.invalid && <p>All students in this file are already enrolled. No import is needed.</p>}
-        {preview.rows.length === 0 && <p>No student rows found. Choose a file containing students.</p>}
+        {count.invalid > 0 && <div className="alert alert-info">Invalid rows will be skipped. You can import the valid students now, or correct the file and upload it again. Nothing has been imported yet.</div>}
+        {preview.rows.length > 0 && !changes && !count.invalid && !preview.missing.length && <p>All students in this file are already enrolled. No import is needed.</p>}
+        {preview.rows.length === 0 && <p>No student rows found. Confirm only if this is the complete class list and you want to review missing students.</p>}
         <div className="table-wrap roster-preview"><table>
           <thead><tr><th>Row</th><th>Name</th><th>NetID / Email / ID</th><th>Status</th></tr></thead>
           <tbody>{preview.rows.map((row) => <tr key={row.row}>
@@ -94,8 +98,8 @@ export default function RosterFileImport({ course, onDone, onImported }) {
         <p className="small muted">No changes are saved until you confirm. Missing students are never removed by this upload.</p>
         <div className="form-actions">
           <button type="button" className="btn" disabled={busy} onClick={() => { setPreview(null); setFile(null); setError(null) }}>Cancel</button>
-          <button type="button" className="btn btn-primary" disabled={busy || count.invalid > 0 || !changes} onClick={confirm}>
-            {busy ? 'Importing…' : `Confirm import (${changes} students)`}
+          <button type="button" className="btn btn-primary" disabled={busy || (!changes && !preview.missing.length)} onClick={confirm}>
+            {busy ? 'Importing…' : changes ? `Confirm import (${changes} students)` : 'Confirm import and review missing students'}
           </button>
         </div>
       </>}
