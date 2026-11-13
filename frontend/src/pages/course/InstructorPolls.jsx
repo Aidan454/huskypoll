@@ -5,8 +5,8 @@ import OpenFromBank from '../../components/polls/OpenFromBank.jsx'
 import QuickPoll from '../../components/polls/QuickPoll.jsx'
 import LecturePollGroups from '../../components/polls/LecturePollGroups.jsx'
 import ActivePolls from '../../components/polls/ActivePolls.jsx'
-import { ErrorBox, Loading, Modal } from '../../components/ui.jsx'
-import { useAction, useApi } from '../../hooks.js'
+import { ErrorBox, Loading, Modal, SortSelect } from '../../components/ui.jsx'
+import { useAction, useApi, useSortOrder } from '../../hooks.js'
 import { connectCourse } from '../../live.js'
 
 
@@ -16,6 +16,7 @@ export default function InstructorPolls({ course }) {
   const polls = useApi(`/courses/${course.id}/polls`)
   const sessions = useApi(`/courses/${course.id}/sessions`)
   const [modal, setModal] = useState(null) // 'bank' | 'quick'
+  const [order, setOrder] = useSortOrder('polls')
   const { reload: reloadPolls } = polls
   const { reload: reloadSessions } = sessions
 
@@ -57,7 +58,9 @@ export default function InstructorPolls({ course }) {
   const live = polls.data.filter((p) => p.status === 'open' && !running.includes(p.session_id))
   const bySession = new Map(sessions.data.map((s) => [s.id, { session: s, polls: [] }]))
   for (const p of polls.data) bySession.get(p.session_id)?.polls.push(p)
+  // sessions arrive newest lecture first; "oldest" flips both the lectures and the polls inside each
   const groups = [...bySession.values()].filter((g) => g.polls.length)
+  if (order === 'oldest') groups.reverse()
 
   return (
     <>
@@ -80,9 +83,12 @@ export default function InstructorPolls({ course }) {
 
       </div>
 
-      <h2>All polls</h2>
+      <div className="card-head">
+        <h2>All polls</h2>
+        {groups.length > 0 && <SortSelect value={order} onChange={setOrder} />}
+      </div>
       {groups.length === 0 && <div className="card empty">No polls yet.</div>}
-      <LecturePollGroups groups={groups} course={course} reopenPoll={reopenPoll} />
+      <LecturePollGroups groups={groups} course={course} reopenPoll={reopenPoll} order={order} />
 
       <Modal open={modal === 'bank'} onClose={() => setModal(null)} title="Open a poll" wide>
         <OpenFromBank course={course} sessions={sessions.data} onOpened={opened} onCancel={() => setModal(null)} />
