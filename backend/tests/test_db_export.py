@@ -1,6 +1,6 @@
 """Participation export totals, CSV columns and export timestamps.
 
-Run with: python -m pytest -q tests/test_database_export.py
+Run with: python -m pytest -q tests/test_db_export.py
 """
 
 from __future__ import annotations

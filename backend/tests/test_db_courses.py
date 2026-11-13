@@ -1,6 +1,6 @@
 """Course lifecycle: archive, restore, delete and event-log retention.
 
-Run with: python -m pytest -q tests/test_database_courses.py
+Run with: python -m pytest -q tests/test_db_courses.py
 """
 
 from __future__ import annotations

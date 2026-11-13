@@ -1,6 +1,6 @@
 """Poll lifecycle, timed polls, question locking, responses and grading.
 
-Run with: python -m pytest -q tests/test_database_polls.py
+Run with: python -m pytest -q tests/test_db_polls.py
 """
 
 from __future__ import annotations
@@ -85,8 +85,13 @@ def test_timed_poll_has_a_deadline_and_refuses_late_answers(db, course_setup):
     with pytest.raises(svc.HuskyPollError, match="time is up"):
         svc.submit_response(db, poll, s1, option_ids=[right.id])
 
-    # No duration means no timer, and nothing changes for existing polls.
-    plain = svc.open_poll(db, course, q, prof)
+    # Omitting the duration uses the one-minute default.
+    default = svc.open_poll(db, course, q, prof)
+    assert default.duration_seconds == 60
+    assert default.closes_at - default.opened_at == dt.timedelta(seconds=60)
+
+    # An explicit None still means no timer, and nothing changes for existing polls.
+    plain = svc.open_poll(db, course, q, prof, duration_seconds=None)
     assert plain.duration_seconds is None and plain.closes_at is None
 
 
@@ -105,7 +110,7 @@ def test_extend_poll_adds_time_and_reopens_a_closed_poll(db, course_setup):
     with pytest.raises(svc.NotAllowed):
         svc.extend_poll(db, poll, s1, 60)
 
-    plain = svc.open_poll(db, course, q, prof)
+    plain = svc.open_poll(db, course, q, prof, duration_seconds=None)
     with pytest.raises(svc.HuskyPollError, match="no timer"):
         svc.extend_poll(db, plain, prof, 60)
 

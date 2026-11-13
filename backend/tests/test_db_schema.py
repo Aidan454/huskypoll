@@ -1,6 +1,6 @@
 """Database schema rules: PRAGMAs, constraints, triggers and timestamps.
 
-Run with: python -m pytest -q tests/test_database_schema.py
+Run with: python -m pytest -q tests/test_db_schema.py
 """
 
 from __future__ import annotations

@@ -53,7 +53,7 @@ and must never be turned on for a real course.
 
 python -m app.database seed-demo --roster samples/studentadmin-template.xlsx   # demo database
 python -m app.database init                                                    # or an empty one
-python -m pytest -q                                                            # 100 tests (database + API)
+python -m pytest -q                                                            # database + API tests
 ```
 
 `huskypoll.db` is created in the current folder. Set `HUSKYPOLL_DB=/path/to/file.db`
@@ -96,7 +96,7 @@ app/database/
   seed.py       demo data
 migrations/     Alembic (schema changes after the first release)
 schema.sql      generated, read-only view of the schema
-tests/          pytest suite (test_database.py, test_api.py)
+tests/          pytest suite (test_db_*.py for the database, test_api_*.py for the API)
 samples/        StudentAdmin roster template
 docs/           huskypoll-schema.drawio (open at app.diagrams.net)
 Dockerfile      one-container deployment

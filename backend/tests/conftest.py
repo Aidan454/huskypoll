@@ -25,7 +25,7 @@ def course_setup(db):
     prof, _ = svc.find_or_create_user(db, net_id="prf00001", first_name="Pat", last_name="Prof")
     svc.set_role(db, prof, "instructor")
     course = svc.create_course(db, prof, term="Spring 2027", subject="cse", catalog="2050",
-                               title="Data Structures", points_correct=2)
+                               title="Data Structures")
     s1, _ = svc.find_or_create_user(db, net_id="abc12345", first_name="Ann", last_name="Able")
     s2, _ = svc.find_or_create_user(db, net_id="xyz67890", first_name="Bob", last_name="Baker")
     svc.enroll(db, course, s1)
@@ -45,8 +45,7 @@ def lecture(app):
     """A course with an owner, a TA, two students and one multiple-choice question."""
     prof = login(app, "pat.prof@uconn.edu", "prf00001", "Pat", "Prof", role="instructor")
     course = prof.post("/courses", json={"term": "Spring 2027", "subject": "cse", "catalog": "2050",
-                                         "title": "Data Structures",
-                                         "points_correct": 1}).json()
+                                         "title": "Data Structures"}).json()
     cid = course["id"]
     assert prof.post(f"/courses/{cid}/instructors", json={"identifier": "tas00001", "role": "ta"}).status_code == 201
     r = prof.post(f"/courses/{cid}/roster/paste", json={"text": "ann.able@uconn.edu\nbob.baker@uconn.edu"})

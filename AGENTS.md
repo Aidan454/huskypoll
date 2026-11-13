@@ -115,7 +115,8 @@ docker compose -f compose.server.yml logs -f
    `alembic revision --autogenerate -m "short description"`, then check the file
    by hand; `env.py` already uses batch mode, which SQLite needs for column changes).
 3. Regenerate `schema.sql`: `python -m app.database schema > schema.sql`.
-4. Add tests in `tests/test_database.py`.
+4. Add tests to the matching `tests/test_db_*.py` module (e.g. `test_db_polls.py`
+   for polls, `test_db_schema.py` for constraints), or a new one.
 
 ### API
 
@@ -126,7 +127,8 @@ docker compose -f compose.server.yml logs -f
 - Never send answer keys, explanations or correctness to students before a poll
   closes; go through `serializers.py`.
 - Store times in UTC and return timezone-aware datetimes.
-- Add API tests in `tests/test_api.py`.
+- Add API tests to the matching `tests/test_api_*.py` module (e.g.
+  `test_api_polls.py`), or a new one.
 
 ### Frontend
 

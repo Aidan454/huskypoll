@@ -1,6 +1,6 @@
 """StudentAdmin roster import, re-import, missing students and drops.
 
-Run with: python -m pytest -q tests/test_database_roster.py
+Run with: python -m pytest -q tests/test_db_roster.py
 """
 
 from __future__ import annotations

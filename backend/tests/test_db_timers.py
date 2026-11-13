@@ -1,6 +1,6 @@
 """The background timer that closes expired polls.
 
-Run with: python -m pytest -q tests/test_database_timers.py
+Run with: python -m pytest -q tests/test_db_timers.py
 """
 
 from __future__ import annotations
@@ -21,7 +21,7 @@ def test_timer_loop_closes_expired_polls(tmp_path):
         prof, _ = svc.find_or_create_user(db, net_id="prf00001", first_name="Pat", last_name="Prof")
         svc.set_role(db, prof, "instructor")
         course = svc.create_course(db, prof, term="Spring 2027", subject="cse", catalog="2050",
-                                   title="Data Structures", points_correct=1)
+                                   title="Data Structures")
         q = svc.create_question(db, prof, type="mc_single", body_md="2+2?",
                                 options=[("3", False), ("4", True)])
         poll = svc.open_poll(db, course, q, prof, duration_seconds=60)

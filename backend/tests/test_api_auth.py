@@ -24,7 +24,7 @@ def test_db_dependency_commits_before_the_response():
     """A client may fetch a row right after creating it, so get_db must commit
     before the response is sent (scope="function", not the FastAPI default)."""
     from app.deps import get_db
-    from app.routers import auth, courses, polls, questions, users
+    from app.routers import auth, courses, polls, qa, questions, users
 
     def walk(dependant):
         for sub in dependant.dependencies:
@@ -32,7 +32,7 @@ def test_db_dependency_commits_before_the_response():
                 assert sub.scope == "function", "use Depends(get_db, scope='function')"
             walk(sub)
 
-    for module in (auth, courses, polls, questions, users):
+    for module in (auth, courses, polls, qa, questions, users):
         for route in module.router.routes:
             dependant = getattr(route, "dependant", None)
             if dependant is not None:

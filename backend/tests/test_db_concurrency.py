@@ -1,6 +1,6 @@
 """Concurrent requests that once created duplicate rows or failed.
 
-Run with: python -m pytest -q tests/test_database_concurrency.py
+Run with: python -m pytest -q tests/test_db_concurrency.py
 """
 
 from __future__ import annotations

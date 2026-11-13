@@ -1,6 +1,6 @@
 """Users, logins, NetID rules, account roles and course permissions.
 
-Run with: python -m pytest -q tests/test_database_users.py
+Run with: python -m pytest -q tests/test_db_users.py
 """
 
 from __future__ import annotations
