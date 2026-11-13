@@ -33,6 +33,12 @@ STUDENTADMIN_COLUMNS = {
     "id": "student_id",
     "student id": "student_id",
     "name": "name",
+    "first name": "first_name",
+    "firstname": "first_name",
+    "first_name": "first_name",
+    "last name": "last_name",
+    "lastname": "last_name",
+    "last_name": "last_name",
     "netid": "net_id",
     "net id": "net_id",
     "email": "email",
@@ -74,9 +80,15 @@ def _split_name(name: str | None) -> tuple[str | None, str | None]:
     return (" ".join(parts[:-1]) or None, parts[-1]) if len(parts) > 1 else (None, parts[0])
 
 
+def _record_name(rec: dict) -> tuple[str | None, str | None]:
+    """Explicit name columns take precedence over the combined Name field."""
+    first, last = _split_name(rec.get("name"))
+    return rec.get("first_name") or first, rec.get("last_name") or last
+
+
 def _read_rows(rows: Iterable[Iterable]) -> list[dict]:
     """Find the header row, then return the rows below it as dicts with keys
-    student_id, name, net_id, email, section, _row.
+    student_id, name, first_name, last_name, net_id, email, section, _row.
 
     NetIDs come back in UPPERCASE and emails in lowercase, however the file wrote them.
     """
@@ -86,13 +98,14 @@ def _read_rows(rows: Iterable[Iterable]) -> list[dict]:
     for header_row, row in enumerate(rows, start=1):
         cells = [str(c).strip().lower() if c is not None else "" for c in row]
         found = {STUDENTADMIN_COLUMNS[c] for c in cells if c in STUDENTADMIN_COLUMNS}
-        if {"student_id", "name"} <= found or found & {"net_id", "email"}:
+        if ({"student_id", "name"} <= found or {"student_id", "first_name", "last_name"} <= found
+                or found & {"net_id", "email"}):
             header_map = {i: STUDENTADMIN_COLUMNS[c] for i, c in enumerate(cells) if c in STUDENTADMIN_COLUMNS}
             break
         if header_row > 20:
             break
     if not header_map:
-        raise HuskyPollError("could not find the header row (expected columns 'NetID' and 'Email', or 'ID' and 'Name')")
+        raise HuskyPollError("could not find the header row (expected NetID / Email, or ID with Name or First Name / Last Name)")
 
     out = []
     for rownum, row in enumerate(rows, start=header_row + 1):
@@ -151,15 +164,15 @@ def import_records(
     result = ImportResult(skipped=list(skipped_rows or []))
     seen: set[int] = set()
     for rec in records:
-        first, last = _split_name(rec.get("name"))
+        first, last = _record_name(rec)
         try:
             user, created = find_or_create_user(
                 db,
                 net_id=rec.get("net_id"),
                 email=rec.get("email"),
                 student_id=rec.get("student_id"),
-                first_name=rec.get("first_name") or first,
-                last_name=rec.get("last_name") or last,
+                first_name=first,
+                last_name=last,
             )
         except HuskyPollError as exc:
             result.skipped.append((rec.get("_row", 0), str(exc)))
@@ -285,8 +298,10 @@ def preview_records(db: Session, course: Course, records: list[dict]) -> dict:
         except HuskyPollError as exc:
             status, reason = "invalid", str(exc)
         counts[status] += 1
+        first, last = _record_name(rec)
+        display_name = " ".join(part for part in (first, last) if part)
         rows.append({"row": rec.get("_row", 0), "net_id": rec.get("net_id"), "email": rec.get("email"),
-                         "name": rec.get("name") or (user.display_name if user else None),
+                         "name": display_name or (user.display_name if user else None),
                          "student_id": rec.get("student_id"), "status": status, "reason": reason})
     missing = [{"id": e.user.id, "net_id": e.user.net_id, "display_name": e.user.display_name}
                for e in db.scalars(select(Enrollment).where(

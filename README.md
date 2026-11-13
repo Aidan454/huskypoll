@@ -65,3 +65,5 @@ Students and instructors open **Lectures → Q&A** to ask and answer questions i
 ### Roster file preview
 
 In Roster → Add students → StudentAdmin file, choose or drag in one CSV/XLSX (up to 5 MB). Review row statuses and missing students before confirming. Invalid and duplicate rows are skipped and reported; valid students can still be imported. Preview (`POST /courses/{id}/roster/import?preview=true`, multipart `file`) does not create users, enrollments, or activity events. Confirmation revalidates the same file against the current roster. Missing students remain enrolled; the existing separate post-import drop review is retained.
+
+Roster name columns: CSV and XLSX accept either combined `Name` (`Last, First`) or separate `First Name` and `Last Name` columns. `FirstName`/`LastName` and `first_name`/`last_name` also work. Explicit nonblank name columns take precedence; blank components fall back to combined Name. Preview uses the same names as import.
