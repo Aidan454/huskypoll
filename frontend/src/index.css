@@ -628,6 +628,16 @@ textarea {
 .inline-input {
   width: auto;
 }
+.sort-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.sort-select select {
+  width: auto;
+  padding: 4px 8px;
+}
 .check {
   display: flex;
   align-items: center;

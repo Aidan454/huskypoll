@@ -61,3 +61,30 @@ export function useAction(fn) {
   )
   return [run, busy, error, setError]
 }
+
+/**
+ * Newest-first / oldest-first choice for a list, remembered in this browser under `key`.
+ * Returns ['newest' | 'oldest', setOrder]. Defaults to newest first.
+ */
+export function useSortOrder(key) {
+  const storageKey = `huskypoll.sort.${key}`
+  const [order, setOrderState] = useState(() => {
+    try {
+      return localStorage.getItem(storageKey) === 'oldest' ? 'oldest' : 'newest'
+    } catch {
+      return 'newest'
+    }
+  })
+  const setOrder = useCallback(
+    (value) => {
+      setOrderState(value)
+      try {
+        localStorage.setItem(storageKey, value)
+      } catch {
+        // private window or blocked storage: the choice just isn't remembered
+      }
+    },
+    [storageKey],
+  )
+  return [order, setOrder]
+}

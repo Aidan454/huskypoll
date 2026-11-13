@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Navigate, useOutletContext } from 'react-router'
 import { AnswerKey, Mark, QuestionBody } from '../../components/PollParts.jsx'
-import { Loaded } from '../../components/ui.jsx'
+import { Loaded, SortSelect } from '../../components/ui.jsx'
 import { answerText, formatDate, isStaff, pct, points, snippet } from '../../format.js'
-import { useApi } from '../../hooks.js'
+import { useApi, useSortOrder } from '../../hooks.js'
 import { connectCourse } from '../../live.js'
 import Markdown from '../../components/Markdown.jsx'
 
@@ -76,9 +76,10 @@ function HistoryItem({ item }) {
   )
 }
 
-/** Closed polls grouped by lecture day. */
-export function HistoryList({ items }) {
+/** Closed polls grouped by lecture day. `items` come from the API newest first. */
+export function HistoryList({ items, order = 'newest' }) {
   const closed = items.filter((i) => i.poll.status === 'closed')
+  if (order === 'oldest') closed.reverse()
   if (!closed.length) return <div className="card empty">No finished polls yet.</div>
   const byDay = []
   for (const item of closed) {
@@ -106,6 +107,7 @@ export default function StudentHistory() {
   const { course } = useOutletContext()
   const history = useApi(`/courses/${course.id}/history`)
   const [version, setVersion] = useState(0)
+  const [order, setOrder] = useSortOrder('history')
   const { reload: reloadHistory } = history
 
   useEffect(
@@ -126,8 +128,11 @@ export default function StudentHistory() {
       <h2>My participation</h2>
       <Participation courseId={course.id} version={version} />
 
-      <h2 style={{ marginTop: 28 }}>History</h2>
-      <Loaded state={history}>{(items) => <HistoryList items={items} />}</Loaded>
+      <div className="card-head" style={{ marginTop: 28 }}>
+        <h2>History</h2>
+        <SortSelect value={order} onChange={setOrder} />
+      </div>
+      <Loaded state={history}>{(items) => <HistoryList items={items} order={order} />}</Loaded>
     </>
   )
 }
