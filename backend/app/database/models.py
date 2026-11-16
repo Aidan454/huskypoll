@@ -308,6 +308,7 @@ class Question(Base):
     author_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
     type: Mapped[str] = mapped_column(String(16), nullable=False)
     body_md: Mapped[str] = mapped_column(Text, nullable=False, default="")  # simple Markdown
+    tags: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list, server_default="[]")
     body_media_id: Mapped[int | None] = mapped_column(ForeignKey("media.id", ondelete="SET NULL"))
     explanation_md: Mapped[str | None] = mapped_column(Text)
     explanation_media_id: Mapped[int | None] = mapped_column(ForeignKey("media.id", ondelete="SET NULL"))
@@ -352,6 +353,7 @@ class QuestionOption(Base):
     is_correct: Mapped[bool] = mapped_column(_bool("is_correct"), nullable=False, default=False)
 
     question: Mapped[Question] = relationship(back_populates="options")
+    media: Mapped[Media | None] = relationship()
 
     __table_args__ = (
         UniqueConstraint("question_id", "position"),

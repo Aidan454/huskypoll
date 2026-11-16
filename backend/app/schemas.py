@@ -146,7 +146,28 @@ class OptionOut(BaseModel):
     is_correct: bool | None = None  # hidden from students while a poll is open
 
 
+def clean_question_tags(value):
+    if value is None:
+        return []
+    if not isinstance(value, list) or len(value) > 20:
+        raise ValueError("Use at most 20 tags")
+    result = []
+    seen = set()
+    for tag in value:
+        if not isinstance(tag, str):
+            raise ValueError("Tags must be text")  # noqa: TRY004 -- Pydantic validators must raise ValueError
+        tag = " ".join(tag.split())
+        if not tag or len(tag) > 80:
+            raise ValueError("Tags must contain 1–80 characters")
+        if tag.casefold() not in seen:
+            result.append(tag)
+            seen.add(tag.casefold())
+    return result
+
+
 class QuestionCreate(BaseModel):
+    tags: list[str] = Field(default_factory=list)
+    _tags = field_validator("tags", mode="before")(clean_question_tags)
     type: QuestionType
     body_md: str = Field("", description="Question text (simple Markdown)")
     body_media_id: int | None = None
@@ -162,6 +183,8 @@ class QuestionCreate(BaseModel):
 class QuestionUpdate(BaseModel):
     """Send only the fields to change. Once a question has been polled, only the answer
     key and explanation can change (use correct_option_ids for multiple choice)."""
+    tags: list[str] | None = None
+    _tags = field_validator("tags", mode="before")(clean_question_tags)
     type: QuestionType | None = None
     body_md: str | None = None
     body_media_id: int | None = None
@@ -176,6 +199,7 @@ class QuestionUpdate(BaseModel):
 
 
 class QuestionOut(BaseModel):
+    tags: list[str] = Field(default_factory=list)
     id: int
     type: QuestionType
     body_md: str
@@ -401,3 +425,14 @@ class CourseMessageOut(BaseModel):
 
 class CourseQuestionOut(CourseMessageOut):
     reply_count: int
+
+
+class SaveToBank(BaseModel):
+    bank_id: int | None = None
+    tags: list[str] = Field(default_factory=list)
+    _tags = field_validator("tags", mode="before")(clean_question_tags)
+
+
+class LibraryOut(BaseModel):
+    questions: list[QuestionOut]
+    tags: list[str]
