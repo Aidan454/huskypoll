@@ -1,74 +1,15 @@
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { api } from '../api.js'
-import { QuestionBody } from '../components/PollParts.jsx'
 import QuestionEditor from '../components/QuestionEditor.jsx'
 import { ConfirmModal, ErrorBox, Field, Loaded, Modal } from '../components/ui.jsx'
-import { isStaff, QUESTION_TYPE_SHORT } from '../format.js'
+import { isStaff } from '../format.js'
 import { useAction, useApi, useAuth } from '../hooks.js'
 import { BankForm } from './BanksPage.jsx'
-import Markdown from '../components/Markdown.jsx'
-
-function QuestionCard({ q, onEdit, onCopy, onDelete }) {
-  const [expanded, setExpanded] = useState(false)
-  const answer =
-    q.type.startsWith('mc')
-      ? q.options.filter((o) => o.is_correct).map((o) => o.letter).join(', ')
-      : q.type === 'numeric'
-        ? q.numeric_answer ?? ''
-        : q.text_answer ?? ''
-  return (
-    <div className="card">
-      <div className="card-head">
-        <div className="row">
-          <span className="badge">{QUESTION_TYPE_SHORT[q.type]}</span>
-          {q.is_locked && <span className="badge badge-amber" title="Already polled: wording is locked">🔒 Polled</span>}
-          {answer !== '' ? <span className="badge badge-open">Answer: {String(answer)}</span> : <span className="badge">No answer key</span>}
-        </div>
-        <div className="row">
-          <button type="button" className="btn btn-sm" onClick={() => setExpanded(!expanded)}>
-            {expanded ? 'Less' : 'More'}
-          </button>
-          <button type="button" className="btn btn-sm" onClick={onEdit}>
-            Edit
-          </button>
-          <button type="button" className="btn btn-sm" onClick={onCopy}>
-            Copy
-          </button>
-          {!q.is_locked && (
-            <button type="button" className="btn btn-sm btn-danger" onClick={onDelete}>
-              Delete
-            </button>
-          )}
-        </div>
-      </div>
-      <QuestionBody question={q} />
-      {q.options.length > 0 && (
-        <ul className="list small">
-          {q.options.map((o) => (
-            <li key={o.id} style={{ justifyContent: 'flex-start', padding: '6px 0' }}>
-              <span className="letter" style={o.is_correct ? { background: 'var(--green)', color: 'var(--on-accent)' } : undefined}>
-                {o.letter}
-              </span>
-              <span>
-                <Markdown text={o.text_md} />
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-      {expanded && (
-        <div className="small muted" style={{ marginTop: 8 }}>
-          {q.explanation_md ? <p>
-              Explanation: <Markdown text={q.explanation_md} />
-            </p> : <p>No explanation.</p>}
-          {q.numeric_tolerance != null && <p>Tolerance: ±{q.numeric_tolerance}</p>}
-          {q.copied_from_id && <p>Copied from question #{q.copied_from_id}</p>}
-        </div>
-      )}
-    </div>
-  )
-}
+import QuestionCard from '../components/QuestionBankCard.jsx'
+import BankTransfer from '../components/BankTransfer.jsx'
+import QuestionSearch from '../components/QuestionSearch.jsx'
+import { matchesQuestion } from '../components/questionSearch.js'
 
 export default function BankPage() {
   const { bankId } = useParams()
@@ -83,6 +24,9 @@ export default function BankPage() {
   const [copyCourse, setCopyCourse] = useState('')
   const [deletingBank, setDeletingBank] = useState(false)
   const [deletingQ, setDeletingQ] = useState(null)
+  const [search, setSearch] = useState('')
+  const [selectedTags, setSelectedTags] = useState([])
+  const [type, setType] = useState('')
   const [notice, setNotice] = useState(null)
 
   const [saveQuestion, savingQ, qError] = useAction(async (body) => {
@@ -156,12 +100,15 @@ export default function BankPage() {
                 )}
               </div>
             </div>
+            <BankTransfer bankId={Number(bankId)} onImported={bank.reload} />
             {notice && <div className="alert alert-success">{notice}</div>}
             <ErrorBox error={copyQError} />
+            <QuestionSearch questions={b.questions} search={search} setSearch={setSearch} selectedTags={selectedTags} setSelectedTags={setSelectedTags} type={type} setType={setType} />
+            <p className="small muted">{b.questions.filter((q) => matchesQuestion(q, search, selectedTags, type)).length} of {b.questions.length} questions</p>
             {b.questions.length === 0 ? (
               <div className="card empty">No questions yet. Add one with “New question”.</div>
             ) : (
-              b.questions.map((q) => (
+              b.questions.filter((q) => matchesQuestion(q, search, selectedTags, type)).map((q) => (
                 <QuestionCard
                   key={q.id}
                   q={q}
@@ -181,6 +128,7 @@ export default function BankPage() {
 
       <Modal open={editing !== null} onClose={() => setEditing(null)} title={editing === 'new' ? 'New question' : 'Edit question'} wide>
         <QuestionEditor
+          showTags tagSuggestions={[...new Set((bank.data?.questions || []).flatMap((q) => q.tags || []))]}
           key={editing === 'new' ? 'new' : editing?.id}
           question={editing === 'new' ? null : editing}
           onSubmit={saveQuestion}

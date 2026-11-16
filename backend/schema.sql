@@ -107,6 +107,7 @@ CREATE TABLE questions (
 	author_id INTEGER NOT NULL, 
 	type VARCHAR(16) NOT NULL, 
 	body_md TEXT NOT NULL, 
+	tags JSON DEFAULT '[]' NOT NULL,
 	body_media_id INTEGER, 
 	explanation_md TEXT, 
 	explanation_media_id INTEGER, 
@@ -247,9 +248,9 @@ CREATE INDEX ix_question_banks_owner_id ON question_banks (owner_id);
 
 CREATE INDEX ix_lecture_sessions_course_id ON lecture_sessions (course_id, session_date);
 
-CREATE INDEX ix_questions_author_id ON questions (author_id);
-
 CREATE INDEX ix_questions_bank_id ON questions (bank_id);
+
+CREATE INDEX ix_questions_author_id ON questions (author_id);
 
 CREATE INDEX ix_course_questions_session_id ON course_questions (session_id);
 
@@ -257,11 +258,11 @@ CREATE INDEX ix_course_questions_course_id ON course_questions (course_id);
 
 CREATE INDEX ix_polls_session_id ON polls (session_id);
 
+CREATE INDEX ix_polls_question_id ON polls (question_id);
+
 CREATE INDEX ix_polls_open_closes_at ON polls (closes_at) WHERE status = 'open';
 
 CREATE UNIQUE INDEX uq_polls_open_access_code ON polls (access_code) WHERE status = 'open';
-
-CREATE INDEX ix_polls_question_id ON polls (question_id);
 
 CREATE INDEX ix_course_replies_question_id ON course_replies (question_id);
 

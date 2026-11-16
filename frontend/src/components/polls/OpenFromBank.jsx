@@ -1,3 +1,5 @@
+import QuestionSearch from '../QuestionSearch.jsx'
+import { matchesQuestion } from '../questionSearch.js'
 import { DurationField } from './DurationField.jsx'
 import { minutesToSeconds } from './pollDuration.js'
 import { useState } from 'react'
@@ -11,8 +13,10 @@ import SessionSelect from './SessionSelect.jsx'
 /** Pick one question to open, or several to ask one at a time in the order chosen. */
 export default function OpenFromBank({ course, sessions, onOpened, onCancel, initialSessionId = '' }) {
   const banks = useApi('/banks')
+  const [search, setSearch] = useState('')
+  const [tags, setTags] = useState([])
   const [bankId, setBankId] = useState('')
-  const bank = useApi(bankId ? `/banks/${bankId}` : null)
+  const bank = useApi(bankId ? `/banks/${bankId}` : '/library')
   const [questionIds, setQuestionIds] = useState([]) // in the order they were ticked
   const [sessionId, setSessionId] = useState(String(initialSessionId))
   const [showResults, setShowResults] = useState(false)
@@ -71,9 +75,11 @@ export default function OpenFromBank({ course, sessions, onOpened, onCancel, ini
                 onChange={(e) => {
                   setBankId(e.target.value)
                   setQuestionIds([])
+                  setSearch('')
+                  setTags([])
                 }}
               >
-                <option value="">Choose a bank…</option>
+                <option value="">All saved questions</option>
                 {list.map((b) => (
                   <option key={b.id} value={b.id}>
                     {b.name} ({b.question_count})
@@ -84,23 +90,25 @@ export default function OpenFromBank({ course, sessions, onOpened, onCancel, ini
           )
         }
       </Loaded>
-      {bankId && (
-        <Loaded state={bank}>
+      <Loaded state={bank}>
           {(b) =>
             b.questions.length === 0 ? (
               <p className="muted">This bank has no questions.</p>
             ) : (
               <div className="field">
+                <QuestionSearch questions={b.questions} search={search} setSearch={setSearch} selectedTags={tags} setSelectedTags={setTags} />
+                <p className="small muted">{b.questions.filter((q) => matchesQuestion(q, search, tags)).length} matches · {questionIds.length} selected (including hidden selections)</p>
                 <span>Questions — tick one, or several to ask one after another</span>
                 <div style={{ maxHeight: 280, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 8, padding: '0 10px' }}>
                   <ul className="list">
-                    {b.questions.map((q) => (
+                    {b.questions.filter((q) => matchesQuestion(q, search, tags)).map((q) => (
                       <li key={q.id}>
                         <label className="check grow">
                           <input type="checkbox" checked={questionIds.includes(q.id)} onChange={() => toggle(q.id)} />
                           {questionIds.includes(q.id) && <span className="badge badge-blue">{questionIds.indexOf(q.id) + 1}</span>}
                           <span className="grow">{snippet(q.body_md)}</span>
                           <span className="badge">{QUESTION_TYPE_SHORT[q.type]}</span>
+                          {(q.tags || []).map((tag) => <span key={tag} className="badge badge-blue">{tag}</span>)}
                         </label>
                       </li>
                     ))}
@@ -110,7 +118,6 @@ export default function OpenFromBank({ course, sessions, onOpened, onCancel, ini
             )
           }
         </Loaded>
-      )}
       {questionIds.length > 1 && bank.data && (
         <div className="field">
           <span>Order — students see one question at a time, starting at the top</span>

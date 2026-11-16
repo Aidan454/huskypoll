@@ -30,7 +30,7 @@ function readableDetail(body, status) {
   return `Request failed (HTTP ${status})`
 }
 
-async function request(method, path, { json, form, query } = {}) {
+async function request(method, path, { json, form, query, binary } = {}) {
   let url = `${API_BASE}${path}`
   if (query) {
     const params = new URLSearchParams()
@@ -54,6 +54,7 @@ async function request(method, path, { json, form, query } = {}) {
   } catch {
     throw new ApiError(0, readableDetail(null, 0))
   }
+  if (binary && resp.ok) return resp.blob()
   if (resp.status === 204) return null
   const type = resp.headers.get('Content-Type') || ''
   const body = type.includes('application/json') ? await resp.json().catch(() => null) : await resp.text()
@@ -72,6 +73,8 @@ export const api = {
     form.append('file', file)
     return request('POST', path, { form, query })
   },
+
+  download: (path) => request('GET', path, { binary: true }),
 
   me: () => request('GET', '/me'),
   logout: () => request('POST', '/auth/logout'),

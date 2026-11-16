@@ -214,3 +214,7 @@ docker compose -f compose.server.yml logs -f
 Questions require a lecture session and current course membership. Both students and instructors may post/reply. Use `/sessions/{session_id}/qa` and include `session_id` in `qa_changed` events. Archived courses are read-only; block lecture deletion if Q&A exists. Preserve legacy posts/replies during migrations.
 
 Roster uploads support `preview=true` on the import endpoint. Preview must remain read-only. Confirmation revalidates all rows and skips duplicates; malformed/conflicting identifiers are skipped and reported. Never drop missing students as part of the preview UI.
+
+## Question library
+
+`/library` aggregates accessible bank questions; retain existing collections and course sharing. Tags live on questions and are hidden from student poll payloads while answers are hidden. Save-to-bank must copy, never move or edit a poll question. Archive v1 uses ZIP + JSON and images; validate bounded entries before writes, never extract uploaded paths, and never overwrite questions by tag. The additive tags migration is `a2b3c4d5e6f7`.

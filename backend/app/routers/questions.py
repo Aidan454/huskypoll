@@ -5,11 +5,17 @@ from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.database import services as svc
+from app.database.bank_archive import (
+    MAX_ARCHIVE_BYTES,
+    export_bank,
+    import_bank,
+    read_archive,
+)
 from app.database.models import (
     Course,
     CourseInstructor,
@@ -26,6 +32,7 @@ from ..deps import (
     current_user,
     get_db,
     get_settings,
+    poll_or_404,
     question_or_404,
     require_instructor,
     require_question_access,
@@ -61,6 +68,92 @@ def _check_media(db: Session, *media_ids: int | None) -> None:
     for mid in media_ids:
         if mid is not None and db.get(Media, mid) is None:
             raise HTTPException(400, f"Image {mid} does not exist; upload it first with POST /media")
+
+
+def _library_bank(db: Session, user: User) -> QuestionBank:
+    bank = db.scalar(select(QuestionBank).where(QuestionBank.owner_id == user.id,
+                                               QuestionBank.course_id.is_(None), QuestionBank.name == "My questions").order_by(QuestionBank.id))
+    if bank is None:
+        bank = QuestionBank(owner_id=user.id, name="My questions")
+        db.add(bank)
+        db.flush()
+    return bank
+
+
+def _library_questions(db: Session, user: User):
+    my_courses = select(CourseInstructor.course_id).where(CourseInstructor.user_id == user.id)
+    bank_ids = select(QuestionBank.id).where(or_(QuestionBank.owner_id == user.id,
+                                                QuestionBank.course_id.in_(my_courses)))
+    return db.scalars(select(Question).where(Question.bank_id.in_(bank_ids)).order_by(Question.id.desc())).all()
+
+
+@router.get("/library", response_model=s.LibraryOut)
+def library(db: Annotated[Session, Depends(get_db, scope="function")], user: Annotated[User, Depends(current_user)],
+            settings: Annotated[Settings, Depends(get_settings)]):
+    require_staff(user)
+    questions = _library_questions(db, user)
+    tags = sorted({tag for q in questions for tag in (q.tags or [])}, key=str.casefold)
+    return s.LibraryOut(questions=[question_out(settings, q) for q in questions], tags=tags)
+
+
+@router.post("/library/questions", response_model=s.QuestionOut, status_code=201)
+def library_create(body: s.QuestionCreate, db: Annotated[Session, Depends(get_db, scope="function")],
+                   user: Annotated[User, Depends(current_user)], settings: Annotated[Settings, Depends(get_settings)]):
+    require_staff(user)
+    bank = _bank_or_404(db, body.bank_id, user) if body.bank_id else _library_bank(db, user)
+    _check_media(db, body.body_media_id, body.explanation_media_id)
+    values = body.model_dump(exclude={"bank_id", "options"})
+    q = svc.create_question(db, user, bank=bank, **values, options=[(o.text_md, o.is_correct) for o in body.options])
+    return question_out(settings, q)
+
+
+@router.post("/polls/{poll_id}/save-to-bank", response_model=s.QuestionOut, status_code=201)
+def save_poll_question(poll_id: int, body: s.SaveToBank,
+                       db: Annotated[Session, Depends(get_db, scope="function")], user: Annotated[User, Depends(current_user)],
+                       settings: Annotated[Settings, Depends(get_settings)]):
+    poll = poll_or_404(db, poll_id)
+    require_instructor(db, poll.session.course, user)
+    bank = _bank_or_404(db, body.bank_id, user) if body.bank_id else _library_bank(db, user)
+    source = poll.question
+    if source.bank_id == bank.id or db.scalar(select(Question.id).where(
+            Question.bank_id == bank.id, Question.copied_from_id == source.id)):
+        raise HTTPException(409, "This question is already saved in that bank; edit the existing question instead")
+    q = svc.copy_question(db, source, user, bank=bank)
+    q.tags = body.tags or list(source.tags or [])
+    return question_out(settings, q)
+
+
+@router.get("/library/export")
+def library_export(db: Annotated[Session, Depends(get_db, scope="function")], user: Annotated[User, Depends(current_user)],
+                   settings: Annotated[Settings, Depends(get_settings)]):
+    require_staff(user)
+    return Response(export_bank(_library_questions(db, user), settings.media_dir), media_type="application/zip",
+                    headers={"Content-Disposition": 'attachment; filename="huskypoll-questions.zip"'})
+
+
+@router.post("/library/import")
+def library_import(file: Annotated[UploadFile, File(...)], db: Annotated[Session, Depends(get_db, scope="function")],
+                   user: Annotated[User, Depends(current_user)], settings: Annotated[Settings, Depends(get_settings)],
+                   bank_id: int | None = None, preview: bool = False):
+    require_staff(user)
+    prepared, images = read_archive(file.file.read(MAX_ARCHIVE_BYTES + 1))
+    if bank_id is not None:
+        _bank_or_404(db, bank_id, user)
+    if preview:
+        return {"questions": len(prepared), "images": len(images),
+                "tags": sorted({t for model, _ in prepared for t in model.tags})}
+    bank = _bank_or_404(db, bank_id, user) if bank_id else _library_bank(db, user)
+    count, skipped = import_bank(db, prepared, images, user, settings.media_dir, bank,
+                                 existing_questions=_library_questions(db, user) if bank_id is None else None)
+    return {"imported": count, "skipped": skipped, "bank_id": bank.id}
+
+
+@router.get("/banks/{bank_id}/export")
+def single_bank_export(bank_id: int, db: Annotated[Session, Depends(get_db, scope="function")],
+                       user: Annotated[User, Depends(current_user)], settings: Annotated[Settings, Depends(get_settings)]):
+    bank = _bank_or_404(db, bank_id, user)
+    return Response(export_bank(bank.questions, settings.media_dir), media_type="application/zip",
+                    headers={"Content-Disposition": 'attachment; filename="huskypoll-questions.zip"'})
 
 
 # --- banks ----------------------------------------------------------------------

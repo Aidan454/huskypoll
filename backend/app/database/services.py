@@ -406,6 +406,7 @@ def create_question(
     body_md: str,
     options: Sequence[tuple[str, bool]] = (),
     bank: QuestionBank | None = None,
+    tags: list[str] | None = None,
     explanation_md: str | None = None,
     text_answer: str | None = None,
     numeric_answer: float | None = None,
@@ -426,6 +427,7 @@ def create_question(
         bank_id=bank.id if bank else None,
         type=type,
         body_md=body_md,
+        tags=tags or [],
         explanation_md=explanation_md,
         text_answer=text_answer,
         numeric_answer=numeric_answer,
@@ -445,6 +447,7 @@ def copy_question(db: Session, source: Question, author: User, bank: QuestionBan
         author_id=author.id,
         bank_id=(bank.id if bank else source.bank_id),
         type=source.type,
+        tags=list(source.tags or []),
         body_md=source.body_md,
         body_media_id=source.body_media_id,
         explanation_md=source.explanation_md,
@@ -869,7 +872,7 @@ def move_poll(db: Session, poll: Poll, target: LectureSession) -> Poll:
 
 # Fields that stay editable after a question has been polled (answer key + explanation).
 ANSWER_KEY_FIELDS = ("explanation_md", "explanation_media_id", "text_answer", "numeric_answer", "numeric_tolerance")
-CONTENT_FIELDS = ("type", "body_md", "body_media_id", "bank_id")
+CONTENT_FIELDS = ("type", "body_md", "body_media_id", "bank_id", "tags")
 
 
 def update_question(
@@ -891,7 +894,7 @@ def update_question(
     if unknown:
         raise HuskyPollError(f"unknown field(s): {', '.join(sorted(unknown))}")
     if q.is_locked:
-        blocked = [k for k in CONTENT_FIELDS if k in changes and k != "bank_id"]
+        blocked = [k for k in CONTENT_FIELDS if k in changes and k not in {"bank_id", "tags"}]
         if blocked or options is not None:
             raise HuskyPollError("this question has been polled, so its wording and choices are locked; "
                                  "copy it to make changes (the answer and explanation can still be edited)")

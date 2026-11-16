@@ -379,3 +379,21 @@ Questions and replies belong to individual lectures, independent of polls, and a
 In Roster → Add students → StudentAdmin file, choose or drag in one CSV/XLSX (up to 5 MB). Review row statuses and missing students before confirming. Invalid and duplicate rows are skipped and reported; valid students can still be imported. Preview (`POST /courses/{id}/roster/import?preview=true`, multipart `file`) does not create users, enrollments, or activity events. Confirmation revalidates the same file against the current roster. Missing students remain enrolled; the existing separate post-import drop review is retained.
 
 Roster name columns: CSV and XLSX accept either combined `Name` (`Last, First`) or separate `First Name` and `Last Name` columns. `FirstName`/`LastName` and `first_name`/`last_name` also work. Explicit nonblank name columns take precedence; blank components fall back to combined Name. Preview uses the same names as import.
+
+## Question library and archive API
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| GET | `/library` | Staff-only list of questions in owned/course-shared banks and reusable tags. |
+| POST | `/library/questions` | Create directly in the personal bank (or accessible `bank_id`). |
+| POST | `/polls/{id}/save-to-bank` | Instructor-only editable copy; accepts `tags` and optional `bank_id`. Original poll unchanged; repeat saves return 409. |
+| GET | `/library/export` | ZIP of accessible bank questions and images. |
+| GET | `/banks/{id}/export` | ZIP of one authorized bank. |
+| POST | `/library/import?preview=true` | Multipart `file`: validate entire ZIP and return question/image counts and tags without writes. |
+| POST | `/library/import` | Confirm import into personal bank or optional `bank_id`; return imported/skipped counts. |
+
+Question create/update/output include `tags` (up to 20, each 1–80 characters; trimmed and deduplicated ignoring case). Tags remain editable on polled questions, without altering locked wording or grades. Student poll serialization hides tags while answers are hidden. Text and tag filtering happens in the instructor client over authorized questions only.
+
+ZIP format v1: `{ "format": "huskypoll-question-bank", "version": 1, "questions": [...] }` in `manifest.json`. Question fields: type, body_md, explanation_md, text_answer, numeric_answer, numeric_tolerance, tags, body_image, explanation_image and options (`text_md`, `is_correct`, `image`). Image references point to `images/` entries, never filesystem paths. No users, responses, course IDs or media database IDs are exported. All content is validated before persistence; uploads are never extracted. Default library import skips exact content duplicates across accessible bank questions; targeted bank import checks that destination only. Import never replaces by tag or alters historical polls.
+
+Run migration `a2b3c4d5e6f7` (`alembic upgrade head`), then restart. Tests: `python -m pytest -q`; frontend search tests: `node --test frontend/src/components/questionSearch.test.js` from repository root.

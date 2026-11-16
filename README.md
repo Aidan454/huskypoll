@@ -67,3 +67,13 @@ Students and instructors open **Lectures → Q&A** to ask and answer questions i
 In Roster → Add students → StudentAdmin file, choose or drag in one CSV/XLSX (up to 5 MB). Review row statuses and missing students before confirming. Invalid and duplicate rows are skipped and reported; valid students can still be imported. Preview (`POST /courses/{id}/roster/import?preview=true`, multipart `file`) does not create users, enrollments, or activity events. Confirmation revalidates the same file against the current roster. Missing students remain enrolled; the existing separate post-import drop review is retained.
 
 Roster name columns: CSV and XLSX accept either combined `Name` (`Last, First`) or separate `First Name` and `Last Name` columns. `FirstName`/`LastName` and `first_name`/`last_name` also work. Explicit nonblank name columns take precedence; blank components fall back to combined Name. Preview uses the same names as import.
+
+## Question bank workspace
+
+Open **Question banks** for a single searchable list of reusable questions. Existing collections and course sharing remain under **Manage existing collections**; no banks are merged or deleted. Create a question directly, or use **Save to question bank** on an instructor poll to save an editable copy while preserving the poll and its responses.
+
+Use comma-separated tags such as `Lect 2.3, Recursion`. Click existing tags to reuse them in the editor, or filter the question list by tags. Multiple selected tags mean all must match. Keyword search matches question text, choices, answer/explanation text and tags; type filters narrow the results. The poll's question-bank picker supports the same text/tag search and retains selected question order when filters change.
+
+**Export ZIP** downloads a versioned `manifest.json` plus referenced images. **Import ZIP** validates and previews the question/image counts before confirmation, adds unlocked questions, skips exact duplicates, and never overwrites existing questions. Images and answer keys travel with the archive. Limits: 1000 questions, 50 MB ZIP, 100 MB expanded, 10 MB per image. Only PNG, JPEG, GIF and WebP are supported, matching existing image uploads. Exported archives contain answer keys and are for instructors.
+
+Existing databases need `alembic upgrade head` from `backend/` (then restart the backend). The additive tags migration preserves all existing content. No new runtime dependencies are needed.
