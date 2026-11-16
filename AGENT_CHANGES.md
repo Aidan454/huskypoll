@@ -1,5 +1,20 @@
 # Agent changes
 
+## 2026-11-16: Text size (page scale) option in the account menu
+
+- **Agent:** Claude Code
+- **Requested by:** mason
+- **Branch / PR:** `text-size-scale`, PR pending
+- **Files:**
+  - `frontend/src/uiScale.js` (added), `frontend/src/components/ScalePicker.jsx` (added)
+  - `frontend/src/components/Header/AvatarMenu.jsx`, `frontend/src/main.jsx`
+  - `frontend/src/index.css`, `frontend/src/components/Courses/CourseEditor.css`, `frontend/src/components/Courses/InstructorCourses.css`
+  - `AGENTS.md`, `AGENT_CHANGES.md`
+- **Summary:** Added a "Text size" control (100%, 125%, 150%) under the theme switch in the avatar dropdown, for accessibility. The choice is saved in localStorage (`huskypoll-scale`), applied before first render, and synced across tabs. Because the stylesheets use px, it zooms the whole page with CSS `zoom` on `body`; viewport-unit sizes now divide by `--ui-scale` so pages and modals still fit the window. On screens 480px wide or less the scale is capped at 125%. Uses existing color variables only; no backend change.
+- **Checks:** Frontend ESLint and build passed. Playwright check of /courses, lectures, roster, grades and banks at 1440/1100/900/390px widths for each scale found no horizontal overflow; the choice persisted across reload.
+- **Follow-up:** Team review before merging. No migration or deployment required.
+
+
 ## 2026-11-16: Searchable tagged question library and portable archives
 
 - **Agent:** OpenAI Codex

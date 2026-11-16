@@ -23,7 +23,7 @@ body {
 /* All have cm to distinguish these are components for course managment
 /* Outer dark frame */
 .cm-page {
-  min-height: 100vh;
+  min-height: calc(100vh / var(--ui-scale, 1));
   padding: 24px 0 6px 32px;
   background: #202020;
   color: #111;
@@ -43,7 +43,7 @@ body {
 
 /* White page container */
 .cm-shell {
-  min-height: calc(100vh - 68px);
+  min-height: calc(100vh / var(--ui-scale, 1) - 68px);
   background: #fff;
 }
 
@@ -182,7 +182,7 @@ body {
 
 /* Create/edit Course module */
 .cm-dialog {
-  width: min(420px, calc(100vw - 32px));
+  width: min(420px, calc(100vw / var(--ui-scale, 1) - 32px));
   padding: 24px;
   border: 1px solid #858585;
   color: #111;

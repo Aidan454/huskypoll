@@ -1,7 +1,7 @@
 /* Course editor page. Kept separate from the course list so it can grow
    without affecting the cards on the instructor home page. */
 .ce-page {
-  min-height: calc(100vh - 60px);
+  min-height: calc(100vh / var(--ui-scale, 1) - 60px);
   padding: 24px 16px 64px;
   background: #202020;
   box-sizing: border-box;
