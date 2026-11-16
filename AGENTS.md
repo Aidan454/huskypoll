@@ -4,6 +4,7 @@ Guide for coding agents (and new teammates) working on HuskyPoll, a live
 classroom polling site for UConn. Read this before changing code. Instructors
 run polls in lecture, students answer with a code or QR image, and the
 participation grades are exported as a CSV for HuskyCT.
+
 ## Stack
 
 - **Backend:** Python 3.11+ (3.13 in Docker), FastAPI, SQLAlchemy 2, Alembic, SQLite. In `backend/`.
@@ -139,6 +140,8 @@ docker compose -f compose.server.yml logs -f
 ### Conventions
 - Match the style of the file you're in. Python: ruff config in
   `backend/ruff.toml`. JS: ESLint config in `frontend/eslint.config.js`.
+- Keep docs in step with the code: the root `README.md`, `backend/README.md`
+  (its API table lists every endpoint), and this file.
 - UI follows the UConn brand (brand.uconn.edu): navy `#000E2F`, grey `#7C878E`,
   white, and Royal Blue `#013ECD` as an accent only. Text must meet 4.5:1
   contrast. The colors are CSS variables in `index.css`; don't add new hex values.
