@@ -1,3 +1,4 @@
+import SavePollQuestion from '../components/polls/SavePollQuestion.jsx'
 // One poll. Instructors get the classroom view (code, QR, live results, close);
 // students get the answer form, or their mark once it's closed.
 import { useEffect, useState } from 'react'
@@ -143,6 +144,7 @@ function InstructorPoll({ poll, setPoll, reloadPoll }) {
             </div>
           </div>
           <ErrorBox error={shareError || closeError || reopenError || addTimeError} />
+          <div style={{ marginBottom: 12 }}><SavePollQuestion poll={poll} /></div>
           <QuestionBody question={q} />
           <h3 style={{ marginTop: 8 }}>Results</h3>
           {results.error ? <ErrorBox error={results.error} /> : <ResultsView question={q} results={r} />}

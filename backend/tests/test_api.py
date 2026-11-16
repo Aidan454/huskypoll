@@ -1012,3 +1012,122 @@ def test_roster_name_formats(lecture, columns, values, expected):
     user = next(e["user"] for e in prof.get(f"/courses/{cid}/roster").json()
                 if e["user"]["net_id"] == "new12345")
     assert (user["first_name"], user["last_name"]) == expected
+
+# --- question library, tags and portable archives ---------------------------------
+
+def test_library_tags_permissions_and_poll_copy(lecture):
+    prof, ann, cid = lecture["prof"], lecture["ann"], lecture["cid"]
+    assert ann.get("/library").status_code == 403
+    q = prof.post("/library/questions", json={"type": "free_text", "body_md": "Explain recursion",
+        "tags": [" Lect  2.3 ", "lect 2.3", "Recursion"], "text_answer": "Self reference"}).json()
+    assert q["tags"] == ["Lect 2.3", "Recursion"]
+    assert prof.get("/library").json()["tags"] == ["Lect 2.3", "Recursion"]
+    assert ann.patch(f"/questions/{q['id']}", json={"tags": ["Bad"]}).status_code == 404
+    # Save a quick poll without moving or editing the original question or responses.
+    poll = prof.post(f"/courses/{cid}/polls", json={"question_id": lecture["q"]["id"]}).json()
+    assert ann.post(f"/polls/{poll['id']}/save-to-bank", json={}).status_code == 403
+    saved = prof.post(f"/polls/{poll['id']}/save-to-bank", json={"tags": ["Lect 3.5"]})
+    assert saved.status_code == 201
+    copy = saved.json()
+    assert copy["id"] != lecture["q"]["id"] and not copy["is_locked"]
+    assert copy["copied_from_id"] == lecture["q"]["id"]
+    assert prof.post(f"/polls/{poll['id']}/save-to-bank", json={}).status_code == 409
+    assert ann.get(f"/polls/{poll['id']}").json()["question"]["tags"] == []
+    assert prof.patch(f"/questions/{copy['id']}", json={"body_md": "Edited bank copy"}).status_code == 200
+    original = prof.get(f"/polls/{poll['id']}").json()["question"]
+    assert original["body_md"] == lecture["q"]["body_md"]
+    assert original["bank_id"] is None
+    assert prof.patch(f"/questions/{lecture['q']['id']}", json={"tags": ["Topic"]}).status_code == 200
+    assert prof.patch(f"/questions/{lecture['q']['id']}", json={"body_md": "Changed"}).status_code == 400
+
+
+@pytest.mark.parametrize("tags", [[""], ["x" * 81], ["tag"] * 21, [3], "Lect 2.3"])
+def test_question_tag_validation(lecture, tags):
+    r = lecture["prof"].post("/library/questions", json={"type": "free_text", "body_md": "Question", "tags": tags})
+    assert r.status_code == 422
+
+
+def test_library_shared_visibility_and_private_access(app, lecture):
+    prof, cid, ta = lecture["prof"], lecture["cid"], lecture["ta"]
+    bank = prof.post("/banks", json={"name": "Shared", "course_id": cid}).json()
+    prof.post("/questions", json={"type": "numeric", "body_md": "Shared question", "bank_id": bank["id"], "tags": ["Shared"]})
+    prof.post("/library/questions", json={"type": "free_text", "body_md": "Private question"})
+    assert [q["body_md"] for q in ta.get("/library").json()["questions"]] == ["Shared question"]
+    outsider = login(app, "oth12345@uconn.edu", role="instructor")
+    assert outsider.get("/library").json()["questions"] == []
+    assert outsider.get(f"/banks/{bank['id']}/export").status_code == 404
+
+
+def test_question_bank_archive_roundtrip_images_tags_and_dedup(app, lecture):
+    import io
+    import json
+    import zipfile
+
+    prof = lecture["prof"]
+    image = prof.post("/media", files={"file": ("q.png", tiny_png())}).json()["id"]
+    q = prof.post("/library/questions", json={"type": "mc_multi", "body_md": "Image question", "body_media_id": image,
+        "explanation_media_id": image, "explanation_md": "Why", "tags": ["Lect 2.3", "Topic"],
+        "options": [{"text_md": "Yes", "is_correct": True}, {"text_md": "No", "is_correct": False}]}).json()
+    numeric = prof.post("/library/questions", json={"type": "numeric", "body_md": "Numeric", "numeric_answer": 2,
+                                                   "numeric_tolerance": 0.1}).json()
+    assert numeric["id"]
+    archive = prof.get("/library/export")
+    assert archive.status_code == 200 and archive.headers["content-type"] == "application/zip"
+    with zipfile.ZipFile(io.BytesIO(archive.content)) as z:
+        assert len([name for name in z.namelist() if name.startswith("images/")]) == 1
+        manifest = json.loads(z.read("manifest.json"))
+        assert manifest["version"] == 1
+    other = login(app, "oth12345@uconn.edu", role="instructor")
+    upload = {"file": ("questions.zip", archive.content)}
+    preview = other.post("/library/import?preview=true", files=upload)
+    assert preview.json() == {"questions": 2, "images": 1, "tags": ["Lect 2.3", "Topic"]}
+    assert other.get("/library").json()["questions"] == []
+    result = other.post("/library/import", files=upload)
+    assert result.json()["imported"] == 2
+    imported = other.get("/library").json()["questions"]
+    match = next(x for x in imported if x["body_md"] == q["body_md"])
+    assert match["tags"] == q["tags"] and match["body_media_url"] == q["body_media_url"]
+    assert [o["is_correct"] for o in match["options"]] == [True, False]
+    assert not match["is_locked"]
+    assert other.post("/library/import", files=upload).json() == {"imported": 0, "skipped": 2, "bank_id": result.json()["bank_id"]}
+    assert lecture["ann"].get("/library/export").status_code == 403
+    assert lecture["ann"].post("/library/import", files=upload).status_code == 403
+
+
+@pytest.mark.parametrize("case", ["invalid-zip", "unsafe-path", "bad-version", "missing-image", "bad-tags", "bad-second-question"])
+def test_question_archive_rejects_invalid_without_partial_import(lecture, case):
+    import io
+    import json
+    import zipfile
+
+    prof = lecture["prof"]
+    before = prof.get("/library").json()
+    question = {"type": "free_text", "body_md": "Valid", "tags": ["Lect 1"]}
+    rows = [question]
+    if case == "missing-image":
+        question["body_image"] = "images/missing.png"
+    if case == "bad-tags":
+        question["tags"] = [42]
+    if case == "bad-second-question":
+        rows.append({"type": "mc_single", "body_md": "Broken", "options": []})
+    stream = io.BytesIO()
+    with zipfile.ZipFile(stream, "w") as z:
+        z.writestr("manifest.json", json.dumps({"format": "huskypoll-question-bank", "version": 9 if case == "bad-version" else 1,
+                                                 "questions": rows}))
+        if case == "unsafe-path":
+            z.writestr("../outside.png", tiny_png())
+    data = b"not a zip" if case == "invalid-zip" else stream.getvalue()
+    r = prof.post("/library/import", files={"file": ("x.zip", data)})
+    assert r.status_code == 400, r.text
+    assert prof.get("/library").json() == before
+
+
+def test_library_import_deduplicates_across_existing_collections(lecture):
+    prof = lecture["prof"]
+    bank = prof.post("/banks", json={"name": "Existing semester"}).json()
+    prof.post("/questions", json={"bank_id": bank["id"], "type": "free_text", "body_md": "Already saved",
+                                 "text_answer": "An answer", "tags": ["Lect 2.3"]})
+    data = prof.get("/library/export").content
+    result = prof.post("/library/import", files={"file": ("x.zip", data)}).json()
+    assert result["imported"] == 0 and result["skipped"] == 1
+    assert len(prof.get("/library").json()["questions"]) == 1

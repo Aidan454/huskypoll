@@ -52,6 +52,7 @@ def question_out(settings: Settings, q: Question, *, reveal: bool = True) -> s.Q
                              media_url=murl(o.media_id), is_correct=o.is_correct if reveal else None)
                  for o in q.options],
         bank_id=q.bank_id if reveal else None,
+        tags=(q.tags or []) if reveal else [],
         is_locked=q.is_locked,
         copied_from_id=q.copied_from_id if reveal else None,
         explanation_md=q.explanation_md if reveal else None,

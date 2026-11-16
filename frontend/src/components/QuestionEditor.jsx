@@ -7,6 +7,8 @@ import { QUESTION_TYPES } from '../format.js'
 import ImagePicker from './ImagePicker.jsx'
 import { ErrorBox, Field, Modal } from './ui.jsx'
 import StudentQuestionPreview from './polls/StudentQuestionPreview.jsx'
+import { TagEditor } from './QuestionSearch.jsx'
+import { parseTags } from './questionSearch.js'
 import { studentPreviewQuestion } from './polls/studentPreview.js'
 
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -47,8 +49,9 @@ function formFromQuestion(q) {
  *   submitLabel, busy, error, onCancel
  *   extra      more form controls shown above the buttons (e.g. "show results" for quick polls)
  */
-export default function QuestionEditor({ question, onSubmit, submitLabel = 'Save', busy, error, onCancel, extra }) {
+export default function QuestionEditor({ question, onSubmit, submitLabel = 'Save', busy, error, onCancel, extra, showTags = false, tagSuggestions = [] }) {
   const locked = Boolean(question?.is_locked)
+  const [tagText, setTagText] = useState((question?.tags || []).join(', '))
   const [form, setForm] = useState(() => (question ? formFromQuestion(question) : emptyForm()))
   // undefined = unchanged, null = removed, number = new upload
   const [bodyMedia, setBodyMedia] = useState({ id: undefined, url: question?.body_media_url ?? null })
@@ -114,12 +117,14 @@ export default function QuestionEditor({ question, onSubmit, submitLabel = 'Save
       body.numeric_answer = form.numeric_answer === '' ? null : Number(form.numeric_answer)
       body.numeric_tolerance = form.numeric_tolerance === '' ? null : Number(form.numeric_tolerance)
     }
+    if (showTags) body.tags = parseTags(tagText)
     onSubmit(body)
   }
 
   return (
     <>
     <form onSubmit={submit}>
+      {showTags && <TagEditor value={tagText} onChange={setTagText} suggestions={tagSuggestions} />}
       {locked && (
         <div className="alert alert-info small">
           This question has been polled, so its wording and choices are locked. You can still set the answer key

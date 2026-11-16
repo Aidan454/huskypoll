@@ -1,0 +1,8 @@
+.bank-search-row { display: flex; flex-wrap: wrap; gap: 16px; align-items: end; }
+.bank-search-row label { display: flex; flex-direction: column; gap: 6px; }
+.bank-search-row .grow { min-width: min(100%, 240px); }
+.bank-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.bank-search details { margin-top: 14px; }
+.bank-search summary, .bank-tag-suggestions summary { cursor: pointer; }
+.bank-collection-details { margin: 24px 0; }
+.bank-results { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 12px; }

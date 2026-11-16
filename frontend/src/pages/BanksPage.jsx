@@ -1,3 +1,4 @@
+import QuestionLibrary from './QuestionLibrary.jsx'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { api } from '../api.js'
@@ -49,7 +50,7 @@ export function BankForm({ initial, onSubmit, busy, error, submitLabel, onCancel
   )
 }
 
-export default function BanksPage() {
+function BankCollections() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const banks = useApi('/banks')
@@ -63,10 +64,10 @@ export default function BanksPage() {
   })
 
   return (
-    <main className="page">
+    <section className="card">
       <div className="page-head">
         <div>
-          <h1>Question banks</h1>
+          <h2>Existing collections</h2>
           <p className="subtitle">Write questions ahead of class, then open them as polls in any of your courses.</p>
         </div>
         <button type="button" className="btn btn-primary" onClick={() => setCreating(true)}>
@@ -97,6 +98,10 @@ export default function BanksPage() {
       <Modal open={creating} onClose={() => setCreating(false)} title="New question bank">
         <BankForm onSubmit={create} busy={busy} error={error} submitLabel="Create bank" onCancel={() => setCreating(false)} />
       </Modal>
-    </main>
+    </section>
   )
+}
+
+export default function BanksPage() {
+  return <QuestionLibrary collections={<BankCollections />} />
 }
