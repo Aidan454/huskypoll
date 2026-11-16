@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { initials } from '../../format.js'
 import { useAuth } from '../../hooks.js'
+import ScalePicker from '../ScalePicker.jsx'
 import ThemeToggle from '../ThemeToggle.jsx'
 
-/** Avatar button with the account details, theme switch and sign-out menu. */
+/** Avatar button with the account details, theme switch, text size and sign-out menu. */
 export default function AvatarMenu() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
@@ -65,6 +66,7 @@ export default function AvatarMenu() {
           </div>
           <div className="avatar-divider" />
           <ThemeToggle />
+          <ScalePicker />
           <button type="button" className="avatar-signout" onClick={signOut}>
             <span className="avatar-signout-icon" aria-hidden="true" />
             Log out

@@ -133,9 +133,11 @@ docker compose -f compose.server.yml logs -f
 - Add new pages as routes in `src/App.jsx`. Use the shared pieces in
   `components/ui.jsx` and the hooks in `hooks.js`.
 - Style with the CSS variables in `index.css` so the light/dark theme works.
+- The account menu's **Text size** (100/125/150%, `src/uiScale.js`) zooms the
+  whole page, because styles are in px. Write viewport units as
+  `calc(100vh / var(--ui-scale, 1))` so zoomed pages still fit the window.
 
 ### Conventions
-
 - Match the style of the file you're in. Python: ruff config in
   `backend/ruff.toml`. JS: ESLint config in `frontend/eslint.config.js`.
 - Keep docs in step with the code: the root `README.md`, `backend/README.md`

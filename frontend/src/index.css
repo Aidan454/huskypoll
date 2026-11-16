@@ -23,6 +23,8 @@
   --amber: #8a5a00;
   --amber-soft: #fff4d6;
   --radius: 10px;
+  /* Text size from the account menu (src/uiScale.js sets --ui-scale-choice). */
+  --ui-scale: var(--ui-scale-choice, 1);
   --shadow: 0 1px 2px rgba(0, 14, 47, 0.06), 0 4px 12px rgba(0, 14, 47, 0.06);
   --color-navy: #000e2f;
   --color-white: #ffffff;
@@ -47,14 +49,22 @@
   box-sizing: border-box;
 }
 
+/* Phones have little room (and pinch zoom), so cap the page scale at 125%. */
+@media (max-width: 480px) {
+  :root { --ui-scale: min(var(--ui-scale-choice, 1), 1.25); }
+}
+
 body {
   margin: 0;
-  min-width: 320px;
+  min-width: calc(320px / var(--ui-scale));
   background: var(--bg);
+  /* Text size: styles are in px, so zoom scales everything together.
+     Viewport units below divide by --ui-scale so pages still fit the window. */
+  zoom: var(--ui-scale);
 }
 
 #root {
-  min-height: 100svh;
+  min-height: calc(100svh / var(--ui-scale, 1));
   display: flex;
   flex-direction: column;
 }
@@ -224,7 +234,7 @@ textarea {
   gap: 6px;
   width: max-content;
   min-width: 260px;
-  max-width: min(340px, calc(100vw - 32px));
+  max-width: min(340px, calc(100vw / var(--ui-scale, 1) - 32px));
   padding: 10px;
   background: var(--surface);
   color: var(--text);
@@ -777,7 +787,7 @@ textarea {
   padding: 2px 0;
 }
 .export-dates {
-  max-height: 50vh;
+  max-height: calc(50vh / var(--ui-scale, 1));
   overflow-y: auto;
 }
 .export-date {
@@ -876,15 +886,15 @@ textarea {
 .modal {
   background: var(--surface);
   color: var(--text);
-  width: min(560px, calc(100vw - 32px));
-  max-height: calc(100vh - 48px);
+  width: min(560px, calc(100vw / var(--ui-scale, 1) - 32px));
+  max-height: calc(100vh / var(--ui-scale, 1) - 48px);
   padding: 0;
   border: 1px solid var(--border);
   border-radius: 12px;
   box-shadow: 0 20px 50px rgba(0, 14, 47, 0.25);
 }
 .modal-wide {
-  width: min(760px, calc(100vw - 32px));
+  width: min(760px, calc(100vw / var(--ui-scale, 1) - 32px));
 }
 .modal::backdrop {
   background: rgba(0, 14, 47, 0.45);
@@ -1117,7 +1127,7 @@ textarea {
     z-index: 60;
     flex-direction: column;
     gap: 4px;
-    width: min(80vw, 300px);
+    width: min(calc(80vw / var(--ui-scale, 1)), 300px);
     padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
     background: var(--navy);
     color: #fff;
@@ -1300,6 +1310,50 @@ textarea {
 .theme-track { width: 32px; height: 18px; padding: 3px; border-radius: 20px; background: var(--muted); }
 .theme-track > span { display: block; width: 12px; height: 12px; background: var(--surface); border-radius: 50%; }
 [data-theme='dark'] .theme-track > span { transform: translateX(14px); }
+
+.scale-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--subtle);
+  color: var(--text);
+  font-size: 14px;
+}
+.scale-picker-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.scale-icon {
+  width: 16px;
+  font-weight: 700;
+  line-height: 1;
+  text-align: center;
+}
+.scale-options {
+  display: inline-flex;
+  margin-left: auto;
+  padding: 2px;
+  gap: 2px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.scale-options button {
+  min-width: 44px;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+}
+.scale-options button:hover { background: var(--hover); }
+.scale-options button.active { background: var(--blue); color: var(--on-accent); }
+.scale-options button:focus-visible { outline: 3px solid var(--blue); outline-offset: 1px; }
 [data-theme='dark'] .btn-primary,
 [data-theme='dark'] .btn-solid-danger,
 [data-theme='dark'] .choice.selected .letter,
