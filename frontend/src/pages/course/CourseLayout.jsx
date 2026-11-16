@@ -49,7 +49,7 @@ export default function CourseLayout() {
         ) : (
           <>
             <NavLink to={base} end><span className="tab-icon tab-icon-polls" aria-hidden="true" />Polls</NavLink>
-            <NavLink to={`${base}/history`}>History</NavLink>
+            <NavLink to={`${base}/history`}><span className="tab-icon tab-icon-history" aria-hidden="true" />History</NavLink>
           </>
         )}
         <NavLink to={`${base}/lectures`}><span className="tab-icon tab-icon-lectures" aria-hidden="true" />Lectures</NavLink>
