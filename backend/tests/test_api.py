@@ -235,9 +235,10 @@ def test_full_lecture_flow(lecture):
     hist = ann.get(f"/courses/{cid}/history").json()
     assert hist[0]["answered"] and hist[0]["poll"]["my_response"]["is_correct"] is True
     assert hist[0]["poll"]["question"]["explanation_md"] == "Arithmetic."
-    # Participation is earned for answering, whether or not the answer was correct.
+    # Correctness is reported for the student's History stat, but points come only from answering.
     assert ann.get(f"/courses/{cid}/my-participation").json() == {
-        "polls": 1, "answered": 1, "correct": 0, "points": 1.0, "points_possible": 1.0}
+        "polls": 1, "answered": 1, "correct": 1, "points": 1.0, "points_possible": 1.0,
+        "days": 1, "days_answered": 1}
 
     # Reopen: students only, answers hidden again, late answers accepted, then close again
     assert ann.post(f"/polls/{poll['id']}/reopen").status_code in (403, 404)

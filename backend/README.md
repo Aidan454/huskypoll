@@ -290,6 +290,13 @@ Two views do common queries:
   table and participation CSV are built from it.
 - `v_poll_option_counts`: live vote counts for the results bar chart.
 
+The `correct` count returned by the participation totals (shown as "Correct
+answers" in a student's History tab) comes from `is_correct` in `v_poll_scores`.
+It is informational: points and the participation CSV depend on answering,
+never on correctness. The "Daily participation" stat uses the CSV's rule: a
+lecture date counts once when a closed poll happened that day, and the student
+earns that day by answering any poll on it.
+
 ## End of semester: archive or delete a course
 
 | | Archive | Delete |

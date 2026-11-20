@@ -343,8 +343,10 @@ def my_participation(course_id: int, db: Annotated[Session, Depends(get_db, scop
     require_member(db, course, user)
     row = next((r for r in participation_totals(db, course) if r["net_id"] == user.net_id and user.net_id), None)
     if row is None:
-        return s.ParticipationOut(polls=0, answered=0, correct=0, points=0, points_possible=0)
-    return s.ParticipationOut(**{k: row[k] for k in ("polls", "answered", "correct", "points", "points_possible")})
+        return s.ParticipationOut(polls=0, answered=0, correct=0, points=0, points_possible=0,
+                                  days=0, days_answered=0)
+    return s.ParticipationOut(**{k: row[k] for k in (
+        "polls", "answered", "correct", "points", "points_possible", "days", "days_answered")})
 
 
 # --- live updates ---------------------------------------------------------------

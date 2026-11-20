@@ -60,7 +60,7 @@ line again (migrations run on start). Logs: `docker compose -f compose.server.ym
 
 ## Lecture Q&A
 
-Students and instructors open **Lectures → Q&A** to ask and answer questions in a specific lecture, even without an active poll. Discussions update live and archived courses are read-only. Existing unscoped posts and replies are retained in a labeled **Earlier course Q&A** lecture. Apply `alembic upgrade head` before using this feature.
+Instructors open **Lectures → Q&A** to ask and answer questions in a specific lecture, even without an active poll. Students open the Q&A for a lecture with a live poll from the **Lecture Q&A** link on that poll; their course view has no Lectures tab. Discussions update live and archived courses are read-only. Existing unscoped posts and replies are retained in a labeled **Earlier course Q&A** lecture. Apply `alembic upgrade head` before using this feature.
 
 ### Roster file preview
 

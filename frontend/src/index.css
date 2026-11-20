@@ -1222,6 +1222,7 @@ textarea {
   }
   .tabs-student a {
     flex: 1;
+    justify-content: center;
     text-align: center;
     padding: 12px;
     border-bottom: 0;

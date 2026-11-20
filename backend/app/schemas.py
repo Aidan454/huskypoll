@@ -380,6 +380,8 @@ class ParticipationOut(BaseModel):
     correct: int
     points: float
     points_possible: float
+    days: int
+    days_answered: int
 
 
 class ParticipationSessionOut(BaseModel):

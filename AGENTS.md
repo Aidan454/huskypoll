@@ -174,7 +174,12 @@ docker compose -f compose.server.yml logs -f
   with a closed poll (`W1-01-20-PART`), 100 if the student answered any poll that
   day, else 0. Each download is logged in `event_log` with its dates, and
   `GET /courses/{id}/participation/sessions` returns each date's `exported_at`,
-  so the export dialog leaves already-exported dates unticked.
+  so the export dialog leaves already-exported dates unticked. The student
+  History "Correct answers" stat counts correct answers from `v_poll_scores`;
+  it is informational and does not affect points or the CSV. The student
+  History "Daily participation" stat counts lecture dates with at least one
+  closed poll and how many of those dates the student answered at least one
+  poll, matching the CSV.
 - **Event log** (`event_log`) records logins, poll open/close/reopen, answers,
   imports, drops and exports. Instructors see it on the Activity tab.
 

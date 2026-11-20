@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Navigate, useOutletContext } from 'react-router'
 import { AnswerKey, Mark, QuestionBody } from '../../components/PollParts.jsx'
 import { Loaded, SortSelect } from '../../components/ui.jsx'
-import { answerText, formatDate, isStaff, pct, points, snippet } from '../../format.js'
+import { answerText, formatDate, isStaff, pct, snippet } from '../../format.js'
 import { useApi, useSortOrder } from '../../hooks.js'
 import { connectCourse } from '../../live.js'
 import Markdown from '../../components/Markdown.jsx'
@@ -25,12 +25,9 @@ export function Participation({ courseId, version }) {
           </div>
           <div className="card">
             <div className="stat">
-              {points(d.points)}
-              <span className="muted" style={{ fontSize: 18 }}>
-                /{points(d.points_possible)}
-              </span>
+              {d.days_answered}/{d.days}
             </div>
-            <div className="stat-label">Points ({pct(d.points, d.points_possible)}%)</div>
+            <div className="stat-label">Daily participation ({pct(d.days_answered, d.days)}%)</div>
           </div>
         </div>
       )}
