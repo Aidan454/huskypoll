@@ -37,7 +37,9 @@ def participation_totals(
                COALESCE(SUM(v.answered),0) AS answered,
                COALESCE(SUM(CASE WHEN v.is_correct = 1 THEN 1 ELSE 0 END),0) AS correct,
                COALESCE(SUM(v.points),0)   AS points,
-               COALESCE(SUM(v.points_possible),0) AS points_possible
+               COALESCE(SUM(v.points_possible),0) AS points_possible,
+               COUNT(DISTINCT v.session_date) AS days,
+               COUNT(DISTINCT CASE WHEN v.answered = 1 THEN v.session_date END) AS days_answered
         FROM enrollments e
         JOIN users u ON u.id = e.user_id
         LEFT JOIN v_poll_scores v

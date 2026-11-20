@@ -435,13 +435,24 @@ def test_participation_export(db, course_setup):
     # The correct count is informational and comes from the answers to closed polls.
     assert totals["abc12345"]["points"] == 1 and totals["abc12345"]["points_possible"] == 1
     assert totals["abc12345"]["answered"] == 1 and totals["abc12345"]["correct"] == 1
+    assert totals["abc12345"]["days"] == 1 and totals["abc12345"]["days_answered"] == 1
     assert totals["xyz67890"]["points"] == 0 and totals["xyz67890"]["polls"] == 1
     assert totals["xyz67890"]["answered"] == 0 and totals["xyz67890"]["correct"] == 0
+    assert totals["xyz67890"]["days"] == 1 and totals["xyz67890"]["days_answered"] == 0
 
     next_week = svc.get_or_create_session(db, course, on_date=dt.date(2027, 2, 8))
     week2_poll = svc.open_poll(db, course, q, prof, lecture_session=next_week)
     svc.submit_response(db, week2_poll, s2, option_ids=[q.options[1].id])
     svc.close_poll(db, week2_poll, prof)
+
+    totals = {r["net_id"]: r for r in participation_totals(db, course)}
+    assert totals["abc12345"]["days"] == 2 and totals["abc12345"]["days_answered"] == 1
+    assert totals["xyz67890"]["days"] == 2 and totals["xyz67890"]["days_answered"] == 1
+
+    # A second closed poll on the same day is still one participation day.
+    svc.close_poll(db, open_poll, prof)
+    totals = {r["net_id"]: r for r in participation_totals(db, course)}
+    assert totals["abc12345"]["days"] == 2 and totals["abc12345"]["days_answered"] == 1
 
     lines = participation_csv(db, course).splitlines()
     assert lines[0] == "Username,W1-02-01-PART,W2-02-08-PART"
@@ -466,7 +477,12 @@ def test_participation_export(db, course_setup):
     assert [x["exported_at"] is not None for x in sessions] == [True, True, False]
     assert sessions[0]["exported_at"].tzinfo is not None
 
-    assert participation_totals(db, course, start=dt.date(2027, 3, 1))[0]["points"] == 0
+    totals = {r["net_id"]: r for r in participation_totals(db, course)}
+    assert totals["abc12345"]["days"] == 3 and totals["abc12345"]["days_answered"] == 1
+    assert totals["xyz67890"]["days"] == 3 and totals["xyz67890"]["days_answered"] == 1
+
+    in_march = participation_totals(db, course, start=dt.date(2027, 3, 1))[0]
+    assert in_march["points"] == 0 and in_march["days"] == 0 and in_march["days_answered"] == 0
 
 
 def test_timestamps_are_utc_aware(db, course_setup):
