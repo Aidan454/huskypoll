@@ -450,7 +450,8 @@ def test_participation_export(db, course_setup):
     assert totals["xyz67890"]["days"] == 2 and totals["xyz67890"]["days_answered"] == 1
 
     # A second closed poll on the same day is still one participation day.
-    svc.close_poll(db, open_poll, prof)
+    same_day_poll = svc.open_poll(db, course, q, prof, lecture_session=sess)
+    svc.close_poll(db, same_day_poll, prof)
     totals = {r["net_id"]: r for r in participation_totals(db, course)}
     assert totals["abc12345"]["days"] == 2 and totals["abc12345"]["days_answered"] == 1
 
