@@ -3,6 +3,7 @@ import './LectureQA.css'
 import { Link, useOutletContext, useParams } from 'react-router'
 import { api } from '../../api.js'
 import { ErrorBox, Loaded } from '../../components/ui.jsx'
+import { isStaff } from '../../format.js'
 import { useAction, useApi } from '../../hooks.js'
 import { connectCourse } from '../../live.js'
 
@@ -57,6 +58,7 @@ function LectureDiscussion({ course, session }) {
   const questions = useApi(`${path}${beforeId ? `?before_id=${beforeId}` : ''}`)
   const { reload } = questions
   const archived = Boolean(course.archived_at)
+  const staff = isStaff(course)
 
   useEffect(() => connectCourse(course.id, (message) => {
     if (message.type === 'qa_changed' && message.session_id === session.id) {
@@ -71,7 +73,8 @@ function LectureDiscussion({ course, session }) {
   }), [course.id, session.id, reload])
 
   return <section className="stack qa-page" aria-label="Lecture questions and answers">
-    <div><Link to={`/courses/${course.id}/lectures`}>← Back to lectures</Link>
+    <div><Link to={staff ? `/courses/${course.id}/lectures` : `/courses/${course.id}`}>
+      {staff ? '← Back to lectures' : '← Back to course'}</Link>
       <h2 style={{ marginTop: 16 }}>{session.title || 'Lecture'} · Q&A</h2>
       <p className="muted">{session.session_date}</p>
       <p className="muted">Questions and replies belong to this lecture. Students and instructors can ask or answer, even when no poll is running.</p>

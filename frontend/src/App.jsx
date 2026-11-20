@@ -1,7 +1,8 @@
-import { createBrowserRouter, Link, Navigate, Outlet, RouterProvider } from 'react-router'
+import { createBrowserRouter, Link, Navigate, Outlet, RouterProvider, useOutletContext } from 'react-router'
 import { AuthProvider, RequireLogin } from './components/AuthProvider.jsx'
 import Layout from './components/Layout.jsx'
 import { BASE_PATH } from './config.js'
+import { isStaff } from './format.js'
 import BankPage from './pages/BankPage.jsx'
 import BanksPage from './pages/BanksPage.jsx'
 import ActivityTab from './pages/course/ActivityTab.jsx'
@@ -38,6 +39,12 @@ function Root() {
   )
 }
 
+/** Old /qa link: staff still land on Lectures, students on their Polls page. */
+function LegacyQaRedirect() {
+  const { course } = useOutletContext()
+  return <Navigate to={isStaff(course) ? '../lectures' : '../'} replace />
+}
+
 const router = createBrowserRouter(
   [
     {
@@ -59,7 +66,7 @@ const router = createBrowserRouter(
               children: [
                 { index: true, element: <CourseHome /> },
                 { path: 'history', element: <StudentHistory /> },
-                { path: 'qa', element: <Navigate to="../lectures" replace /> },
+                { path: 'qa', element: <LegacyQaRedirect /> },
                 { path: 'lectures/:sessionId/qa', element: <LectureQA /> },
                 { path: 'live', element: <LiveTab /> },
                 { path: 'lectures', element: <LecturesTab /> },
