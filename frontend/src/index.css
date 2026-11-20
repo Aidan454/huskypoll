@@ -549,15 +549,24 @@ th.num {
 }
 
 /* ---------- tabs ---------- */
+/* Labels keep their size. CourseLayout.jsx measures whether the icons fit; if
+   they don't, it hides them, and any tabs left over go into the "More" menu. */
 .tabs {
+  position: relative;
   display: flex;
+  flex-wrap: wrap;
   gap: 4px;
   border-bottom: 1px solid var(--border);
   margin-bottom: 20px;
-  overflow-x: auto;
+}
+/* The course tab row never wraps: overflowing tabs go into the More menu, so
+   resizing can't push a second row in and shift the page. */
+nav.tabs {
+  flex-wrap: nowrap;
 }
 .tabs a {
   display: inline-flex;
+  flex: none;
   align-items: center;
   gap: 8px;
   padding: 10px 14px;
@@ -566,6 +575,88 @@ th.num {
   border-bottom: 3px solid transparent;
   white-space: nowrap;
   font-weight: 500;
+}
+.tab-icons-hidden a .tab-icon {
+  display: none;
+}
+/* Tabs that don't fit: out of the row, but still in the DOM so their width can
+   be measured. They are listed in the menu instead. */
+.tab-overflow {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+}
+.tab-more-wrap {
+  position: relative;
+  display: flex;
+  flex: none;
+}
+/* Present only to be measured while every tab still fits. */
+.tab-more-wrap.is-ghost {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+}
+.tab-more {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.tab-more:hover {
+  color: var(--heading);
+}
+.tab-more.active {
+  color: var(--blue);
+  border-bottom-color: var(--blue);
+}
+.tab-more-caret {
+  width: 0;
+  height: 0;
+  border-top: 5px solid currentColor;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+}
+.tab-more-menu {
+  position: absolute;
+  top: calc(100% + 2px);
+  right: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 200px;
+  padding: 6px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+.tab-more-menu a {
+  display: block;
+  padding: 9px 12px;
+  border-bottom: 0;
+  border-radius: 8px;
+  color: var(--text);
+  white-space: nowrap;
+}
+.tab-more-menu a:hover {
+  color: var(--heading);
+  background: var(--hover);
+}
+.tab-more-menu a.active {
+  color: var(--blue);
+  background: var(--blue-soft);
+  font-weight: 600;
 }
 .tab-icon {
   width: 16px;
