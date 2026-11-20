@@ -749,6 +749,21 @@ textarea {
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 12px;
 }
+.course-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 16px;
+}
+.course-filters input[type='search'] {
+  flex: 1 1 240px;
+  width: auto;
+}
+.course-filters select {
+  width: auto;
+  min-width: 130px;
+}
 .form-actions {
   display: flex;
   justify-content: flex-end;

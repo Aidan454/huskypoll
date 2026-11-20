@@ -91,6 +91,13 @@ export default function CoursesPage() {
   const [subject, setSubject] = useState('')
   const courses = useApi(`/courses${showArchived ? '?include_archived=true' : ''}`)
   const [creating, setCreating] = useState(false)
+  const teach = canTeach(user)
+
+  const allCourses = courses.data ?? []
+  const terms = [...new Set(allCourses.map((course) => course.term).filter(Boolean))].sort()
+  const subjects = [...new Set(allCourses.map((course) => course.subject).filter(Boolean))].sort()
+  const hasFilters = Boolean(search || (teach && (term || subject)))
+  const clearFilters = () => { setSearch(''); setTerm(''); setSubject('') }
 
   const [create, busy, error] = useAction(async (body) => {
     const course = await api.post('/courses', body)
@@ -109,7 +116,7 @@ export default function CoursesPage() {
             <input type="checkbox" checked={showArchived} onChange={(e) => setShowArchived(e.target.checked)} />
             Show archived
           </label>
-          {canTeach(user) && (
+          {teach && (
             <button type="button" className="btn btn-primary" onClick={() => setCreating(true)}>
               + New course
             </button>
@@ -117,42 +124,40 @@ export default function CoursesPage() {
         </div>
       </div>
 
-      <Field label="Search courses">
+      <div className="course-filters" role="search" aria-label="Filter courses">
         <input
           type="search"
+          aria-label="Search courses"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search by course name or code, e.g. CSE 2050"
+          placeholder="Search by name or code"
         />
-      </Field>
+        {teach && (
+          <>
+            <select aria-label="Filter by term" value={term} onChange={(e) => setTerm(e.target.value)}>
+              <option value="">All terms</option>
+              {terms.map((value) => <option key={value} value={value}>{value}</option>)}
+            </select>
+            <select aria-label="Filter by subject" value={subject} onChange={(e) => setSubject(e.target.value)}>
+              <option value="">All subjects</option>
+              {subjects.map((value) => <option key={value} value={value}>{value}</option>)}
+            </select>
+          </>
+        )}
+        {hasFilters && (
+          <button type="button" className="linkbtn" onClick={clearFilters}>Clear</button>
+        )}
+      </div>
 
       <Loaded state={courses}>
         {(list) => {
-          const terms = [...new Set(list.map((course) => course.term).filter(Boolean))].sort()
-          const subjects = [...new Set(list.map((course) => course.subject).filter(Boolean))].sort()
-          const filters = canTeach(user) && (
-            <div className="form-row">
-              <Field label="Term">
-                <select value={term} onChange={(e) => setTerm(e.target.value)}>
-                  <option value="">All terms</option>
-                  {terms.map((value) => <option key={value} value={value}>{value}</option>)}
-                </select>
-              </Field>
-              <Field label="Subject">
-                <select value={subject} onChange={(e) => setSubject(e.target.value)}>
-                  <option value="">All subjects</option>
-                  {subjects.map((value) => <option key={value} value={value}>{value}</option>)}
-                </select>
-              </Field>
-            </div>
-          )
           const query = search.trim().toLowerCase().replace(/\s+/g, ' ')
           const matching = list.filter((course) => {
             const code = `${course.subject} ${course.catalog}`.toLowerCase()
             const title = (course.title || '').toLowerCase()
             return `${code} ${title}`.includes(query)
-              && (!canTeach(user) || !term || course.term === term)
-              && (!canTeach(user) || !subject || course.subject === subject)
+              && (!teach || !term || course.term === term)
+              && (!teach || !subject || course.subject === subject)
           })
           const teaching = matching.filter(isStaff)
           const enrolled = matching.filter((c) => !isStaff(c))
@@ -161,7 +166,7 @@ export default function CoursesPage() {
               <div className="card empty">
                 <p>You aren&apos;t in any courses yet.</p>
                 <p className="small">
-                  {canTeach(user)
+                  {teach
                     ? 'Create one with “New course”.'
                     : 'Your instructor adds you from the class roster. If you have a poll code, use “Join a poll”.'}
                 </p>
@@ -170,21 +175,17 @@ export default function CoursesPage() {
           }
           if (!matching.length) {
             return (
-              <>
-              {filters}
               <div className="card empty" role="status">
                 <p>No courses found.</p>
                 <p className="small">Try a different search or filter.</p>
-                <button type="button" className="btn" onClick={() => { setSearch(''); setTerm(''); setSubject('') }}>
+                <button type="button" className="btn" onClick={clearFilters}>
                   Clear search and filters
                 </button>
               </div>
-              </>
             )
           }
           return (
             <>
-              {filters}
               {teaching.length > 0 && (
                 <section style={{ marginBottom: 28 }}>
                   {enrolled.length > 0 && <h2>Teaching</h2>}
