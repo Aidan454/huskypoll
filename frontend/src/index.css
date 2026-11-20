@@ -267,6 +267,7 @@ textarea {
 .avatar-dropdown .theme-toggle {
   width: 100%;
   justify-content: flex-start;
+  background: transparent;
 }
 .avatar-dropdown .theme-toggle .theme-track {
   margin-left: auto;
