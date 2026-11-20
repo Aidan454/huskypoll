@@ -432,9 +432,11 @@ def test_participation_export(db, course_setup):
 
     totals = {r["net_id"]: r for r in participation_totals(db, course)}
     # Participation is one point per answered closed poll; correctness no longer adds points.
+    # The correct count is informational and comes from the answers to closed polls.
     assert totals["abc12345"]["points"] == 1 and totals["abc12345"]["points_possible"] == 1
-    assert totals["abc12345"]["answered"] == 1 and totals["abc12345"]["correct"] == 0
+    assert totals["abc12345"]["answered"] == 1 and totals["abc12345"]["correct"] == 1
     assert totals["xyz67890"]["points"] == 0 and totals["xyz67890"]["polls"] == 1
+    assert totals["xyz67890"]["answered"] == 0 and totals["xyz67890"]["correct"] == 0
 
     next_week = svc.get_or_create_session(db, course, on_date=dt.date(2027, 2, 8))
     week2_poll = svc.open_poll(db, course, q, prof, lecture_session=next_week)

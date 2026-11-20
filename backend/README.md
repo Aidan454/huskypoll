@@ -290,6 +290,11 @@ Two views do common queries:
   table and participation CSV are built from it.
 - `v_poll_option_counts`: live vote counts for the results bar chart.
 
+The `correct` count returned by the participation totals (shown as "Correct
+answers" in a student's History tab) comes from `is_correct` in `v_poll_scores`.
+It is informational: points and the participation CSV depend on answering,
+never on correctness.
+
 ## End of semester: archive or delete a course
 
 | | Archive | Delete |

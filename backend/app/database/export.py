@@ -35,7 +35,7 @@ def participation_totals(
         SELECT u.last_name, u.first_name, u.net_id, u.student_id, u.email,
                COUNT(v.poll_id)            AS polls,
                COALESCE(SUM(v.answered),0) AS answered,
-               0                          AS correct,
+               COALESCE(SUM(CASE WHEN v.is_correct = 1 THEN 1 ELSE 0 END),0) AS correct,
                COALESCE(SUM(v.points),0)   AS points,
                COALESCE(SUM(v.points_possible),0) AS points_possible
         FROM enrollments e
